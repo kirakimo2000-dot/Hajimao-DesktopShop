@@ -222,6 +222,17 @@ public sealed class BusinessSimulation
                 nameof(savedStores));
         }
 
+        var unknownStaffStore = _staffByStore.Keys
+            .Except(openIds, StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (unknownStaffStore is not null)
+        {
+            throw new ArgumentException(
+                $"Restored employee assignment references unopened store '{unknownStaffStore}'.",
+                nameof(savedStores));
+        }
+
         foreach (var saved in saves)
         {
             var store = business.Stores.Single(snapshot => snapshot.Id == saved.StoreId);

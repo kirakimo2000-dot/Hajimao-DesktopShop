@@ -190,6 +190,30 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
+    public void Restore_RejectsEmployeeAssignedToAStoreThatIsNotOpen()
+    {
+        var service = CreateService();
+        var original = new BusinessSimulation(
+            service,
+            [AssignCashier("zeta-store", "cashier", 1_000)],
+            new StatefulTestRandomSource(42));
+        var state = original.CaptureSaveData();
+        var corrupted = state with
+        {
+            Employees = state.Employees
+                .Select(employee => employee with { StoreId = "missing-store" })
+                .ToArray()
+        };
+        var restoredService = CreateService(service.CaptureSaveData());
+
+        Assert.Throws<ArgumentException>(() =>
+            new BusinessSimulation(
+                restoredService,
+                corrupted,
+                new StatefulTestRandomSource(1)));
+    }
+
+    [Fact]
     public void OptionsAndAssignments_RejectInvalidConfiguration()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
