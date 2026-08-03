@@ -15,11 +15,11 @@ public sealed class TrayIconService : IDisposable
         _contextMenu.Items.Add("显示桌面小店", null, (_, _) => OpenShopRequested?.Invoke(this, EventArgs.Empty));
         _contextMenu.Items.Add("打开经营管理", null, (_, _) => OpenManagementRequested?.Invoke(this, EventArgs.Empty));
         _contextMenu.Items.Add(new Forms.ToolStripSeparator());
-        _contextMenu.Items.Add("退出 Hajimao", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
+        _contextMenu.Items.Add("退出 Hajimao Market", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
 
         _notifyIcon = new Forms.NotifyIcon
         {
-            Text = "Hajimao 小店 · 持续经营中",
+            Text = "Hajimao Market · 持续经营中",
             Icon = SystemIcons.Application,
             ContextMenuStrip = _contextMenu,
             Visible = true

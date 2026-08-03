@@ -6,6 +6,7 @@
 
 ## [Unreleased]
 
+- 正式产品名称确认为 `Hajimao Market`；内部 `HajimaoDesktopShop.*` 技术标识保持兼容。
 - 下一阶段为 0.4.0 三渠道采购与自动补货；尚未开始实现。
 
 ## [0.3.0] - 2026-08-03
