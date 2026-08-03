@@ -4,5 +4,6 @@ public enum LedgerEntryType
 {
     OpeningBalance,
     StockPurchase,
-    Sale
+    Sale,
+    WagePayment
 }

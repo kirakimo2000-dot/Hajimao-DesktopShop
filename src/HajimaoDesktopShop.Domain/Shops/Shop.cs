@@ -37,6 +37,12 @@ public sealed class Shop
         TotalRevenue = state.TotalRevenue;
         TotalStockPurchaseCost = state.TotalStockPurchaseCost;
         TotalGrossProfit = state.TotalGrossProfit;
+        if (state.TotalWageCost.Cents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(state));
+        }
+
+        TotalWageCost = state.TotalWageCost;
 
         if (addOpeningBalance)
         {
@@ -60,6 +66,10 @@ public sealed class Shop
     public Money TotalStockPurchaseCost { get; private set; }
 
     public Money TotalGrossProfit { get; private set; }
+
+    public Money TotalWageCost { get; private set; }
+
+    public Money TotalNetProfit => TotalGrossProfit - TotalWageCost;
 
     public IReadOnlyList<LedgerEntry> Ledger => _ledger;
 
@@ -143,6 +153,17 @@ public sealed class Shop
         TotalGrossProfit += grossProfit;
         AddLedger(LedgerEntryType.Sale, productId, quantity, revenue);
         return new SaleResult(SaleStatus.Success, revenue, grossProfit);
+    }
+
+    internal void RecordWagePayment(Money amount)
+    {
+        if (amount.Cents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        }
+
+        TotalWageCost += amount;
+        AddLedger(LedgerEntryType.WagePayment, null, 1, new Money(-amount.Cents));
     }
 
     private void AddLedger(

@@ -49,6 +49,9 @@ public sealed class Employee
 
     public Money TotalWagesAccrued { get; private set; }
 
+    public Money NextMinuteWage =>
+        new(checked(_wageRemainder + HourlyWage.Cents) / 60L);
+
     public int CalculateTaskMinutes(int baseTaskMinutes)
     {
         if (baseTaskMinutes <= 0)

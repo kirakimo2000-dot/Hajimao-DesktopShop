@@ -6,4 +6,5 @@ public sealed record ShopFinancialState(
     Money Cash,
     Money TotalRevenue,
     Money TotalStockPurchaseCost,
-    Money TotalGrossProfit);
+    Money TotalGrossProfit,
+    Money TotalWageCost = default);

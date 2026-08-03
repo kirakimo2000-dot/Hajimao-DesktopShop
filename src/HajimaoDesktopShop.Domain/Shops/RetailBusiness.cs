@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Domain.Economy;
+using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
 
 namespace HajimaoDesktopShop.Domain.Shops;
@@ -66,5 +67,29 @@ public sealed class RetailBusiness
 
         _stores.Add(definition.Id, Shop.CreateWithWallet(_wallet));
         return new OpenShopResult(OpenShopStatus.Success, definition.Id, definition.OpeningCost);
+    }
+
+    public WagePaymentResult TryPayEmployeeMinute(ShopId shopId, Employee employee)
+    {
+        ArgumentNullException.ThrowIfNull(employee);
+        var amount = employee.NextMinuteWage;
+        if (!_stores.TryGetValue(shopId, out var shop))
+        {
+            return new WagePaymentResult(WagePaymentStatus.UnknownStore, amount);
+        }
+
+        if (!_wallet.TryDebit(amount))
+        {
+            return new WagePaymentResult(WagePaymentStatus.InsufficientFunds, amount);
+        }
+
+        var charged = employee.RecordWorkedMinute();
+        if (charged != amount)
+        {
+            throw new InvalidOperationException("Employee wage preview changed before payment was committed.");
+        }
+
+        shop.RecordWagePayment(charged);
+        return new WagePaymentResult(WagePaymentStatus.Success, charged);
     }
 }

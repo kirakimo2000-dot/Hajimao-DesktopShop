@@ -32,6 +32,21 @@ public sealed class EmployeeTests
     }
 
     [Fact]
+    public void NextMinuteWage_PreviewsExactChargeWithoutMutation()
+    {
+        var employee = CreateEmployee("cashier", efficiencyPermille: 1_000, hourlyWageCents: 1_001);
+
+        var firstPreview = employee.NextMinuteWage;
+        var firstCharge = employee.RecordWorkedMinute();
+        var secondPreview = employee.NextMinuteWage;
+
+        Assert.Equal(new Money(16), firstPreview);
+        Assert.Equal(firstPreview, firstCharge);
+        Assert.Equal(new Money(17), secondPreview);
+        Assert.Equal(1, employee.WorkedMinutes);
+    }
+
+    [Fact]
     public void ConstructorAndTaskCalculation_RejectInvalidValues()
     {
         Assert.Throws<ArgumentException>(() => new EmployeeId(" "));
