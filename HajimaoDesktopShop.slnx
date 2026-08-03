@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HajimaoDesktopShop.Application/HajimaoDesktopShop.Application.csproj" />
+    <Project Path="src/HajimaoDesktopShop.Desktop/HajimaoDesktopShop.Desktop.csproj" />
+    <Project Path="src/HajimaoDesktopShop.Domain/HajimaoDesktopShop.Domain.csproj" />
+    <Project Path="src/HajimaoDesktopShop.Infrastructure/HajimaoDesktopShop.Infrastructure.csproj" />
+    <Project Path="src/HajimaoDesktopShop.Rendering/HajimaoDesktopShop.Rendering.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HajimaoDesktopShop.Application.Tests/HajimaoDesktopShop.Application.Tests.csproj" />
+    <Project Path="tests/HajimaoDesktopShop.Domain.Tests/HajimaoDesktopShop.Domain.Tests.csproj" />
+    <Project Path="tests/HajimaoDesktopShop.Desktop.Tests/HajimaoDesktopShop.Desktop.Tests.csproj" />
+    <Project Path="tests/HajimaoDesktopShop.Infrastructure.Tests/HajimaoDesktopShop.Infrastructure.Tests.csproj" />
+    <Project Path="tests/HajimaoDesktopShop.Rendering.Tests/HajimaoDesktopShop.Rendering.Tests.csproj" />
+  </Folder>
+</Solution>

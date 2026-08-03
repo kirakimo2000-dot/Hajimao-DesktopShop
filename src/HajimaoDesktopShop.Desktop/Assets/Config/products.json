@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "products": [
+    {
+      "id": "water",
+      "name": "矿泉水",
+      "wholesalePriceCents": 100,
+      "initialSalePriceCents": 180,
+      "capacity": 24,
+      "shelfKind": "ambient"
+    },
+    {
+      "id": "bread",
+      "name": "牛奶面包",
+      "wholesalePriceCents": 240,
+      "initialSalePriceCents": 390,
+      "capacity": 16,
+      "shelfKind": "ambient"
+    },
+    {
+      "id": "instant_noodles",
+      "name": "杯面",
+      "wholesalePriceCents": 320,
+      "initialSalePriceCents": 520,
+      "capacity": 18,
+      "shelfKind": "ambient"
+    },
+    {
+      "id": "chips",
+      "name": "海盐薯片",
+      "wholesalePriceCents": 280,
+      "initialSalePriceCents": 460,
+      "capacity": 14,
+      "shelfKind": "ambient"
+    },
+    {
+      "id": "milk",
+      "name": "鲜牛奶",
+      "wholesalePriceCents": 300,
+      "initialSalePriceCents": 480,
+      "capacity": 12,
+      "shelfKind": "chilled"
+    },
+    {
+      "id": "soda",
+      "name": "橘子汽水",
+      "wholesalePriceCents": 220,
+      "initialSalePriceCents": 380,
+      "capacity": 18,
+      "shelfKind": "chilled"
+    },
+    {
+      "id": "sandwich",
+      "name": "火腿三明治",
+      "wholesalePriceCents": 520,
+      "initialSalePriceCents": 780,
+      "capacity": 10,
+      "shelfKind": "chilled"
+    },
+    {
+      "id": "yogurt",
+      "name": "草莓酸奶",
+      "wholesalePriceCents": 340,
+      "initialSalePriceCents": 550,
+      "capacity": 12,
+      "shelfKind": "chilled"
+    },
+    {
+      "id": "ice_cream",
+      "name": "香草冰淇淋",
+      "wholesalePriceCents": 360,
+      "initialSalePriceCents": 620,
+      "capacity": 12,
+      "shelfKind": "frozen"
+    },
+    {
+      "id": "dumplings",
+      "name": "速冻饺子",
+      "wholesalePriceCents": 780,
+      "initialSalePriceCents": 1080,
+      "capacity": 10,
+      "shelfKind": "frozen"
+    }
+  ]
+}

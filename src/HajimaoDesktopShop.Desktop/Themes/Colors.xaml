@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Brush.Background" Color="#17191D" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="#23262C" />
+    <SolidColorBrush x:Key="Brush.SurfaceElevated" Color="#2D3138" />
+    <SolidColorBrush x:Key="Brush.Border" Color="#555C68" />
+    <SolidColorBrush x:Key="Brush.Primary" Color="#F2B84B" />
+    <SolidColorBrush x:Key="Brush.PrimaryPressed" Color="#D89A2E" />
+    <SolidColorBrush x:Key="Brush.Success" Color="#69C784" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#E96C65" />
+    <SolidColorBrush x:Key="Brush.Text" Color="#F2F2F2" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#B8BDC7" />
+    <SolidColorBrush x:Key="Brush.SceneWall" Color="#4B3940" />
+    <SolidColorBrush x:Key="Brush.SceneFloor" Color="#B7784E" />
+    <SolidColorBrush x:Key="Brush.SceneFloorDark" Color="#8E583D" />
+    <SolidColorBrush x:Key="Brush.ShelfAmbient" Color="#D8A95A" />
+    <SolidColorBrush x:Key="Brush.ShelfChilled" Color="#6DB7C7" />
+    <SolidColorBrush x:Key="Brush.ShelfFrozen" Color="#7897CF" />
+    <SolidColorBrush x:Key="Brush.Customer" Color="#E8D6A7" />
+    <SolidColorBrush x:Key="Brush.Cashier" Color="#F2B84B" />
+    <SolidColorBrush x:Key="Brush.Restocker" Color="#69C784" />
+</ResourceDictionary>
