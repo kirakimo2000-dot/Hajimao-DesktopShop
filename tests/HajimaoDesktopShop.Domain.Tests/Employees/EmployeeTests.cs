@@ -56,6 +56,13 @@ public sealed class EmployeeTests
             new Employee(new EmployeeId("cashier"), "小葵", EmployeeRole.Cashier, 0, new Money(1_800)));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new Employee(new EmployeeId("cashier"), "小葵", EmployeeRole.Cashier, 1_000, Money.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new Employee(
+                new EmployeeId("cashier"),
+                "小葵",
+                EmployeeRole.Cashier,
+                1_000,
+                new Money(long.MaxValue)));
 
         var employee = CreateEmployee("cashier", 1_000, 1_800);
         Assert.Throws<ArgumentOutOfRangeException>(() => employee.CalculateTaskMinutes(0));

@@ -130,6 +130,20 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
+    public void CleanerRecovery_WithExtremeValidEfficiency_DoesNotOverflow()
+    {
+        var service = CreateService();
+        var simulation = new BusinessSimulation(
+            service,
+            [AssignCleaner("zeta-store", "cleaner", int.MaxValue)],
+            new ScriptedRandomSource(1));
+
+        simulation.AdvanceRealSecond();
+
+        Assert.Equal(1_000, Assert.Single(simulation.GetSnapshot().Stores).CleanlinessPermille);
+    }
+
+    [Fact]
     public void OptionsAndAssignments_RejectInvalidConfiguration()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

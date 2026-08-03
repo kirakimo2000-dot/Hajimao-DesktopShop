@@ -23,7 +23,7 @@ public sealed class Employee
             throw new ArgumentOutOfRangeException(nameof(efficiencyPermille));
         }
 
-        if (!hourlyWage.IsPositive)
+        if (!hourlyWage.IsPositive || hourlyWage.Cents > long.MaxValue - 59L)
         {
             throw new ArgumentOutOfRangeException(nameof(hourlyWage));
         }

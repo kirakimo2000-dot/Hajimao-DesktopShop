@@ -178,9 +178,9 @@ public sealed class BusinessSimulation
         foreach (var cleaner in runtime.Employees.Where(employee =>
                      employee.Role == EmployeeRole.Cleaner && paidEmployees.Contains(employee.Id)))
         {
-            var recovery = Math.Max(
-                1,
-                checked(_options.CleanerBaseRecoveryPermille * cleaner.EfficiencyPermille / 1_000));
+            var scaledRecovery = checked(
+                (long)_options.CleanerBaseRecoveryPermille * cleaner.EfficiencyPermille / 1_000L);
+            var recovery = checked((int)Math.Clamp(scaledRecovery, 1L, 1_000L));
             runtime.CleanlinessPermille = Math.Min(1_000, runtime.CleanlinessPermille + recovery);
         }
     }
