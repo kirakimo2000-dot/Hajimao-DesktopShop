@@ -1,0 +1,342 @@
+using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Simulation;
+using HajimaoDesktopShop.Domain.Demand;
+using HajimaoDesktopShop.Domain.Employees;
+using HajimaoDesktopShop.Domain.Shops;
+
+namespace HajimaoDesktopShop.Application.Business.Simulation;
+
+public sealed class BusinessSimulation
+{
+    private readonly object _gate = new();
+    private readonly BusinessGameService _game;
+    private readonly IRandomSource _random;
+    private readonly BusinessSimulationOptions _options;
+    private readonly SimulationClock _clock = new();
+    private readonly Dictionary<string, Employee[]> _staffByStore;
+    private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
+
+    public BusinessSimulation(
+        BusinessGameService game,
+        IEnumerable<StoreEmployeeAssignment> assignments,
+        IRandomSource random,
+        BusinessSimulationOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(game);
+        ArgumentNullException.ThrowIfNull(assignments);
+        ArgumentNullException.ThrowIfNull(random);
+
+        var assignmentArray = assignments.ToArray();
+        if (assignmentArray.Any(assignment => assignment is null))
+        {
+            throw new ArgumentException("Employee assignments cannot contain null.", nameof(assignments));
+        }
+
+        var duplicateEmployee = assignmentArray
+            .GroupBy(assignment => assignment.Employee.Id.Value, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateEmployee is not null)
+        {
+            throw new ArgumentException(
+                $"Employee '{duplicateEmployee.Key}' cannot be assigned more than once.",
+                nameof(assignments));
+        }
+
+        _game = game;
+        _random = random;
+        _options = options ?? new BusinessSimulationOptions();
+        _staffByStore = assignmentArray
+            .GroupBy(assignment => assignment.StoreId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(assignment => assignment.Employee)
+                    .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
+                    .ToArray(),
+                StringComparer.Ordinal);
+        SynchronizeStores();
+    }
+
+    public void AdvanceRealSecond() => AdvanceRealSeconds(1);
+
+    public void AdvanceRealSeconds(int seconds)
+    {
+        if (seconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(seconds));
+        }
+
+        lock (_gate)
+        {
+            for (var second = 0; second < seconds; second++)
+            {
+                _clock.AdvanceRealSecond(ProcessTick);
+            }
+        }
+    }
+
+    public BusinessSimulationSnapshot GetSnapshot()
+    {
+        lock (_gate)
+        {
+            var business = _game.GetSnapshot();
+            var stores = _stores.Values
+                .OrderBy(store => store.StoreId, StringComparer.Ordinal)
+                .Select(store => CreateStoreSnapshot(
+                    store,
+                    business.Stores.Single(snapshot => snapshot.Id == store.StoreId)))
+                .ToArray();
+            return new BusinessSimulationSnapshot(
+                _clock.GameMinute,
+                business,
+                Array.AsReadOnly(stores));
+        }
+    }
+
+    private void ProcessTick()
+    {
+        SynchronizeStores();
+        foreach (var store in _stores.Values.OrderBy(runtime => runtime.StoreId, StringComparer.Ordinal))
+        {
+            ProcessStore(store);
+        }
+    }
+
+    private void SynchronizeStores()
+    {
+        foreach (var store in _game.GetSnapshot().Stores.OrderBy(store => store.Id, StringComparer.Ordinal))
+        {
+            if (_stores.ContainsKey(store.Id))
+            {
+                continue;
+            }
+
+            _staffByStore.TryGetValue(store.Id, out var staff);
+            _stores.Add(
+                store.Id,
+                new StoreRuntime(store.Id, staff ?? [], _options.InitialCleanlinessPermille));
+        }
+    }
+
+    private void ProcessStore(StoreRuntime runtime)
+    {
+        var paidEmployees = PayEmployees(runtime);
+        ProcessCleaners(runtime, paidEmployees);
+        runtime.ServicePermille = CalculateServicePermille(runtime, paidEmployees);
+
+        var cashier = runtime.Employees.FirstOrDefault(employee =>
+            employee.Role == EmployeeRole.Cashier && paidEmployees.Contains(employee.Id));
+        ProcessCheckout(runtime, cashier);
+        TryVisitAndQueuePurchase(runtime);
+    }
+
+    private HashSet<EmployeeId> PayEmployees(StoreRuntime runtime)
+    {
+        var paid = new HashSet<EmployeeId>();
+        foreach (var employee in runtime.Employees)
+        {
+            var payment = _game.PayEmployeeMinute(runtime.StoreId, employee);
+            if (payment.Status == WagePaymentStatus.Success)
+            {
+                paid.Add(employee.Id);
+            }
+            else
+            {
+                runtime.WagePaymentFailures++;
+            }
+        }
+
+        return paid;
+    }
+
+    private void ProcessCleaners(StoreRuntime runtime, HashSet<EmployeeId> paidEmployees)
+    {
+        foreach (var cleaner in runtime.Employees.Where(employee =>
+                     employee.Role == EmployeeRole.Cleaner && paidEmployees.Contains(employee.Id)))
+        {
+            var recovery = Math.Max(
+                1,
+                checked(_options.CleanerBaseRecoveryPermille * cleaner.EfficiencyPermille / 1_000));
+            runtime.CleanlinessPermille = Math.Min(1_000, runtime.CleanlinessPermille + recovery);
+        }
+    }
+
+    private static int CalculateServicePermille(
+        StoreRuntime runtime,
+        HashSet<EmployeeId> paidEmployees)
+    {
+        var customerFacing = runtime.Employees
+            .Where(employee => paidEmployees.Contains(employee.Id)
+                && employee.Role is EmployeeRole.Cashier
+                    or EmployeeRole.SalesAssistant
+                    or EmployeeRole.Manager)
+            .ToArray();
+        if (customerFacing.Length == 0)
+        {
+            return 0;
+        }
+
+        var average = customerFacing.Sum(employee => (long)employee.EfficiencyPermille)
+            / customerFacing.Length;
+        return checked((int)Math.Clamp(average, 0L, 2_000L));
+    }
+
+    private void ProcessCheckout(StoreRuntime runtime, Employee? cashier)
+    {
+        if (runtime.ActiveCheckout is not null && cashier is not null)
+        {
+            runtime.ActiveCheckout.RemainingMinutes--;
+            if (runtime.ActiveCheckout.RemainingMinutes == 0)
+            {
+                var result = _game.Sell(runtime.StoreId, runtime.ActiveCheckout.ProductId, 1);
+                if (result.Sale.Status == SaleStatus.Success)
+                {
+                    runtime.CompletedSales++;
+                }
+                else
+                {
+                    runtime.LostSales++;
+                }
+
+                runtime.ActiveCheckout = null;
+            }
+        }
+
+        if (runtime.ActiveCheckout is null
+            && cashier is not null
+            && runtime.CheckoutQueue.TryDequeue(out var productId))
+        {
+            runtime.ActiveCheckout = new ActiveCheckout(
+                productId,
+                cashier.CalculateTaskMinutes(_options.BaseCheckoutMinutes));
+        }
+    }
+
+    private void TryVisitAndQueuePurchase(StoreRuntime runtime)
+    {
+        var store = _game.GetSnapshot().Stores.Single(snapshot => snapshot.Id == runtime.StoreId);
+        var arrival = CalculateArrivalDemand(runtime, store);
+        if (_random.NextDouble() >= arrival.FinalBasisPoints / 10_000d)
+        {
+            return;
+        }
+
+        runtime.Visitors++;
+        runtime.CleanlinessPermille = Math.Max(
+            0,
+            runtime.CleanlinessPermille - _options.VisitorDirtPermille);
+
+        var available = store.Products.Where(product => product.Quantity > 0).ToArray();
+        if (available.Length == 0)
+        {
+            runtime.LostSales++;
+            return;
+        }
+
+        var selected = available[_random.Next(available.Length)];
+        var purchase = DemandModel.CalculatePurchase(new DemandContext(
+            _options.BasePurchaseBasisPoints,
+            CalculatePriceIndex(selected),
+            runtime.ServicePermille,
+            runtime.QueueLength,
+            runtime.CleanlinessPermille,
+            CurrentMinuteOfDay));
+        if (_random.NextDouble() >= purchase.FinalBasisPoints / 10_000d)
+        {
+            runtime.LostSales++;
+            return;
+        }
+
+        runtime.AcceptedPurchases++;
+        runtime.CheckoutQueue.Enqueue(selected.Id);
+    }
+
+    private StoreOperationsSnapshot CreateStoreSnapshot(
+        StoreRuntime runtime,
+        BusinessStoreSnapshot store) =>
+        new(
+            runtime.StoreId,
+            runtime.Visitors,
+            runtime.AcceptedPurchases,
+            runtime.CompletedSales,
+            runtime.LostSales,
+            runtime.QueueLength,
+            runtime.CleanlinessPermille,
+            runtime.ServicePermille,
+            runtime.WagePaymentFailures,
+            CalculateArrivalDemand(runtime, store));
+
+    private DemandBreakdown CalculateArrivalDemand(
+        StoreRuntime runtime,
+        BusinessStoreSnapshot store) =>
+        DemandModel.CalculateArrival(new DemandContext(
+            _options.BaseArrivalBasisPoints,
+            CalculateAveragePriceIndex(store.Products),
+            runtime.ServicePermille,
+            runtime.QueueLength,
+            runtime.CleanlinessPermille,
+            CurrentMinuteOfDay));
+
+    private int CurrentMinuteOfDay => checked((int)(_clock.GameMinute % 1_440L));
+
+    private static int CalculateAveragePriceIndex(IReadOnlyList<ProductSnapshot> products)
+    {
+        var available = products.Where(product => product.Quantity > 0).ToArray();
+        if (available.Length == 0)
+        {
+            return 10_000;
+        }
+
+        var total = available.Sum(product => (long)CalculatePriceIndex(product));
+        return checked((int)(total / available.Length));
+    }
+
+    private static int CalculatePriceIndex(ProductSnapshot product)
+    {
+        var referencePrice = product.ReferenceSalePriceCents > 0
+            ? product.ReferenceSalePriceCents
+            : product.SalePriceCents;
+        var index = checked(product.SalePriceCents * 10_000L / referencePrice);
+        return checked((int)Math.Clamp(index, 1L, 30_000L));
+    }
+
+    private sealed class StoreRuntime
+    {
+        public StoreRuntime(string storeId, Employee[] employees, int cleanlinessPermille)
+        {
+            StoreId = storeId;
+            Employees = employees;
+            CleanlinessPermille = cleanlinessPermille;
+        }
+
+        public string StoreId { get; }
+
+        public Employee[] Employees { get; }
+
+        public Queue<string> CheckoutQueue { get; } = [];
+
+        public ActiveCheckout? ActiveCheckout { get; set; }
+
+        public int Visitors { get; set; }
+
+        public int AcceptedPurchases { get; set; }
+
+        public int CompletedSales { get; set; }
+
+        public int LostSales { get; set; }
+
+        public int CleanlinessPermille { get; set; }
+
+        public int ServicePermille { get; set; }
+
+        public int WagePaymentFailures { get; set; }
+
+        public int QueueLength => CheckoutQueue.Count + (ActiveCheckout is null ? 0 : 1);
+    }
+
+    private sealed class ActiveCheckout(string productId, int remainingMinutes)
+    {
+        public string ProductId { get; } = productId;
+
+        public int RemainingMinutes { get; set; } = remainingMinutes;
+    }
+}
