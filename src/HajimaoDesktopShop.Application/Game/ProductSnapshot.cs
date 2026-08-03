@@ -10,4 +10,5 @@ public sealed record ProductSnapshot(
     string ShelfKind,
     int RequiredPlayerLevel = 1,
     long UnitGrossProfitCents = 0,
-    int GrossMarginBasisPoints = 0);
+    int GrossMarginBasisPoints = 0,
+    long ReferenceSalePriceCents = 0);

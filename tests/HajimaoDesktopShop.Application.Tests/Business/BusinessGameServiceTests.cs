@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Domain.Economy;
+using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Shops;
 
@@ -56,6 +57,50 @@ public sealed class BusinessGameServiceTests
         Assert.Equal(2, snapshot.Stores.Count);
         Assert.All(snapshot.Stores, store => Assert.Equal(["water", "milk"], store.Products.Select(p => p.Id)));
         Assert.Equal(20_100, snapshot.CashCents);
+    }
+
+    [Fact]
+    public void ChangePrice_IsStoreSpecificAndRetainsCatalogReferencePrice()
+    {
+        var service = CreateService();
+        service.PurchaseStock("corner-store", "water", 1);
+        service.Sell("corner-store", "water", 1);
+        service.OpenStore("station-store");
+
+        var result = service.ChangePrice("corner-store", "water", 260);
+        var snapshot = service.GetSnapshot();
+        var cornerWater = snapshot.Stores.Single(store => store.Id == "corner-store")
+            .Products.Single(product => product.Id == "water");
+        var stationWater = snapshot.Stores.Single(store => store.Id == "station-store")
+            .Products.Single(product => product.Id == "water");
+
+        Assert.Equal(PriceChangeStatus.Success, result.Status);
+        Assert.Equal(260, cornerWater.SalePriceCents);
+        Assert.Equal(200, cornerWater.ReferenceSalePriceCents);
+        Assert.Equal(200, stationWater.SalePriceCents);
+        Assert.Equal(200, stationWater.ReferenceSalePriceCents);
+    }
+
+    [Fact]
+    public void PayEmployeeMinute_UpdatesSharedCashAndSelectedStoreFinance()
+    {
+        var service = CreateService();
+        var employee = new Employee(
+            new EmployeeId("cashier"),
+            "小葵",
+            EmployeeRole.Cashier,
+            efficiencyPermille: 1_000,
+            hourlyWage: new Money(6_000));
+
+        var result = service.PayEmployeeMinute("corner-store", employee);
+        var snapshot = service.GetSnapshot();
+        var store = Assert.Single(snapshot.Stores);
+
+        Assert.Equal(WagePaymentStatus.Success, result.Status);
+        Assert.Equal(49_900, snapshot.CashCents);
+        Assert.Equal(100, store.WageCostCents);
+        Assert.Equal(-100, store.NetProfitCents);
+        Assert.Equal(1, employee.WorkedMinutes);
     }
 
     private static BusinessGameService CreateService() =>

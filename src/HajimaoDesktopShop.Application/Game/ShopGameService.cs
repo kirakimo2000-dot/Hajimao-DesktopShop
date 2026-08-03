@@ -13,6 +13,7 @@ public sealed class ShopGameService
     private readonly List<ProductId> _productOrder = [];
     private readonly Dictionary<ProductId, string> _shelfKinds = [];
     private readonly Dictionary<ProductId, int> _requiredPlayerLevels = [];
+    private readonly Dictionary<ProductId, long> _referenceSalePrices = [];
 
     public ShopGameService(IEnumerable<ProductDefinition> definitions, long openingCashCents)
         : this(definitions, new Shop(new Money(openingCashCents)), restoredState: null)
@@ -57,6 +58,7 @@ public sealed class ShopGameService
             _productOrder.Add(id);
             _shelfKinds.Add(id, definition.ShelfKind);
             _requiredPlayerLevels.Add(id, definition.RequiredPlayerLevel);
+            _referenceSalePrices.Add(id, definition.InitialSalePriceCents);
         }
 
         if (_productOrder.Count == 0)
@@ -119,6 +121,7 @@ public sealed class ShopGameService
             _shelfKinds[productId],
             _requiredPlayerLevels[productId],
             slot.Product.UnitGrossProfit.Cents,
-            slot.Product.GrossMarginBasisPoints);
+            slot.Product.GrossMarginBasisPoints,
+            _referenceSalePrices[productId]);
     }
 }

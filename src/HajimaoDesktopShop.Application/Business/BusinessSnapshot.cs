@@ -14,4 +14,6 @@ public sealed record BusinessStoreSnapshot(
     long RevenueCents,
     long StockPurchaseCostCents,
     long GrossProfitCents,
-    IReadOnlyList<ProductSnapshot> Products);
+    IReadOnlyList<ProductSnapshot> Products,
+    long WageCostCents = 0,
+    long NetProfitCents = 0);

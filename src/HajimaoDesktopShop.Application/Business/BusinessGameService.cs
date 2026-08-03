@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Domain.Economy;
+using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Products;
 using HajimaoDesktopShop.Domain.Shops;
@@ -104,6 +105,28 @@ public sealed class BusinessGameService
         }
     }
 
+    public PriceChangeResult ChangePrice(string shopId, string productId, long salePriceCents)
+    {
+        lock (_gate)
+        {
+            return GetShop(shopId).TryChangePrice(new ProductId(productId), new Money(salePriceCents));
+        }
+    }
+
+    public WagePaymentResult PayEmployeeMinute(string shopId, Employee employee)
+    {
+        if (string.IsNullOrWhiteSpace(shopId))
+        {
+            throw new ArgumentException("Shop ID is required.", nameof(shopId));
+        }
+
+        ArgumentNullException.ThrowIfNull(employee);
+        lock (_gate)
+        {
+            return _business.TryPayEmployeeMinute(new ShopId(shopId), employee);
+        }
+    }
+
     public OpenShopResult OpenStore(string shopId)
     {
         if (string.IsNullOrWhiteSpace(shopId))
@@ -199,7 +222,9 @@ public sealed class BusinessGameService
             shop.TotalRevenue.Cents,
             shop.TotalStockPurchaseCost.Cents,
             shop.TotalGrossProfit.Cents,
-            Array.AsReadOnly(products));
+            Array.AsReadOnly(products),
+            shop.TotalWageCost.Cents,
+            shop.TotalNetProfit.Cents);
     }
 
     private static ProductSnapshot CreateProductSnapshot(Shop shop, ProductDefinition definition)
@@ -215,6 +240,7 @@ public sealed class BusinessGameService
             definition.ShelfKind,
             definition.RequiredPlayerLevel,
             slot.Product.UnitGrossProfit.Cents,
-            slot.Product.GrossMarginBasisPoints);
+            slot.Product.GrossMarginBasisPoints,
+            definition.InitialSalePriceCents);
     }
 }
