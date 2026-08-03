@@ -3,10 +3,11 @@ using System.Windows.Controls;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Rendering;
 using SkiaSharp.Views.Desktop;
+using WpfUserControl = System.Windows.Controls.UserControl;
 
 namespace HajimaoDesktopShop.Desktop.Controls;
 
-public partial class ShopSceneControl : UserControl
+public partial class ShopSceneControl : WpfUserControl
 {
     public static readonly DependencyProperty SnapshotProperty = DependencyProperty.Register(
         nameof(Snapshot),

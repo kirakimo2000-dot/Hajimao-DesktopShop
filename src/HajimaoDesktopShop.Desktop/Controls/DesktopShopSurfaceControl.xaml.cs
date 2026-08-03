@@ -2,10 +2,11 @@ using System.Windows;
 using System.Windows.Controls;
 using HajimaoDesktopShop.Rendering;
 using SkiaSharp.Views.Desktop;
+using WpfUserControl = System.Windows.Controls.UserControl;
 
 namespace HajimaoDesktopShop.Desktop.Controls;
 
-public partial class DesktopShopSurfaceControl : UserControl
+public partial class DesktopShopSurfaceControl : WpfUserControl
 {
     public static readonly DependencyProperty FrameProperty = DependencyProperty.Register(
         nameof(Frame),

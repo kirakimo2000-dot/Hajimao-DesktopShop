@@ -6,7 +6,7 @@
         Width="420" Height="280"
         WindowStyle="None" ResizeMode="NoResize"
         AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="True"
+        Topmost="True" ShowInTaskbar="False"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <Style x:Key="SurfaceHitTarget" TargetType="Button">

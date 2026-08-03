@@ -5,6 +5,7 @@
         Title="Hajimao 小店 · 经营管理"
         Width="1180" Height="720" MinWidth="960" MinHeight="640"
         WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
         Background="{DynamicResource Brush.Background}"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Grid>

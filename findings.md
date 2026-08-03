@@ -36,8 +36,9 @@
 ## Research Findings
 
 - 当前 solution 有五个生产项目和五个测试项目；已有单店经济闭环、模拟、双窗口和 JSON 商品目录。
-- 当前项目目录不是 Git 仓库，不能使用 worktree 或提交检查点。
+- 当前项目已初始化本地 Git；0.1.0 在 `feature/v0.1-gameplay-foundation` 分支实现，但尚未配置远端。
 - 已安装的 sprite、imagegen、产品设计和数据分析 skills 足以支撑像素资产与经济平衡工作。
+- WinForms `NotifyIcon` 可满足 WPF 应用的通知区域常驻需求；Desktop 项目必须显式隔离两套 UI 命名空间。
 
 ## Technical Decisions
 
@@ -64,6 +65,10 @@
 | 桌面小窗整体扁平为一个 Skia 表面 | 远程/软件合成环境中，多层 WPF 壳即使静态也会持续占用渲染线程；管理窗才保留复杂原生控件 |
 | 桌面 0.5 Hz、管理窗 4 Hz 刷新 | 模拟仍每秒运行，桌面放置状态允许两秒视觉延迟，展开管理时保持即时反馈 |
 | `SKElement.IgnorePixelScaling=True` | 使用 WPF 逻辑尺寸消除 150% DPI 下画面缩小与命中错位 |
+| `BusinessWallet` 由所有 `Shop` 实例共享 | 开店和销售都原子改变同一资金池，逐店报表仍保留独立经营数据 |
+| 等级从累计经验推导 | 存档不保存可能与曲线冲突的冗余等级，调整平衡时仍可确定重算 |
+| 工资按分钟累积余数 | 只使用整数分仍能长期精确结清小时工资，不因每分钟截断而少发 |
+| 托盘退出是唯一显式退出路径 | 隐藏窗口时模拟和自动存档继续，符合桌面挂机产品语义 |
 
 ## Issues Encountered
 

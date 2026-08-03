@@ -21,9 +21,11 @@ public partial class App : System.Windows.Application
     private AutosaveCoordinator? _autosaveCoordinator;
     private ShopSimulation? _simulation;
     private GameSoundService? _soundService;
+    private TrayIconService? _trayIconService;
     private GameViewModel? _viewModel;
     private DesktopShopWindow? _desktopWindow;
     private ManagementWindow? _managementWindow;
+    private bool _isExiting;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -67,6 +69,7 @@ public partial class App : System.Windows.Application
 
             _desktopWindow = new DesktopShopWindow(_viewModel);
             _desktopWindow.OpenManagementRequested += OnOpenManagementRequested;
+            _desktopWindow.Closing += OnDesktopWindowClosing;
             _desktopWindow.Closed += OnDesktopWindowClosed;
             MainWindow = _desktopWindow;
             _desktopWindow.Show();
@@ -75,6 +78,11 @@ public partial class App : System.Windows.Application
             {
                 WindowInteractionService.SnapToNearestWorkAreaCorner(_desktopWindow);
             }
+
+            _trayIconService = new TrayIconService();
+            _trayIconService.OpenShopRequested += OnTrayOpenShopRequested;
+            _trayIconService.OpenManagementRequested += OnOpenManagementRequested;
+            _trayIconService.ExitRequested += OnTrayExitRequested;
 
             _simulationLoop = new SimulationLoop(_simulation);
             _simulationLoop.Start();
@@ -109,6 +117,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _isExiting = true;
         _refreshTimer?.Stop();
         if (_refreshTimer is not null)
         {
@@ -132,6 +141,13 @@ public partial class App : System.Windows.Application
         }
 
         _soundService?.Dispose();
+        if (_trayIconService is not null)
+        {
+            _trayIconService.OpenShopRequested -= OnTrayOpenShopRequested;
+            _trayIconService.OpenManagementRequested -= OnOpenManagementRequested;
+            _trayIconService.ExitRequested -= OnTrayExitRequested;
+            _trayIconService.Dispose();
+        }
 
         base.OnExit(e);
     }
@@ -194,10 +210,40 @@ public partial class App : System.Windows.Application
         if (sender is DesktopShopWindow window)
         {
             window.OpenManagementRequested -= OnOpenManagementRequested;
+            window.Closing -= OnDesktopWindowClosing;
             window.Closed -= OnDesktopWindowClosed;
         }
 
         _managementWindow?.Close();
+    }
+
+    private void OnDesktopWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_isExiting || sender is not DesktopShopWindow window)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        window.Hide();
+        _viewModel?.ReportSystemMessage("小店已隐藏到通知区域，经营仍在继续");
+    }
+
+    private void OnTrayOpenShopRequested(object? sender, EventArgs e)
+    {
+        if (_desktopWindow is not { IsLoaded: true })
+        {
+            return;
+        }
+
+        _desktopWindow.Show();
+        _desktopWindow.Activate();
+    }
+
+    private void OnTrayExitRequested(object? sender, EventArgs e)
+    {
+        _isExiting = true;
+        Shutdown();
     }
 
     private void OnManagementWindowClosed(object? sender, EventArgs e)
