@@ -296,6 +296,19 @@ public sealed class BusinessGameService
         }
     }
 
+    public bool ContainsStoreDefinition(string shopId)
+    {
+        if (string.IsNullOrWhiteSpace(shopId))
+        {
+            return false;
+        }
+
+        lock (_gate)
+        {
+            return _shopDefinitions.ContainsKey(shopId.Trim());
+        }
+    }
+
     public BusinessSaveData CaptureSaveData()
     {
         lock (_gate)

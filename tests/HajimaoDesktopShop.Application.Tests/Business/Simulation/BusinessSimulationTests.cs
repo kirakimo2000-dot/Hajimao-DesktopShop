@@ -214,6 +214,35 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
+    public void CaptureAndRestore_PreservesStaffAssignedToAStoreOpenedLater()
+    {
+        var service = CreateService();
+        var original = new BusinessSimulation(
+            service,
+            [AssignCashier("alpha-store", "future-cashier", 1_000)],
+            new StatefulTestRandomSource(42),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+        var businessSave = service.CaptureSaveData();
+        var simulationSave = original.CaptureSaveData();
+        var restoredService = CreateService(businessSave);
+        var restored = new BusinessSimulation(
+            restoredService,
+            simulationSave,
+            new StatefulTestRandomSource(1),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        service.OpenStore("alpha-store");
+        restoredService.OpenStore("alpha-store");
+        original.AdvanceRealSecond();
+        restored.AdvanceRealSecond();
+
+        var originalStore = original.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
+        var restoredStore = restored.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
+        Assert.Equal(1_000, originalStore.ServicePermille);
+        Assert.Equivalent(originalStore, restoredStore, strict: true);
+    }
+
+    [Fact]
     public void OptionsAndAssignments_RejectInvalidConfiguration()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

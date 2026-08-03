@@ -115,15 +115,15 @@ public sealed class BusinessSimulation
                     "Complete simulation saves require an IStatefulRandomSource.");
             }
 
-            var employees = _stores.Values
-                .OrderBy(store => store.StoreId, StringComparer.Ordinal)
-                .SelectMany(store => store.Employees
+            var employees = _staffByStore
+                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .SelectMany(pair => pair.Value
                     .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
                     .Select(employee =>
                     {
                         var work = employee.CaptureWorkState();
                         return new EmployeeAssignmentSaveData(
-                            store.StoreId,
+                            pair.Key,
                             employee.Id.Value,
                             employee.Name,
                             employee.Role,
@@ -223,7 +223,7 @@ public sealed class BusinessSimulation
         }
 
         var unknownStaffStore = _staffByStore.Keys
-            .Except(openIds, StringComparer.Ordinal)
+            .Where(storeId => !_game.ContainsStoreDefinition(storeId))
             .Order(StringComparer.Ordinal)
             .FirstOrDefault();
         if (unknownStaffStore is not null)
