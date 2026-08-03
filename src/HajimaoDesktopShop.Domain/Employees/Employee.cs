@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Domain.Economy;
+using System.Numerics;
 
 namespace HajimaoDesktopShop.Domain.Employees;
 
@@ -12,6 +13,23 @@ public sealed class Employee
         EmployeeRole role,
         int efficiencyPermille,
         Money hourlyWage)
+        : this(
+            id,
+            name,
+            role,
+            efficiencyPermille,
+            hourlyWage,
+            new EmployeeWorkState(0, Money.Zero, 0))
+    {
+    }
+
+    private Employee(
+        EmployeeId id,
+        string name,
+        EmployeeRole role,
+        int efficiencyPermille,
+        Money hourlyWage,
+        EmployeeWorkState workState)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -28,12 +46,27 @@ public sealed class Employee
             throw new ArgumentOutOfRangeException(nameof(hourlyWage));
         }
 
+        ArgumentNullException.ThrowIfNull(workState);
+        ValidateWorkState(hourlyWage, workState);
+
         Id = id;
         Name = name.Trim();
         Role = role;
         EfficiencyPermille = efficiencyPermille;
         HourlyWage = hourlyWage;
+        WorkedMinutes = workState.WorkedMinutes;
+        TotalWagesAccrued = workState.TotalWagesAccrued;
+        _wageRemainder = workState.WageRemainderCents;
     }
+
+    public static Employee Restore(
+        EmployeeId id,
+        string name,
+        EmployeeRole role,
+        int efficiencyPermille,
+        Money hourlyWage,
+        EmployeeWorkState workState) =>
+        new(id, name, role, efficiencyPermille, hourlyWage, workState);
 
     public EmployeeId Id { get; }
 
@@ -51,6 +84,9 @@ public sealed class Employee
 
     public Money NextMinuteWage =>
         new(checked(_wageRemainder + HourlyWage.Cents) / 60L);
+
+    public EmployeeWorkState CaptureWorkState() =>
+        new(WorkedMinutes, TotalWagesAccrued, _wageRemainder);
 
     public int CalculateTaskMinutes(int baseTaskMinutes)
     {
@@ -72,5 +108,22 @@ public sealed class Employee
         var charged = new Money(chargedCents);
         TotalWagesAccrued += charged;
         return charged;
+    }
+
+    private static void ValidateWorkState(Money hourlyWage, EmployeeWorkState state)
+    {
+        if (state.WorkedMinutes < 0
+            || state.TotalWagesAccrued.Cents < 0
+            || state.WageRemainderCents is < 0 or >= 60)
+        {
+            throw new ArgumentOutOfRangeException(nameof(state));
+        }
+
+        var accumulated = (BigInteger)state.WorkedMinutes * hourlyWage.Cents;
+        if (accumulated / 60 != state.TotalWagesAccrued.Cents
+            || accumulated % 60 != state.WageRemainderCents)
+        {
+            throw new ArgumentException("Employee work state does not match the hourly wage.", nameof(state));
+        }
     }
 }

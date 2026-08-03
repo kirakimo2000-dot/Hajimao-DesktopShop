@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
@@ -74,6 +75,134 @@ public sealed class BusinessGameService
             new Money(openingCashCents),
             starterDefinition);
         RegisterUnlockedProducts(_business.GetShop(starterDefinition.Id));
+    }
+
+    public BusinessGameService(
+        IEnumerable<ProductDefinition> productDefinitions,
+        IEnumerable<ShopDefinition> shopDefinitions,
+        LevelCurve levelCurve,
+        BusinessSaveData restoredState,
+        int experiencePerItemSold = 1)
+    {
+        ArgumentNullException.ThrowIfNull(productDefinitions);
+        ArgumentNullException.ThrowIfNull(shopDefinitions);
+        ArgumentNullException.ThrowIfNull(levelCurve);
+        ArgumentNullException.ThrowIfNull(restoredState);
+        if (restoredState.TotalExperience < 0 || restoredState.CashCents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(restoredState));
+        }
+
+        if (experiencePerItemSold <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(experiencePerItemSold));
+        }
+
+        _productDefinitions = productDefinitions.ToArray();
+        if (_productDefinitions.Length == 0
+            || _productDefinitions.Select(definition => definition.Id).Distinct(StringComparer.Ordinal).Count()
+                != _productDefinitions.Length)
+        {
+            throw new ArgumentException(
+                "Product definitions must contain unique products.",
+                nameof(productDefinitions));
+        }
+
+        var stores = shopDefinitions.ToArray();
+        _shopDefinitions = stores.ToDictionary(
+            definition => definition.Id.Value,
+            StringComparer.Ordinal);
+        if (_shopDefinitions.Count == 0 || _shopDefinitions.Count != stores.Length)
+        {
+            throw new ArgumentException(
+                "Shop definitions must contain unique shops.",
+                nameof(shopDefinitions));
+        }
+
+        var savedStores = restoredState.Stores?.ToArray()
+            ?? throw new ArgumentException("Restored stores are required.", nameof(restoredState));
+        if (savedStores.Length == 0 || savedStores.Any(store => store is null))
+        {
+            throw new ArgumentException("At least one restored store is required.", nameof(restoredState));
+        }
+
+        var duplicateStore = savedStores
+            .GroupBy(store => store.StoreId, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateStore is not null)
+        {
+            throw new ArgumentException(
+                $"Restored store '{duplicateStore.Key}' is duplicated.",
+                nameof(restoredState));
+        }
+
+        var player = new PlayerProfile(levelCurve, restoredState.TotalExperience);
+        var restoredStores = savedStores.Select(store =>
+        {
+            if (string.IsNullOrWhiteSpace(store.StoreId)
+                || !_shopDefinitions.TryGetValue(store.StoreId, out var definition))
+            {
+                throw new ArgumentException(
+                    $"Restored store '{store.StoreId}' has no definition.",
+                    nameof(restoredState));
+            }
+
+            return new RetailBusinessStoreState(
+                definition,
+                new ShopFinancialState(
+                    new Money(restoredState.CashCents),
+                    new Money(store.RevenueCents),
+                    new Money(store.StockPurchaseCostCents),
+                    new Money(store.GrossProfitCents),
+                    new Money(store.WageCostCents)));
+        }).ToArray();
+
+        _experiencePerItemSold = experiencePerItemSold;
+        _business = RetailBusiness.Restore(
+            player,
+            new Money(restoredState.CashCents),
+            restoredStores);
+
+        var definitionsById = _productDefinitions.ToDictionary(
+            definition => definition.Id,
+            StringComparer.Ordinal);
+        foreach (var savedStore in savedStores)
+        {
+            var shop = _business.GetShop(new ShopId(savedStore.StoreId));
+            var savedProducts = savedStore.Products?.ToArray()
+                ?? throw new ArgumentException("Restored products are required.", nameof(restoredState));
+            var duplicateProduct = savedProducts
+                .GroupBy(product => product.ProductId, StringComparer.Ordinal)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateProduct is not null)
+            {
+                throw new ArgumentException(
+                    $"Restored product '{duplicateProduct.Key}' is duplicated in store '{savedStore.StoreId}'.",
+                    nameof(restoredState));
+            }
+
+            foreach (var savedProduct in savedProducts)
+            {
+                if (savedProduct is null
+                    || !definitionsById.TryGetValue(savedProduct.ProductId, out var definition))
+                {
+                    throw new ArgumentException(
+                        $"Restored product '{savedProduct?.ProductId}' has no definition.",
+                        nameof(restoredState));
+                }
+
+                shop.RegisterProduct(
+                    new Product(
+                        new ProductId(definition.Id),
+                        definition.Name,
+                        new Money(definition.WholesalePriceCents),
+                        new Money(savedProduct.SalePriceCents)),
+                    definition.Capacity,
+                    savedProduct.Quantity);
+            }
+
+            RegisterUnlockedProducts(shop);
+        }
     }
 
     public StockPurchaseResult PurchaseStock(string shopId, string productId, int quantity)
@@ -163,6 +292,34 @@ public sealed class BusinessGameService
                 _business.Player.Level,
                 _business.Player.TotalExperience,
                 _business.Cash.Cents,
+                Array.AsReadOnly(stores));
+        }
+    }
+
+    public BusinessSaveData CaptureSaveData()
+    {
+        lock (_gate)
+        {
+            var snapshot = GetSnapshot();
+            var stores = snapshot.Stores
+                .OrderBy(store => store.Id, StringComparer.Ordinal)
+                .Select(store => new BusinessStoreSaveData(
+                    store.Id,
+                    store.RevenueCents,
+                    store.StockPurchaseCostCents,
+                    store.GrossProfitCents,
+                    store.WageCostCents,
+                    Array.AsReadOnly(store.Products
+                        .OrderBy(product => product.Id, StringComparer.Ordinal)
+                        .Select(product => new BusinessProductSaveData(
+                            product.Id,
+                            product.SalePriceCents,
+                            product.Quantity))
+                        .ToArray())))
+                .ToArray();
+            return new BusinessSaveData(
+                snapshot.TotalExperience,
+                snapshot.CashCents,
                 Array.AsReadOnly(stores));
         }
     }

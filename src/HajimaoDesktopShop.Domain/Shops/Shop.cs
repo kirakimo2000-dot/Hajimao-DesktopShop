@@ -59,6 +59,9 @@ public sealed class Shop
             new ShopFinancialState(wallet.Balance, Money.Zero, Money.Zero, Money.Zero),
             addOpeningBalance: false);
 
+    internal static Shop RestoreWithWallet(BusinessWallet wallet, ShopFinancialState state) =>
+        new(wallet, state with { Cash = wallet.Balance }, addOpeningBalance: false);
+
     public Money Cash => _wallet.Balance;
 
     public Money TotalRevenue { get; private set; }

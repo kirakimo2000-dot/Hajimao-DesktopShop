@@ -47,6 +47,30 @@ public sealed class EmployeeTests
     }
 
     [Fact]
+    public void CaptureAndRestore_PreservesFractionalWageProgress()
+    {
+        var employee = CreateEmployee("cashier", efficiencyPermille: 1_250, hourlyWageCents: 1_001);
+        for (var minute = 0; minute < 61; minute++)
+        {
+            employee.RecordWorkedMinute();
+        }
+
+        var restored = Employee.Restore(
+            employee.Id,
+            employee.Name,
+            employee.Role,
+            employee.EfficiencyPermille,
+            employee.HourlyWage,
+            employee.CaptureWorkState());
+
+        Assert.Equal(employee.WorkedMinutes, restored.WorkedMinutes);
+        Assert.Equal(employee.TotalWagesAccrued, restored.TotalWagesAccrued);
+        Assert.Equal(employee.NextMinuteWage, restored.NextMinuteWage);
+        Assert.Equal(employee.EfficiencyPermille, restored.EfficiencyPermille);
+        Assert.Equal(employee.Role, restored.Role);
+    }
+
+    [Fact]
     public void ConstructorAndTaskCalculation_RejectInvalidValues()
     {
         Assert.Throws<ArgumentException>(() => new EmployeeId(" "));

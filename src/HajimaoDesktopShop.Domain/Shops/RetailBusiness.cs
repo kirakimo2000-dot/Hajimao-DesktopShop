@@ -11,12 +11,10 @@ public sealed class RetailBusiness
 
     private RetailBusiness(
         PlayerProfile player,
-        BusinessWallet wallet,
-        ShopDefinition starterDefinition)
+        BusinessWallet wallet)
     {
         Player = player;
         _wallet = wallet;
-        _stores.Add(starterDefinition.Id, Shop.CreateWithWallet(wallet));
     }
 
     public static RetailBusiness Start(
@@ -33,7 +31,45 @@ public sealed class RetailBusiness
                 nameof(starterDefinition));
         }
 
-        return new RetailBusiness(player, new BusinessWallet(openingCash), starterDefinition);
+        var business = new RetailBusiness(player, new BusinessWallet(openingCash));
+        business._stores.Add(starterDefinition.Id, Shop.CreateWithWallet(business._wallet));
+        return business;
+    }
+
+    public static RetailBusiness Restore(
+        PlayerProfile player,
+        Money cash,
+        IEnumerable<RetailBusinessStoreState> stores)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(stores);
+        var states = stores.ToArray();
+        if (states.Length == 0 || states.Any(state => state is null))
+        {
+            throw new ArgumentException("At least one restored store is required.", nameof(stores));
+        }
+
+        var duplicate = states
+            .GroupBy(state => state.Definition.Id)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new ArgumentException(
+                $"Store '{duplicate.Key.Value}' is duplicated in restored state.",
+                nameof(stores));
+        }
+
+        var business = new RetailBusiness(player, new BusinessWallet(cash));
+        foreach (var state in states)
+        {
+            ArgumentNullException.ThrowIfNull(state.Definition);
+            ArgumentNullException.ThrowIfNull(state.FinancialState);
+            business._stores.Add(
+                state.Definition.Id,
+                Shop.RestoreWithWallet(business._wallet, state.FinancialState));
+        }
+
+        return business;
     }
 
     public PlayerProfile Player { get; }

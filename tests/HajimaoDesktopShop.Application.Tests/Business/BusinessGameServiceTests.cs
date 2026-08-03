@@ -103,6 +103,30 @@ public sealed class BusinessGameServiceTests
         Assert.Equal(1, employee.WorkedMinutes);
     }
 
+    [Fact]
+    public void CaptureAndRestore_RoundTripsEveryStoreAndFinancialCounter()
+    {
+        var service = CreateService();
+        service.PurchaseStock("corner-store", "water", 3);
+        service.ChangePrice("corner-store", "water", 260);
+        service.Sell("corner-store", "water", 1);
+        service.OpenStore("station-store");
+        service.PurchaseStock("station-store", "milk", 2);
+        service.ChangePrice("station-store", "milk", 525);
+        var employee = new Employee(
+            new EmployeeId("station-cashier"),
+            "小满",
+            EmployeeRole.Cashier,
+            1_100,
+            new Money(6_000));
+        service.PayEmployeeMinute("station-store", employee);
+
+        var save = service.CaptureSaveData();
+        var restored = CreateRestoredService(save);
+
+        Assert.Equivalent(service.GetSnapshot(), restored.GetSnapshot(), strict: true);
+    }
+
     private static BusinessGameService CreateService() =>
         new(
             [
@@ -117,5 +141,21 @@ public sealed class BusinessGameServiceTests
             new LevelCurve([0, 10, 30]),
             starterShopId: "corner-store",
             openingCashCents: 50_000,
+            experiencePerItemSold: 10);
+
+    private static BusinessGameService CreateRestoredService(
+        HajimaoDesktopShop.Application.Persistence.BusinessSaveData save) =>
+        new(
+            [
+                new ProductDefinition("water", "矿泉水", 100, 200, 20, "ambient", 1),
+                new ProductDefinition("milk", "鲜牛奶", 300, 480, 12, "chilled", 2),
+                new ProductDefinition("ice", "冰淇淋", 360, 620, 12, "frozen", 3)
+            ],
+            [
+                new ShopDefinition(new ShopId("corner-store"), "街角便利店", 1, Money.Zero),
+                new ShopDefinition(new ShopId("station-store"), "车站便利店", 2, new Money(30_000))
+            ],
+            new LevelCurve([0, 10, 30]),
+            save,
             experiencePerItemSold: 10);
 }
