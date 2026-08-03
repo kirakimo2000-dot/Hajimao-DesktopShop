@@ -5,14 +5,16 @@ namespace HajimaoDesktopShop.Application.Persistence;
 
 public static class GameSaveSchema
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 }
 
 public sealed record GameSaveData(
     int SchemaVersion,
     DateTimeOffset SavedAtUtc,
     ShopSaveData Shop,
-    SimulationSaveData Simulation);
+    SimulationSaveData Simulation,
+    BusinessSaveData? Business = null,
+    BusinessSimulationSaveData? BusinessSimulation = null);
 
 public sealed record ShopSaveData(
     long CashCents,

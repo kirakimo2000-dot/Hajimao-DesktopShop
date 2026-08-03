@@ -37,7 +37,7 @@ public sealed class GameSaveDataTests
             customerSpawnChance: 0.5d,
             maxCustomers: 2);
 
-        Assert.Equal(2, save.SchemaVersion);
+        Assert.Equal(3, save.SchemaVersion);
         Assert.Equivalent(simulation.GetSnapshot(), restored.GetSnapshot(), strict: true);
         Assert.Equal(
             EmployeeState.Working,

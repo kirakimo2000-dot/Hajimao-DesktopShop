@@ -190,6 +190,12 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
             if (version == 1)
             {
                 await MigrateFromOneToTwoAsync(connection, cancellationToken).ConfigureAwait(false);
+                version = 2;
+            }
+
+            if (version == 2)
+            {
+                await MigrateFromTwoToThreeAsync(connection, cancellationToken).ConfigureAwait(false);
             }
 
             return connection;
@@ -250,7 +256,7 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
                     $"SQLite v1 migration expected payload schema 1, found {legacy.SchemaVersion}.");
             }
 
-            var upgraded = legacy.Upgrade();
+            var upgraded = legacy.UpgradeToV2();
             await using var update = connection.CreateCommand();
             update.Transaction = (SqliteTransaction)transaction;
             update.CommandText = """
@@ -270,6 +276,55 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         {
             setVersion.Transaction = (SqliteTransaction)transaction;
             setVersion.CommandText = "PRAGMA user_version = 2;";
+            await setVersion.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task MigrateFromTwoToThreeAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        string? legacyPayload;
+        await using (var read = connection.CreateCommand())
+        {
+            read.Transaction = (SqliteTransaction)transaction;
+            read.CommandText = "SELECT payload_json FROM game_save WHERE slot = 1;";
+            legacyPayload = await read.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) as string;
+        }
+
+        if (legacyPayload is not null)
+        {
+            var legacy = JsonSerializer.Deserialize<LegacyGameSaveV2>(legacyPayload, JsonOptions)
+                ?? throw new InvalidDataException("SQLite v2 save payload is empty or invalid.");
+            if (legacy.SchemaVersion != 2)
+            {
+                throw new InvalidDataException(
+                    $"SQLite v2 migration expected payload schema 2, found {legacy.SchemaVersion}.");
+            }
+
+            var upgraded = legacy.UpgradeToV3();
+            await using var update = connection.CreateCommand();
+            update.Transaction = (SqliteTransaction)transaction;
+            update.CommandText = """
+                UPDATE game_save
+                SET schema_version = $schemaVersion,
+                    saved_at_utc = $savedAtUtc,
+                    payload_json = $payload
+                WHERE slot = 1;
+                """;
+            update.Parameters.AddWithValue("$schemaVersion", upgraded.SchemaVersion);
+            update.Parameters.AddWithValue("$savedAtUtc", upgraded.SavedAtUtc.ToString("O"));
+            update.Parameters.AddWithValue("$payload", JsonSerializer.Serialize(upgraded, JsonOptions));
+            await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await using (var setVersion = connection.CreateCommand())
+        {
+            setVersion.Transaction = (SqliteTransaction)transaction;
+            setVersion.CommandText = "PRAGMA user_version = 3;";
             await setVersion.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 

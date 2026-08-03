@@ -8,9 +8,9 @@ internal sealed record LegacyGameSaveV1(
     ShopSaveData Shop,
     LegacySimulationSaveDataV1 Simulation)
 {
-    public GameSaveData Upgrade() =>
+    public LegacyGameSaveV2 UpgradeToV2() =>
         new(
-            GameSaveSchema.CurrentVersion,
+            2,
             SavedAtUtc,
             Shop,
             new SimulationSaveData(
