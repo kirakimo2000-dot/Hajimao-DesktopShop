@@ -15,6 +15,7 @@ public sealed class BusinessSimulation
     private readonly SimulationClock _clock = new();
     private readonly Dictionary<string, Employee[]> _staffByStore;
     private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
+    private BusinessDayReport? _lastCompletedDay;
 
     public BusinessSimulation(
         BusinessGameService game,
@@ -88,7 +89,8 @@ public sealed class BusinessSimulation
             return new BusinessSimulationSnapshot(
                 _clock.GameMinute,
                 business,
-                Array.AsReadOnly(stores));
+                Array.AsReadOnly(stores),
+                _lastCompletedDay);
         }
     }
 
@@ -98,6 +100,13 @@ public sealed class BusinessSimulation
         foreach (var store in _stores.Values.OrderBy(runtime => runtime.StoreId, StringComparer.Ordinal))
         {
             ProcessStore(store);
+            store.RecordQueueSample();
+        }
+
+        var completedMinute = checked(_clock.GameMinute + 1L);
+        if (completedMinute % 1_440L == 0)
+        {
+            CompleteDay(checked((int)(completedMinute / 1_440L)));
         }
     }
 
@@ -113,8 +122,24 @@ public sealed class BusinessSimulation
             _staffByStore.TryGetValue(store.Id, out var staff);
             _stores.Add(
                 store.Id,
-                new StoreRuntime(store.Id, staff ?? [], _options.InitialCleanlinessPermille));
+                new StoreRuntime(store, staff ?? [], _options.InitialCleanlinessPermille));
         }
+    }
+
+    private void CompleteDay(int dayNumber)
+    {
+        var business = _game.GetSnapshot();
+        var reports = _stores.Values
+            .OrderBy(runtime => runtime.StoreId, StringComparer.Ordinal)
+            .Select(runtime =>
+            {
+                var store = business.Stores.Single(snapshot => snapshot.Id == runtime.StoreId);
+                var report = runtime.CreateDayReport(store);
+                runtime.StartNextDay(store);
+                return report;
+            })
+            .ToArray();
+        _lastCompletedDay = new BusinessDayReport(dayNumber, Array.AsReadOnly(reports));
     }
 
     private void ProcessStore(StoreRuntime runtime)
@@ -301,11 +326,15 @@ public sealed class BusinessSimulation
 
     private sealed class StoreRuntime
     {
-        public StoreRuntime(string storeId, Employee[] employees, int cleanlinessPermille)
+        public StoreRuntime(
+            BusinessStoreSnapshot store,
+            Employee[] employees,
+            int cleanlinessPermille)
         {
-            StoreId = storeId;
+            StoreId = store.Id;
             Employees = employees;
             CleanlinessPermille = cleanlinessPermille;
+            StartNextDay(store);
         }
 
         public string StoreId { get; }
@@ -331,6 +360,65 @@ public sealed class BusinessSimulation
         public int WagePaymentFailures { get; set; }
 
         public int QueueLength => CheckoutQueue.Count + (ActiveCheckout is null ? 0 : 1);
+
+        private int DayStartVisitors { get; set; }
+
+        private int DayStartAcceptedPurchases { get; set; }
+
+        private int DayStartCompletedSales { get; set; }
+
+        private int DayStartLostSales { get; set; }
+
+        private long DayStartRevenueCents { get; set; }
+
+        private long DayStartGrossProfitCents { get; set; }
+
+        private long DayStartWageCostCents { get; set; }
+
+        private long DayQueueLengthTotal { get; set; }
+
+        private int DayTickCount { get; set; }
+
+        public void RecordQueueSample()
+        {
+            DayQueueLengthTotal = checked(DayQueueLengthTotal + QueueLength);
+            DayTickCount = checked(DayTickCount + 1);
+        }
+
+        public StoreDayReport CreateDayReport(BusinessStoreSnapshot store)
+        {
+            var revenue = checked(store.RevenueCents - DayStartRevenueCents);
+            var grossProfit = checked(store.GrossProfitCents - DayStartGrossProfitCents);
+            var wageCost = checked(store.WageCostCents - DayStartWageCostCents);
+            var averageQueue = DayTickCount == 0
+                ? 0
+                : checked((int)(DayQueueLengthTotal * 10_000L / DayTickCount));
+            return new StoreDayReport(
+                StoreId,
+                checked(Visitors - DayStartVisitors),
+                checked(AcceptedPurchases - DayStartAcceptedPurchases),
+                checked(CompletedSales - DayStartCompletedSales),
+                checked(LostSales - DayStartLostSales),
+                revenue,
+                grossProfit,
+                wageCost,
+                checked(grossProfit - wageCost),
+                CleanlinessPermille,
+                averageQueue);
+        }
+
+        public void StartNextDay(BusinessStoreSnapshot store)
+        {
+            DayStartVisitors = Visitors;
+            DayStartAcceptedPurchases = AcceptedPurchases;
+            DayStartCompletedSales = CompletedSales;
+            DayStartLostSales = LostSales;
+            DayStartRevenueCents = store.RevenueCents;
+            DayStartGrossProfitCents = store.GrossProfitCents;
+            DayStartWageCostCents = store.WageCostCents;
+            DayQueueLengthTotal = 0;
+            DayTickCount = 0;
+        }
     }
 
     private sealed class ActiveCheckout(string productId, int remainingMinutes)

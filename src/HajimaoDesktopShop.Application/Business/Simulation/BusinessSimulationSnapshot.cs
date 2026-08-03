@@ -5,7 +5,8 @@ namespace HajimaoDesktopShop.Application.Business.Simulation;
 public sealed record BusinessSimulationSnapshot(
     long GameMinute,
     BusinessSnapshot Business,
-    IReadOnlyList<StoreOperationsSnapshot> Stores);
+    IReadOnlyList<StoreOperationsSnapshot> Stores,
+    BusinessDayReport? LastCompletedDay = null);
 
 public sealed record StoreOperationsSnapshot(
     string StoreId,
