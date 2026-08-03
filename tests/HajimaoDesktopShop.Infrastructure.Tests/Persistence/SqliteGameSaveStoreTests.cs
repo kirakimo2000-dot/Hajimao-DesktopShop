@@ -1,6 +1,8 @@
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
+using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Infrastructure.Persistence;
+using HajimaoDesktopShop.Domain.Employees;
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
 
@@ -130,7 +132,57 @@ public sealed class SqliteGameSaveStoreTests
                 null,
                 [new RestockTaskSaveData("water", 2)],
                 null,
-                null));
+                null),
+            new BusinessSaveData(
+                100,
+                51_250,
+                [
+                    new BusinessStoreSaveData(
+                        "corner-store",
+                        4_000,
+                        2_500,
+                        1_500,
+                        100,
+                        [new BusinessProductSaveData("water", 230, 7)])
+                ]),
+            new BusinessSimulationSaveData(
+                88,
+                42,
+                [
+                    new EmployeeAssignmentSaveData(
+                        "corner-store",
+                        "cashier",
+                        "小葵",
+                        EmployeeRole.Cashier,
+                        1_000,
+                        6_000,
+                        1,
+                        100,
+                        0)
+                ],
+                [
+                    new StoreRuntimeSaveData(
+                        "corner-store",
+                        5,
+                        4,
+                        3,
+                        1,
+                        ["water"],
+                        new ActiveCheckoutSaveData("water", 2),
+                        950,
+                        1_000,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        12,
+                        8)
+                ],
+                new BusinessDayReport(1, [])));
 
     private static async Task CreateVersionOneDatabaseAsync(string path, int speed)
     {
