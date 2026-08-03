@@ -119,16 +119,72 @@ public sealed class Shop
             return new StockPurchaseResult(StockPurchaseStatus.CapacityExceeded, Money.Zero);
         }
 
-        var totalCost = slot.Product.WholesalePrice * quantity;
+        var payment = TryPayForStockOrder(productId, quantity, slot.Product.WholesalePrice);
+        if (payment.Status != StockPurchaseStatus.Success)
+        {
+            return payment;
+        }
+
+        var receipt = TryReceivePaidStock(productId, quantity);
+        if (receipt.Status != StockReceiptStatus.Success)
+        {
+            throw new InvalidOperationException("A validated immediate stock purchase could not be received.");
+        }
+
+        return payment;
+    }
+
+    public StockPurchaseResult TryPayForStockOrder(
+        ProductId productId,
+        int quantity,
+        Money unitCost)
+    {
+        if (!_inventory.TryGetValue(productId, out var slot))
+        {
+            return new StockPurchaseResult(StockPurchaseStatus.UnknownProduct, Money.Zero);
+        }
+
+        if (quantity <= 0)
+        {
+            return new StockPurchaseResult(StockPurchaseStatus.InvalidQuantity, Money.Zero);
+        }
+
+        if (!unitCost.IsPositive)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unitCost));
+        }
+
+        if (slot.Quantity + quantity > slot.Capacity)
+        {
+            return new StockPurchaseResult(StockPurchaseStatus.CapacityExceeded, Money.Zero);
+        }
+
+        var totalCost = unitCost * quantity;
         if (!_wallet.TryDebit(totalCost))
         {
             return new StockPurchaseResult(StockPurchaseStatus.InsufficientFunds, totalCost);
         }
 
-        slot.Restock(quantity);
         TotalStockPurchaseCost += totalCost;
         AddLedger(LedgerEntryType.StockPurchase, productId, quantity, new Money(-totalCost.Cents));
         return new StockPurchaseResult(StockPurchaseStatus.Success, totalCost);
+    }
+
+    public StockReceiptResult TryReceivePaidStock(ProductId productId, int quantity)
+    {
+        if (!_inventory.TryGetValue(productId, out var slot))
+        {
+            return new StockReceiptResult(StockReceiptStatus.UnknownProduct);
+        }
+
+        var status = slot.Restock(quantity);
+        return new StockReceiptResult(status switch
+        {
+            StockChangeStatus.Success => StockReceiptStatus.Success,
+            StockChangeStatus.InvalidQuantity => StockReceiptStatus.InvalidQuantity,
+            StockChangeStatus.CapacityExceeded => StockReceiptStatus.CapacityExceeded,
+            _ => throw new InvalidOperationException($"Unexpected paid stock receipt status: {status}.")
+        });
     }
 
     public SaleResult TrySell(ProductId productId, int quantity)

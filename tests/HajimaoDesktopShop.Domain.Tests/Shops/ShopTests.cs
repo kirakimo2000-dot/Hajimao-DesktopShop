@@ -47,6 +47,36 @@ public sealed class ShopTests
     }
 
     [Fact]
+    public void PayForStockOrder_DebitsQuotedCostWithoutChangingInventory()
+    {
+        var water = CreateWater();
+        var shop = CreateShop(water, Money.FromYuan(100m));
+
+        var result = shop.TryPayForStockOrder(water.Id, 3, new Money(85));
+
+        Assert.Equal(StockPurchaseStatus.Success, result.Status);
+        Assert.Equal(new Money(255), result.TotalCost);
+        Assert.Equal(new Money(9_745), shop.Cash);
+        Assert.Equal(new Money(255), shop.TotalStockPurchaseCost);
+        Assert.Equal(0, shop.GetInventory(water.Id).Quantity);
+    }
+
+    [Fact]
+    public void ReceivePaidStock_AddsInventoryWithoutChargingAgain()
+    {
+        var water = CreateWater();
+        var shop = CreateShop(water, Money.FromYuan(100m));
+        shop.TryPayForStockOrder(water.Id, 3, new Money(85));
+
+        var result = shop.TryReceivePaidStock(water.Id, 3);
+
+        Assert.Equal(StockReceiptStatus.Success, result.Status);
+        Assert.Equal(3, shop.GetInventory(water.Id).Quantity);
+        Assert.Equal(new Money(9_745), shop.Cash);
+        Assert.Equal(new Money(255), shop.TotalStockPurchaseCost);
+    }
+
+    [Fact]
     public void Purchase_WithInsufficientFunds_DoesNotMutateState()
     {
         var water = CreateWater();
