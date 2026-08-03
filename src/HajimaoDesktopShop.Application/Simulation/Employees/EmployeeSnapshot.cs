@@ -1,3 +1,5 @@
+using HajimaoDesktopShop.Domain.Employees;
+
 namespace HajimaoDesktopShop.Application.Simulation.Employees;
 
 public sealed record EmployeeSnapshot(

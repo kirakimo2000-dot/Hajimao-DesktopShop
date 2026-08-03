@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Simulation.Employees;
+using HajimaoDesktopShop.Domain.Employees;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels;
 

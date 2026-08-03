@@ -4,6 +4,7 @@ using HajimaoDesktopShop.Application.Simulation.Customers;
 using HajimaoDesktopShop.Application.Simulation.Employees;
 using HajimaoDesktopShop.Rendering;
 using SkiaSharp;
+using HajimaoDesktopShop.Domain.Employees;
 
 namespace HajimaoDesktopShop.Rendering.Tests;
 

@@ -3,6 +3,7 @@ using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Application.Simulation.Customers;
 using HajimaoDesktopShop.Application.Simulation.Employees;
+using HajimaoDesktopShop.Domain.Employees;
 
 namespace HajimaoDesktopShop.Application.Tests.Simulation;
 

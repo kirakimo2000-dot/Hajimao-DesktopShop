@@ -7,4 +7,7 @@ public sealed record ProductSnapshot(
     long SalePriceCents,
     int Quantity,
     int Capacity,
-    string ShelfKind);
+    string ShelfKind,
+    int RequiredPlayerLevel = 1,
+    long UnitGrossProfitCents = 0,
+    int GrossMarginBasisPoints = 0);

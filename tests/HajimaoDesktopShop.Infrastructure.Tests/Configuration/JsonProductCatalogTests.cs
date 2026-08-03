@@ -15,11 +15,17 @@ public sealed class JsonProductCatalogTests
         Assert.Equal(10, products.Count);
         Assert.Equal(10, products.Select(product => product.Id).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(3, products.Select(product => product.ShelfKind).Distinct(StringComparer.Ordinal).Count());
+        Assert.True(products.Select(product => product.RequiredPlayerLevel).Distinct().Count() >= 4);
+        Assert.True(products
+            .Select(product => product.InitialSalePriceCents - product.WholesalePriceCents)
+            .Distinct()
+            .Count() >= 8);
         Assert.All(products, product =>
         {
             Assert.True(product.WholesalePriceCents > 0);
             Assert.True(product.InitialSalePriceCents > product.WholesalePriceCents);
             Assert.True(product.Capacity > 0);
+            Assert.True(product.RequiredPlayerLevel >= 1);
         });
     }
 

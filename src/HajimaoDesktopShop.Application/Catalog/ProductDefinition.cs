@@ -8,7 +8,8 @@ public sealed record ProductDefinition
         long wholesalePriceCents,
         long initialSalePriceCents,
         int capacity,
-        string shelfKind)
+        string shelfKind,
+        int requiredPlayerLevel = 1)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -40,12 +41,18 @@ public sealed record ProductDefinition
             throw new ArgumentException("Shelf kind is required.", nameof(shelfKind));
         }
 
+        if (requiredPlayerLevel < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(requiredPlayerLevel));
+        }
+
         Id = id.Trim();
         Name = name.Trim();
         WholesalePriceCents = wholesalePriceCents;
         InitialSalePriceCents = initialSalePriceCents;
         Capacity = capacity;
         ShelfKind = shelfKind.Trim();
+        RequiredPlayerLevel = requiredPlayerLevel;
     }
 
     public string Id { get; }
@@ -59,4 +66,6 @@ public sealed record ProductDefinition
     public int Capacity { get; }
 
     public string ShelfKind { get; }
+
+    public int RequiredPlayerLevel { get; }
 }

@@ -7,7 +7,8 @@
       "wholesalePriceCents": 100,
       "initialSalePriceCents": 180,
       "capacity": 24,
-      "shelfKind": "ambient"
+      "shelfKind": "ambient",
+      "requiredPlayerLevel": 1
     },
     {
       "id": "bread",
@@ -15,7 +16,8 @@
       "wholesalePriceCents": 240,
       "initialSalePriceCents": 390,
       "capacity": 16,
-      "shelfKind": "ambient"
+      "shelfKind": "ambient",
+      "requiredPlayerLevel": 1
     },
     {
       "id": "instant_noodles",
@@ -23,7 +25,8 @@
       "wholesalePriceCents": 320,
       "initialSalePriceCents": 520,
       "capacity": 18,
-      "shelfKind": "ambient"
+      "shelfKind": "ambient",
+      "requiredPlayerLevel": 2
     },
     {
       "id": "chips",
@@ -31,7 +34,8 @@
       "wholesalePriceCents": 280,
       "initialSalePriceCents": 460,
       "capacity": 14,
-      "shelfKind": "ambient"
+      "shelfKind": "ambient",
+      "requiredPlayerLevel": 2
     },
     {
       "id": "milk",
@@ -39,7 +43,8 @@
       "wholesalePriceCents": 300,
       "initialSalePriceCents": 480,
       "capacity": 12,
-      "shelfKind": "chilled"
+      "shelfKind": "chilled",
+      "requiredPlayerLevel": 3
     },
     {
       "id": "soda",
@@ -47,7 +52,8 @@
       "wholesalePriceCents": 220,
       "initialSalePriceCents": 380,
       "capacity": 18,
-      "shelfKind": "chilled"
+      "shelfKind": "chilled",
+      "requiredPlayerLevel": 3
     },
     {
       "id": "sandwich",
@@ -55,7 +61,8 @@
       "wholesalePriceCents": 520,
       "initialSalePriceCents": 780,
       "capacity": 10,
-      "shelfKind": "chilled"
+      "shelfKind": "chilled",
+      "requiredPlayerLevel": 4
     },
     {
       "id": "yogurt",
@@ -63,7 +70,8 @@
       "wholesalePriceCents": 340,
       "initialSalePriceCents": 550,
       "capacity": 12,
-      "shelfKind": "chilled"
+      "shelfKind": "chilled",
+      "requiredPlayerLevel": 4
     },
     {
       "id": "ice_cream",
@@ -71,7 +79,8 @@
       "wholesalePriceCents": 360,
       "initialSalePriceCents": 620,
       "capacity": 12,
-      "shelfKind": "frozen"
+      "shelfKind": "frozen",
+      "requiredPlayerLevel": 5
     },
     {
       "id": "dumplings",
@@ -79,7 +88,8 @@
       "wholesalePriceCents": 780,
       "initialSalePriceCents": 1080,
       "capacity": 10,
-      "shelfKind": "frozen"
+      "shelfKind": "frozen",
+      "requiredPlayerLevel": 6
     }
   ]
 }

@@ -35,6 +35,10 @@ public sealed class Product
 
     public Money SalePrice { get; private set; }
 
+    public Money UnitGrossProfit => SalePrice - WholesalePrice;
+
+    public int GrossMarginBasisPoints => checked((int)(UnitGrossProfit.Cents * 10_000L / SalePrice.Cents));
+
     public void ChangeSalePrice(Money price)
     {
         if (!price.IsPositive)

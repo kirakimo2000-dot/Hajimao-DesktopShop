@@ -6,16 +6,21 @@ namespace HajimaoDesktopShop.Domain.Shops;
 
 public sealed class Shop
 {
+    private readonly BusinessWallet _wallet;
     private readonly Dictionary<ProductId, InventorySlot> _inventory = [];
     private readonly List<LedgerEntry> _ledger = [];
 
     public Shop(Money openingCash)
-        : this(new ShopFinancialState(openingCash, Money.Zero, Money.Zero, Money.Zero), addOpeningBalance: true)
+        : this(
+            new BusinessWallet(openingCash),
+            new ShopFinancialState(openingCash, Money.Zero, Money.Zero, Money.Zero),
+            addOpeningBalance: true)
     {
     }
 
-    private Shop(ShopFinancialState state, bool addOpeningBalance)
+    private Shop(BusinessWallet wallet, ShopFinancialState state, bool addOpeningBalance)
     {
+        ArgumentNullException.ThrowIfNull(wallet);
         ArgumentNullException.ThrowIfNull(state);
 
         if (state.Cash.Cents < 0)
@@ -28,7 +33,7 @@ public sealed class Shop
             throw new ArgumentOutOfRangeException(nameof(state));
         }
 
-        Cash = state.Cash;
+        _wallet = wallet;
         TotalRevenue = state.TotalRevenue;
         TotalStockPurchaseCost = state.TotalStockPurchaseCost;
         TotalGrossProfit = state.TotalGrossProfit;
@@ -39,9 +44,16 @@ public sealed class Shop
         }
     }
 
-    public static Shop Restore(ShopFinancialState state) => new(state, addOpeningBalance: false);
+    public static Shop Restore(ShopFinancialState state) =>
+        new(new BusinessWallet(state.Cash), state, addOpeningBalance: false);
 
-    public Money Cash { get; private set; }
+    internal static Shop CreateWithWallet(BusinessWallet wallet) =>
+        new(
+            wallet,
+            new ShopFinancialState(wallet.Balance, Money.Zero, Money.Zero, Money.Zero),
+            addOpeningBalance: false);
+
+    public Money Cash => _wallet.Balance;
 
     public Money TotalRevenue { get; private set; }
 
@@ -50,6 +62,8 @@ public sealed class Shop
     public Money TotalGrossProfit { get; private set; }
 
     public IReadOnlyList<LedgerEntry> Ledger => _ledger;
+
+    public bool ContainsProduct(ProductId productId) => _inventory.ContainsKey(productId);
 
     public void RegisterProduct(Product product, int capacity, int initialQuantity = 0)
     {
@@ -93,13 +107,12 @@ public sealed class Shop
         }
 
         var totalCost = slot.Product.WholesalePrice * quantity;
-        if (Cash.Cents < totalCost.Cents)
+        if (!_wallet.TryDebit(totalCost))
         {
             return new StockPurchaseResult(StockPurchaseStatus.InsufficientFunds, totalCost);
         }
 
         slot.Restock(quantity);
-        Cash -= totalCost;
         TotalStockPurchaseCost += totalCost;
         AddLedger(LedgerEntryType.StockPurchase, productId, quantity, new Money(-totalCost.Cents));
         return new StockPurchaseResult(StockPurchaseStatus.Success, totalCost);
@@ -125,7 +138,7 @@ public sealed class Shop
         var revenue = slot.Product.SalePrice * quantity;
         var grossProfit = (slot.Product.SalePrice - slot.Product.WholesalePrice) * quantity;
         slot.Remove(quantity);
-        Cash += revenue;
+        _wallet.Credit(revenue);
         TotalRevenue += revenue;
         TotalGrossProfit += grossProfit;
         AddLedger(LedgerEntryType.Sale, productId, quantity, revenue);
