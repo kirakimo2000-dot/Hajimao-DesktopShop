@@ -219,6 +219,23 @@
   - ZIP SHA-256：`0A6410D057FE83E5BD36553630E9396CBD3F412A06BBA328F74E1097D47A58F4`。
   - 工作区检查：0 个诊断钩子、0 个临时/备份/补丁杂项文件、0 个残留运行实例。
 
+### Phase 10: 正式版 0.4.0 采购与自动化
+
+- **Status:** complete
+- Actions taken:
+  - 按 TDD 拆分“下单付款”和“实际收货”，保留原型即时进货兼容行为。
+  - 增加本地批发、区域配送、厂家直供三渠道及确定性报价、起订量和配送时间。
+  - 增加在途订单、等待空间状态、自动补货和缺货应急采购。
+  - 将采购推进接入固定现实 Tick，离线结算无需新增旁路。
+  - schema 升至 v4，完整保存并迁移采购策略、订单和订单序号。
+  - 发现并修复“已付款订单等待空间时无法恢复”的容量校验缺陷。
+  - 最终门禁：130/130 测试通过，Release 构建 0 警告/0 错误，10 个项目无已知漏洞。
+  - 活跃程序集版本为 0.4.0；正式采购 UI 继续按计划后置到 0.7.0。
+- Next actions:
+  - 0.5.0 招聘候选池、排班、培训、体力和满意度。
+  - 将员工状态接入现有收银、补货、导购和清洁任务。
+  - 继续保持固定现实 1x、完整存档和离线同管线。
+
 ## Error Log
 
 | Timestamp | Error | Attempt | Resolution |
@@ -228,13 +245,15 @@
 | 2026-08-03 | 并行测试同时写入 Domain `obj` 导致 CS2012 文件锁 | 1 | 同一项目的 selected/full 测试改为顺序执行 |
 | 2026-08-03 | 全量测试通过后 WPF build 报 CS0118：`Application` 被当作命名空间 | 1 | 根因是同根 `HajimaoDesktopShop.Application` 遮蔽 WPF 类型；将 App 基类全限定为 `System.Windows.Application` |
 | 2026-08-03 | 读取预期的 `docs/progress/v0.1.0-phase-1.md` 失败 | 1 | 实际文件名为 `v0.1.0-bootstrap.md`；后续先用 `rg --files` 定位 |
+| 2026-08-03 | 对尚不存在的 `.worktrees` 目录执行 `git check-ignore` 返回未匹配 | 1 | 改为检测 `.worktrees/probe`，确认目录内容由现有规则忽略 |
+| 2026-08-03 | `Array.AsReadOnly` 无法从集合表达式推断采购渠道类型 | 1 | 显式构造 `ProcurementChannel[]`，保持只读集合 API |
 
 ## 5-Question Reboot Check
 
 | Question | Answer |
 | --- | --- |
-| Where am I? | 第一阶段完整可玩 Demo 1.0.0 已完成 |
-| Where am I going? | 等待真实试玩反馈，再规划 1.1 内容与成长系统 |
-| What's the goal? | Windows 桌面像素便利店完整可玩 Demo |
-| What have I learned? | 桌面常驻窗的渲染架构必须针对远程/软件合成优化；单表面渲染比堆叠 WPF 控件稳定得多 |
-| What have I done? | 完成并打包 1.0.0 第一阶段完整可玩 Demo |
+| Where am I? | 正式版 0.4.0 采购与自动化底层已完成 |
+| Where am I going? | 0.5.0 员工招聘、排班、培训、体力和满意度 |
+| What's the goal? | 固定现实 1x 的 Windows 桌面像素便利店运营增量游戏 |
+| What have I learned? | 在途库存必须同时参与容量预留、自动补货判断和存档恢复；等待空间是合法订单状态 |
+| What have I done? | 完成三渠道、配送、自动补货、缺货应急和 schema v4 兼容迁移 |
