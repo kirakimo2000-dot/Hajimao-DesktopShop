@@ -2,6 +2,7 @@ using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Tests.Simulation;
+using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
@@ -144,6 +145,51 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
+    public void CaptureAndRestore_MidDayContinuesWithIdenticalQueuesWagesAndDayReport()
+    {
+        var service = CreateService();
+        service.PurchaseStock("zeta-store", "water", 100);
+        var original = new BusinessSimulation(
+            service,
+            [
+                AssignCashier("zeta-store", "cashier", 750, hourlyWageCents: 1_001),
+                AssignCleaner("zeta-store", "cleaner", 1_100)
+            ],
+            new StatefulTestRandomSource(42),
+            CreateAlwaysBusyOptions());
+        original.AdvanceRealSeconds(123);
+
+        var businessSave = service.CaptureSaveData();
+        var simulationSave = original.CaptureSaveData();
+        var restoredService = CreateService(businessSave);
+        var restored = new BusinessSimulation(
+            restoredService,
+            simulationSave,
+            new StatefulTestRandomSource(1),
+            CreateAlwaysBusyOptions());
+
+        original.AdvanceRealSeconds(1_500);
+        restored.AdvanceRealSeconds(1_500);
+
+        Assert.Equivalent(original.GetSnapshot(), restored.GetSnapshot(), strict: true);
+        Assert.Equivalent(original.CaptureSaveData(), restored.CaptureSaveData(), strict: true);
+        Assert.NotNull(restored.GetSnapshot().LastCompletedDay);
+    }
+
+    [Fact]
+    public void CaptureSaveData_RequiresStatefulRandomness()
+    {
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [],
+            new ScriptedRandomSource());
+
+        var exception = Assert.Throws<InvalidOperationException>(simulation.CaptureSaveData);
+
+        Assert.Contains("IStatefulRandomSource", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OptionsAndAssignments_RejectInvalidConfiguration()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -196,5 +242,16 @@ public sealed class BusinessSimulationTests
             new LevelCurve([0, 100]),
             starterShopId: "zeta-store",
             openingCashCents,
+            experiencePerItemSold: 1);
+
+    private static BusinessGameService CreateService(BusinessSaveData restoredState) =>
+        new(
+            [new ProductDefinition("water", "矿泉水", 100, 200, 100, "ambient")],
+            [
+                new ShopDefinition(new ShopId("zeta-store"), "街角店", 1, Money.Zero),
+                new ShopDefinition(new ShopId("alpha-store"), "车站店", 1, Money.Zero)
+            ],
+            new LevelCurve([0, 100]),
+            restoredState,
             experiencePerItemSold: 1);
 }

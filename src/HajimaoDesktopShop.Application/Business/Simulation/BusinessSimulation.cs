@@ -1,6 +1,8 @@
 using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Domain.Demand;
+using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Shops;
 
@@ -12,7 +14,8 @@ public sealed class BusinessSimulation
     private readonly BusinessGameService _game;
     private readonly IRandomSource _random;
     private readonly BusinessSimulationOptions _options;
-    private readonly SimulationClock _clock = new();
+    private readonly SimulationClock _clock;
+    private readonly IStatefulRandomSource? _statefulRandom;
     private readonly Dictionary<string, Employee[]> _staffByStore;
     private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
     private BusinessDayReport? _lastCompletedDay;
@@ -27,34 +30,42 @@ public sealed class BusinessSimulation
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(random);
 
-        var assignmentArray = assignments.ToArray();
-        if (assignmentArray.Any(assignment => assignment is null))
+        _game = game;
+        _random = random;
+        _statefulRandom = random as IStatefulRandomSource;
+        _options = options ?? new BusinessSimulationOptions();
+        _clock = new SimulationClock();
+        _staffByStore = CreateStaffMap(assignments, nameof(assignments));
+        SynchronizeStores();
+    }
+
+    public BusinessSimulation(
+        BusinessGameService game,
+        BusinessSimulationSaveData restoredState,
+        IStatefulRandomSource random,
+        BusinessSimulationOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(game);
+        ArgumentNullException.ThrowIfNull(restoredState);
+        ArgumentNullException.ThrowIfNull(random);
+        if (restoredState.GameMinute < 0 || restoredState.RandomState == 0)
         {
-            throw new ArgumentException("Employee assignments cannot contain null.", nameof(assignments));
+            throw new ArgumentOutOfRangeException(nameof(restoredState));
         }
 
-        var duplicateEmployee = assignmentArray
-            .GroupBy(assignment => assignment.Employee.Id.Value, StringComparer.Ordinal)
-            .FirstOrDefault(group => group.Count() > 1);
-        if (duplicateEmployee is not null)
-        {
-            throw new ArgumentException(
-                $"Employee '{duplicateEmployee.Key}' cannot be assigned more than once.",
-                nameof(assignments));
-        }
+        var employeeSaves = restoredState.Employees?.ToArray()
+            ?? throw new ArgumentException("Restored employees are required.", nameof(restoredState));
+        var assignments = employeeSaves.Select(RestoreAssignment).ToArray();
 
         _game = game;
         _random = random;
+        _statefulRandom = random;
         _options = options ?? new BusinessSimulationOptions();
-        _staffByStore = assignmentArray
-            .GroupBy(assignment => assignment.StoreId, StringComparer.Ordinal)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Select(assignment => assignment.Employee)
-                    .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
-                    .ToArray(),
-                StringComparer.Ordinal);
-        SynchronizeStores();
+        _clock = new SimulationClock(restoredState.GameMinute);
+        _staffByStore = CreateStaffMap(assignments, nameof(restoredState));
+        _statefulRandom.RestoreState(restoredState.RandomState);
+        _lastCompletedDay = restoredState.LastCompletedDay;
+        RestoreStores(restoredState.Stores);
     }
 
     public void AdvanceRealSecond() => AdvanceRealSeconds(1);
@@ -91,6 +102,131 @@ public sealed class BusinessSimulation
                 business,
                 Array.AsReadOnly(stores),
                 _lastCompletedDay);
+        }
+    }
+
+    public BusinessSimulationSaveData CaptureSaveData()
+    {
+        lock (_gate)
+        {
+            if (_statefulRandom is null)
+            {
+                throw new InvalidOperationException(
+                    "Complete simulation saves require an IStatefulRandomSource.");
+            }
+
+            var employees = _stores.Values
+                .OrderBy(store => store.StoreId, StringComparer.Ordinal)
+                .SelectMany(store => store.Employees
+                    .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
+                    .Select(employee =>
+                    {
+                        var work = employee.CaptureWorkState();
+                        return new EmployeeAssignmentSaveData(
+                            store.StoreId,
+                            employee.Id.Value,
+                            employee.Name,
+                            employee.Role,
+                            employee.EfficiencyPermille,
+                            employee.HourlyWage.Cents,
+                            work.WorkedMinutes,
+                            work.TotalWagesAccrued.Cents,
+                            work.WageRemainderCents);
+                    }))
+                .ToArray();
+            var stores = _stores.Values
+                .OrderBy(store => store.StoreId, StringComparer.Ordinal)
+                .Select(store => store.CaptureSaveData())
+                .ToArray();
+            return new BusinessSimulationSaveData(
+                _clock.GameMinute,
+                _statefulRandom.State,
+                Array.AsReadOnly(employees),
+                Array.AsReadOnly(stores),
+                _lastCompletedDay);
+        }
+    }
+
+    private static Dictionary<string, Employee[]> CreateStaffMap(
+        IEnumerable<StoreEmployeeAssignment> assignments,
+        string parameterName)
+    {
+        var assignmentArray = assignments.ToArray();
+        if (assignmentArray.Any(assignment => assignment is null))
+        {
+            throw new ArgumentException("Employee assignments cannot contain null.", parameterName);
+        }
+
+        var duplicateEmployee = assignmentArray
+            .GroupBy(assignment => assignment.Employee.Id.Value, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateEmployee is not null)
+        {
+            throw new ArgumentException(
+                $"Employee '{duplicateEmployee.Key}' cannot be assigned more than once.",
+                parameterName);
+        }
+
+        return assignmentArray
+            .GroupBy(assignment => assignment.StoreId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(assignment => assignment.Employee)
+                    .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
+                    .ToArray(),
+                StringComparer.Ordinal);
+    }
+
+    private static StoreEmployeeAssignment RestoreAssignment(EmployeeAssignmentSaveData saved)
+    {
+        ArgumentNullException.ThrowIfNull(saved);
+        var employee = Employee.Restore(
+            new EmployeeId(saved.EmployeeId),
+            saved.Name,
+            saved.Role,
+            saved.EfficiencyPermille,
+            new Money(saved.HourlyWageCents),
+            new EmployeeWorkState(
+                saved.WorkedMinutes,
+                new Money(saved.TotalWagesAccruedCents),
+                saved.WageRemainderCents));
+        return new StoreEmployeeAssignment(saved.StoreId, employee);
+    }
+
+    private void RestoreStores(IReadOnlyList<StoreRuntimeSaveData> savedStores)
+    {
+        ArgumentNullException.ThrowIfNull(savedStores);
+        var saves = savedStores.ToArray();
+        if (saves.Any(store => store is null))
+        {
+            throw new ArgumentException("Restored stores cannot contain null.", nameof(savedStores));
+        }
+
+        var duplicate = saves
+            .GroupBy(store => store.StoreId, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new ArgumentException(
+                $"Restored store runtime '{duplicate.Key}' is duplicated.",
+                nameof(savedStores));
+        }
+
+        var business = _game.GetSnapshot();
+        var openIds = business.Stores.Select(store => store.Id).Order(StringComparer.Ordinal).ToArray();
+        var savedIds = saves.Select(store => store.StoreId).Order(StringComparer.Ordinal).ToArray();
+        if (!openIds.SequenceEqual(savedIds, StringComparer.Ordinal))
+        {
+            throw new ArgumentException(
+                "Restored runtime stores must exactly match the open business stores.",
+                nameof(savedStores));
+        }
+
+        foreach (var saved in saves)
+        {
+            var store = business.Stores.Single(snapshot => snapshot.Id == saved.StoreId);
+            _staffByStore.TryGetValue(saved.StoreId, out var staff);
+            _stores.Add(saved.StoreId, new StoreRuntime(store, staff ?? [], saved));
         }
     }
 
@@ -337,6 +473,88 @@ public sealed class BusinessSimulation
             StartNextDay(store);
         }
 
+        public StoreRuntime(
+            BusinessStoreSnapshot store,
+            Employee[] employees,
+            StoreRuntimeSaveData saved)
+        {
+            ArgumentNullException.ThrowIfNull(saved);
+            if (!string.Equals(store.Id, saved.StoreId, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Restored runtime store ID does not match.", nameof(saved));
+            }
+
+            if (saved.Visitors < 0
+                || saved.AcceptedPurchases < 0
+                || saved.CompletedSales < 0
+                || saved.LostSales < 0
+                || saved.WagePaymentFailures < 0
+                || saved.DayTickCount < 0
+                || saved.DayQueueLengthTotal < 0
+                || saved.CleanlinessPermille is < 0 or > 1_000
+                || saved.ServicePermille is < 0 or > 2_000)
+            {
+                throw new ArgumentOutOfRangeException(nameof(saved));
+            }
+
+            if (saved.DayStartVisitors is < 0
+                || saved.DayStartAcceptedPurchases is < 0
+                || saved.DayStartCompletedSales is < 0
+                || saved.DayStartLostSales is < 0
+                || saved.DayStartVisitors > saved.Visitors
+                || saved.DayStartAcceptedPurchases > saved.AcceptedPurchases
+                || saved.DayStartCompletedSales > saved.CompletedSales
+                || saved.DayStartLostSales > saved.LostSales)
+            {
+                throw new ArgumentException("Restored day baselines are inconsistent.", nameof(saved));
+            }
+
+            var knownProducts = store.Products
+                .Select(product => product.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            var queued = saved.CheckoutQueue?.ToArray()
+                ?? throw new ArgumentException("Restored checkout queue is required.", nameof(saved));
+            if (queued.Any(productId => !knownProducts.Contains(productId)))
+            {
+                throw new ArgumentException("Restored checkout queue contains an unknown product.", nameof(saved));
+            }
+
+            if (saved.ActiveCheckout is { } active
+                && (active.RemainingMinutes <= 0 || !knownProducts.Contains(active.ProductId)))
+            {
+                throw new ArgumentException("Restored active checkout is invalid.", nameof(saved));
+            }
+
+            StoreId = store.Id;
+            Employees = employees;
+            foreach (var productId in queued)
+            {
+                CheckoutQueue.Enqueue(productId);
+            }
+
+            ActiveCheckout = saved.ActiveCheckout is null
+                ? null
+                : new ActiveCheckout(
+                    saved.ActiveCheckout.ProductId,
+                    saved.ActiveCheckout.RemainingMinutes);
+            Visitors = saved.Visitors;
+            AcceptedPurchases = saved.AcceptedPurchases;
+            CompletedSales = saved.CompletedSales;
+            LostSales = saved.LostSales;
+            CleanlinessPermille = saved.CleanlinessPermille;
+            ServicePermille = saved.ServicePermille;
+            WagePaymentFailures = saved.WagePaymentFailures;
+            DayStartVisitors = saved.DayStartVisitors;
+            DayStartAcceptedPurchases = saved.DayStartAcceptedPurchases;
+            DayStartCompletedSales = saved.DayStartCompletedSales;
+            DayStartLostSales = saved.DayStartLostSales;
+            DayStartRevenueCents = saved.DayStartRevenueCents;
+            DayStartGrossProfitCents = saved.DayStartGrossProfitCents;
+            DayStartWageCostCents = saved.DayStartWageCostCents;
+            DayQueueLengthTotal = saved.DayQueueLengthTotal;
+            DayTickCount = saved.DayTickCount;
+        }
+
         public string StoreId { get; }
 
         public Employee[] Employees { get; }
@@ -360,6 +578,32 @@ public sealed class BusinessSimulation
         public int WagePaymentFailures { get; set; }
 
         public int QueueLength => CheckoutQueue.Count + (ActiveCheckout is null ? 0 : 1);
+
+        public StoreRuntimeSaveData CaptureSaveData() =>
+            new(
+                StoreId,
+                Visitors,
+                AcceptedPurchases,
+                CompletedSales,
+                LostSales,
+                Array.AsReadOnly(CheckoutQueue.ToArray()),
+                ActiveCheckout is null
+                    ? null
+                    : new ActiveCheckoutSaveData(
+                        ActiveCheckout.ProductId,
+                        ActiveCheckout.RemainingMinutes),
+                CleanlinessPermille,
+                ServicePermille,
+                WagePaymentFailures,
+                DayStartVisitors,
+                DayStartAcceptedPurchases,
+                DayStartCompletedSales,
+                DayStartLostSales,
+                DayStartRevenueCents,
+                DayStartGrossProfitCents,
+                DayStartWageCostCents,
+                DayQueueLengthTotal,
+                DayTickCount);
 
         private int DayStartVisitors { get; set; }
 
