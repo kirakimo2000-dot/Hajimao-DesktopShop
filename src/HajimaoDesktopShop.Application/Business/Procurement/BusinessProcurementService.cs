@@ -8,6 +8,7 @@ internal sealed class BusinessProcurementService
     private readonly Dictionary<string, ProcurementChannel> _channels;
     private readonly IProcurementStockGateway _stock;
     private readonly List<ProcurementOrder> _pendingOrders = [];
+    private readonly Dictionary<(string StoreId, string ProductId), AutoRestockPolicy> _policies = [];
     private long _nextOrderId = 1;
 
     public BusinessProcurementService(IProcurementStockGateway stock)
@@ -24,9 +25,46 @@ internal sealed class BusinessProcurementService
             .OrderBy(order => order.OrderId)
             .Select(order => order.CreateSnapshot())
             .ToArray();
+        var policies = _policies.Values
+            .OrderBy(policy => policy.StoreId, StringComparer.Ordinal)
+            .ThenBy(policy => policy.ProductId, StringComparer.Ordinal)
+            .ToArray();
         return new ProcurementSnapshot(
             ProcurementChannel.DefaultChannels,
-            Array.AsReadOnly(orders));
+            Array.AsReadOnly(orders),
+            Array.AsReadOnly(policies));
+    }
+
+    public void ConfigureAutoRestock(AutoRestockPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        var storeId = NormalizeId(policy.StoreId, nameof(policy));
+        var productId = NormalizeId(policy.ProductId, nameof(policy));
+        var channelId = NormalizeId(policy.PreferredChannelId, nameof(policy));
+        if (!_stock.ContainsOpenStore(storeId))
+        {
+            throw new ArgumentException($"Store '{storeId}' is not open.", nameof(policy));
+        }
+
+        var product = _stock.FindProduct(storeId, productId)
+            ?? throw new ArgumentException(
+                $"Product '{productId}' is not available in store '{storeId}'.",
+                nameof(policy));
+        var channel = FindChannel(channelId);
+        if (policy.ReorderPoint < 0
+            || policy.TargetQuantity <= policy.ReorderPoint
+            || policy.TargetQuantity > product.Capacity
+            || channel.MinimumOrderQuantity > product.Capacity)
+        {
+            throw new ArgumentOutOfRangeException(nameof(policy));
+        }
+
+        _policies[(storeId, productId)] = policy with
+        {
+            StoreId = storeId,
+            ProductId = productId,
+            PreferredChannelId = channelId
+        };
     }
 
     public Money QuoteUnitCost(Money wholesalePrice, string channelId) =>
@@ -121,6 +159,59 @@ internal sealed class BusinessProcurementService
             {
                 _pendingOrders.Remove(order);
             }
+        }
+
+        ProcessAutoRestock();
+    }
+
+    private void ProcessAutoRestock()
+    {
+        foreach (var policy in _policies.Values
+                     .Where(policy => policy.IsEnabled)
+                     .OrderBy(policy => policy.StoreId, StringComparer.Ordinal)
+                     .ThenBy(policy => policy.ProductId, StringComparer.Ordinal))
+        {
+            var product = _stock.FindProduct(policy.StoreId, policy.ProductId);
+            if (product is null)
+            {
+                continue;
+            }
+
+            var matchingOrders = _pendingOrders.Where(order =>
+                    string.Equals(order.StoreId, policy.StoreId, StringComparison.Ordinal)
+                    && string.Equals(order.ProductId, policy.ProductId, StringComparison.Ordinal))
+                .ToArray();
+            var inbound = matchingOrders.Sum(order => order.Quantity);
+            var effectiveQuantity = checked(product.Quantity + inbound);
+            if (effectiveQuantity > policy.ReorderPoint
+                || matchingOrders.Any(order => order.IsAutomatic))
+            {
+                continue;
+            }
+
+            var channel = FindChannel(policy.PreferredChannelId);
+            var desired = checked(policy.TargetQuantity - effectiveQuantity);
+            var orderQuantity = Math.Max(desired, channel.MinimumOrderQuantity);
+            var result = PlaceOrder(
+                policy.StoreId,
+                policy.ProductId,
+                channel.Id,
+                orderQuantity,
+                isAutomatic: true);
+            if (result.Status == ProcurementOrderPlacementStatus.Success
+                || product.Quantity != 0
+                || !policy.UseEmergencySupplierWhenOutOfStock
+                || string.Equals(channel.Id, "local-wholesale", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            PlaceOrder(
+                policy.StoreId,
+                policy.ProductId,
+                "local-wholesale",
+                1,
+                isAutomatic: true);
         }
     }
 

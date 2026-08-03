@@ -21,4 +21,5 @@ public sealed record ProcurementOrderSnapshot(
 
 public sealed record ProcurementSnapshot(
     IReadOnlyList<ProcurementChannel> Channels,
-    IReadOnlyList<ProcurementOrderSnapshot> PendingOrders);
+    IReadOnlyList<ProcurementOrderSnapshot> PendingOrders,
+    IReadOnlyList<AutoRestockPolicy> AutoRestockPolicies);

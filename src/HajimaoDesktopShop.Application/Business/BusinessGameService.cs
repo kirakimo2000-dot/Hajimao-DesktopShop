@@ -238,6 +238,14 @@ public sealed class BusinessGameService : IProcurementStockGateway
         }
     }
 
+    public void ConfigureAutoRestock(AutoRestockPolicy policy)
+    {
+        lock (_gate)
+        {
+            _procurement.ConfigureAutoRestock(policy);
+        }
+    }
+
     public ProcurementSnapshot GetProcurementSnapshot()
     {
         lock (_gate)

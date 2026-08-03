@@ -250,6 +250,8 @@ public sealed class BusinessSimulation
             store.RecordQueueSample();
         }
 
+        _game.AdvanceProcurementMinute();
+
         var completedMinute = checked(_clock.GameMinute + 1L);
         if (completedMinute % 1_440L == 0)
         {
