@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
@@ -16,30 +17,48 @@ public sealed class BusinessSessionTests
         new(2026, 8, 3, 15, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void CaptureAndRestore_RoundTripsCompleteV3SessionAndCompatibilityProjection()
+    public void CaptureAndRestore_RoundTripsCompleteV4SessionAndCompatibilityProjection()
     {
         var session = CreateSession();
         session.Game.PurchaseStock("corner-store", "water", 20);
         session.Game.ChangePrice("corner-store", "water", 245);
+        session.Game.ConfigureAutoRestock(new AutoRestockPolicy(
+            "corner-store",
+            "water",
+            IsEnabled: true,
+            ReorderPoint: 20,
+            TargetQuantity: 50,
+            PreferredChannelId: "regional-distributor",
+            UseEmergencySupplierWhenOutOfStock: true));
+        session.Game.PlaceProcurementOrder(
+            "corner-store",
+            "water",
+            "regional-distributor",
+            6);
         session.Simulation.AdvanceRealSeconds(90);
 
         var save = session.CaptureSaveData(SavedAt);
         var restored = RestoreSession(save);
 
-        Assert.Equal(3, save.SchemaVersion);
+        Assert.Equal(4, save.SchemaVersion);
         Assert.NotNull(save.Business);
+        Assert.NotNull(save.Business.Procurement);
         Assert.NotNull(save.BusinessSimulation);
         Assert.Equal(save.Business.CashCents, save.Shop.CashCents);
         Assert.Equal(save.BusinessSimulation.GameMinute, save.Simulation.GameMinute);
         Assert.Equivalent(session.Simulation.GetSnapshot(), restored.Simulation.GetSnapshot(), strict: true);
+        Assert.Equivalent(
+            session.Game.GetProcurementSnapshot(),
+            restored.Game.GetProcurementSnapshot(),
+            strict: true);
         Assert.Equivalent(save, restored.CaptureSaveData(SavedAt), strict: true);
     }
 
     [Fact]
-    public void RestoreOrUpgrade_LegacyOnlyV3StatePreservesStarterStoreAndClock()
+    public void RestoreOrUpgrade_LegacyOnlyV4StatePreservesStarterStoreAndClock()
     {
         var legacy = new GameSaveData(
-            3,
+            4,
             SavedAt,
             new ShopSaveData(
                 12_345,

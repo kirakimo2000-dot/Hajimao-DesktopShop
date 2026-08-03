@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Catalog;
+using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Shops;
@@ -106,6 +107,28 @@ public sealed class BusinessProcurementServiceTests
         Assert.Single(service.GetProcurementSnapshot().PendingOrders);
     }
 
+    [Fact]
+    public void Restore_PreservesPaidOrderWaitingForShelfSpace()
+    {
+        var service = CreateService();
+        service.PlaceProcurementOrder(
+            "corner-store",
+            "water",
+            "regional-distributor",
+            6);
+        service.PurchaseStock("corner-store", "water", 20);
+        for (var minute = 0; minute < 30; minute++)
+        {
+            service.AdvanceProcurementMinute();
+        }
+
+        var restored = CreateService(service.CaptureSaveData());
+
+        var order = Assert.Single(restored.GetProcurementSnapshot().PendingOrders);
+        Assert.Equal(ProcurementOrderStatus.AwaitingSpace, order.Status);
+        Assert.Equal(0, order.RemainingMinutes);
+    }
+
     private static int GetWaterQuantity(BusinessGameService service) =>
         Assert.Single(service.GetSnapshot().Stores).Products.Single(product => product.Id == "water").Quantity;
 
@@ -116,4 +139,11 @@ public sealed class BusinessProcurementServiceTests
             new LevelCurve([0, 100]),
             starterShopId: "corner-store",
             openingCashCents: 5_000);
+
+    private static BusinessGameService CreateService(BusinessSaveData save) =>
+        new(
+            [new ProductDefinition("water", "矿泉水", 100, 200, 20, "ambient")],
+            [new ShopDefinition(new ShopId("corner-store"), "街角店", 1, Money.Zero)],
+            new LevelCurve([0, 100]),
+            save);
 }

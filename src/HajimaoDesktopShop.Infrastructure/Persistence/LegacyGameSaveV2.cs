@@ -10,7 +10,7 @@ internal sealed record LegacyGameSaveV2(
 {
     public GameSaveData UpgradeToV3() =>
         new(
-            GameSaveSchema.CurrentVersion,
+            3,
             SavedAtUtc,
             Shop,
             Simulation);

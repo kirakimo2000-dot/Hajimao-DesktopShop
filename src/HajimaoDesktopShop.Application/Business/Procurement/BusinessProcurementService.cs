@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Shops;
+using HajimaoDesktopShop.Application.Persistence;
 
 namespace HajimaoDesktopShop.Application.Business.Procurement;
 
@@ -17,6 +18,53 @@ internal sealed class BusinessProcurementService
         _channels = ProcurementChannel.DefaultChannels.ToDictionary(
             channel => channel.Id,
             StringComparer.Ordinal);
+    }
+
+    public BusinessProcurementService(
+        IProcurementStockGateway stock,
+        BusinessProcurementSaveData? restoredState)
+        : this(stock)
+    {
+        if (restoredState is null)
+        {
+            return;
+        }
+
+        if (restoredState.NextOrderId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(restoredState));
+        }
+
+        var orders = restoredState.PendingOrders?.ToArray()
+            ?? throw new ArgumentException("Restored procurement orders are required.", nameof(restoredState));
+        var policies = restoredState.AutoRestockPolicies?.ToArray()
+            ?? throw new ArgumentException("Restored auto-restock policies are required.", nameof(restoredState));
+        if (orders.Any(order => order is null)
+            || orders.Select(order => order.OrderId).Distinct().Count() != orders.Length
+            || orders.Any(order => order.OrderId <= 0 || order.OrderId >= restoredState.NextOrderId))
+        {
+            throw new ArgumentException("Restored procurement order IDs are invalid.", nameof(restoredState));
+        }
+
+        foreach (var saved in orders.OrderBy(order => order.OrderId))
+        {
+            RestoreOrder(saved, nameof(restoredState));
+        }
+
+        foreach (var saved in policies)
+        {
+            ArgumentNullException.ThrowIfNull(saved);
+            ConfigureAutoRestock(new AutoRestockPolicy(
+                saved.StoreId,
+                saved.ProductId,
+                saved.IsEnabled,
+                saved.ReorderPoint,
+                saved.TargetQuantity,
+                saved.PreferredChannelId,
+                saved.UseEmergencySupplierWhenOutOfStock));
+        }
+
+        _nextOrderId = restoredState.NextOrderId;
     }
 
     public ProcurementSnapshot GetSnapshot()
@@ -69,6 +117,39 @@ internal sealed class BusinessProcurementService
 
     public Money QuoteUnitCost(Money wholesalePrice, string channelId) =>
         FindChannel(channelId).QuoteUnitCost(wholesalePrice);
+
+    public BusinessProcurementSaveData CaptureSaveData()
+    {
+        var orders = _pendingOrders
+            .OrderBy(order => order.OrderId)
+            .Select(order => new ProcurementOrderSaveData(
+                order.OrderId,
+                order.StoreId,
+                order.ProductId,
+                order.ChannelId,
+                order.Quantity,
+                order.UnitCostCents,
+                order.RemainingMinutes,
+                order.Status,
+                order.IsAutomatic))
+            .ToArray();
+        var policies = _policies.Values
+            .OrderBy(policy => policy.StoreId, StringComparer.Ordinal)
+            .ThenBy(policy => policy.ProductId, StringComparer.Ordinal)
+            .Select(policy => new AutoRestockPolicySaveData(
+                policy.StoreId,
+                policy.ProductId,
+                policy.IsEnabled,
+                policy.ReorderPoint,
+                policy.TargetQuantity,
+                policy.PreferredChannelId,
+                policy.UseEmergencySupplierWhenOutOfStock))
+            .ToArray();
+        return new BusinessProcurementSaveData(
+            _nextOrderId,
+            Array.AsReadOnly(orders),
+            Array.AsReadOnly(policies));
+    }
 
     public ProcurementOrderResult PlaceOrder(
         string storeId,
@@ -232,6 +313,50 @@ internal sealed class BusinessProcurementService
 
         throw new InvalidOperationException(
             $"Paid procurement order {order.OrderId} could not be delivered: {receipt.Status}.");
+    }
+
+    private void RestoreOrder(ProcurementOrderSaveData saved, string parameterName)
+    {
+        var storeId = NormalizeId(saved.StoreId, parameterName);
+        var productId = NormalizeId(saved.ProductId, parameterName);
+        var channelId = NormalizeId(saved.ChannelId, parameterName);
+        if (!_stock.ContainsOpenStore(storeId)
+            || _stock.FindProduct(storeId, productId) is null
+            || !_channels.ContainsKey(channelId)
+            || saved.Quantity <= 0
+            || saved.UnitCostCents <= 0
+            || saved.RemainingMinutes < 0
+            || saved.Status == ProcurementOrderStatus.Delivered
+            || (saved.RemainingMinutes > 0 && saved.Status != ProcurementOrderStatus.InTransit)
+            || (saved.RemainingMinutes == 0 && saved.Status != ProcurementOrderStatus.AwaitingSpace))
+        {
+            throw new ArgumentException(
+                $"Restored procurement order '{saved.OrderId}' is invalid.",
+                parameterName);
+        }
+
+        var product = _stock.FindProduct(storeId, productId)!;
+        var existingInbound = _pendingOrders
+            .Where(order => string.Equals(order.StoreId, storeId, StringComparison.Ordinal)
+                && string.Equals(order.ProductId, productId, StringComparison.Ordinal))
+            .Sum(order => order.Quantity);
+        if (checked(existingInbound + saved.Quantity) > product.Capacity)
+        {
+            throw new ArgumentException(
+                $"Restored procurement order '{saved.OrderId}' exceeds product capacity.",
+                parameterName);
+        }
+
+        _pendingOrders.Add(new ProcurementOrder(
+            saved.OrderId,
+            storeId,
+            productId,
+            channelId,
+            saved.Quantity,
+            saved.UnitCostCents,
+            saved.RemainingMinutes,
+            saved.IsAutomatic,
+            saved.Status));
     }
 
     private ProcurementChannel FindChannel(string channelId)

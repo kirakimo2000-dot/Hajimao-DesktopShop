@@ -207,7 +207,7 @@ public sealed class BusinessGameService : IProcurementStockGateway
             RegisterUnlockedProducts(shop);
         }
 
-        _procurement = new BusinessProcurementService(this);
+        _procurement = new BusinessProcurementService(this, restoredState.Procurement);
     }
 
     public StockPurchaseResult PurchaseStock(string shopId, string productId, int quantity)
@@ -390,7 +390,8 @@ public sealed class BusinessGameService : IProcurementStockGateway
             return new BusinessSaveData(
                 snapshot.TotalExperience,
                 snapshot.CashCents,
-                Array.AsReadOnly(stores));
+                Array.AsReadOnly(stores),
+                _procurement.CaptureSaveData());
         }
     }
 

@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Domain.Employees;
 
 namespace HajimaoDesktopShop.Application.Persistence;
@@ -6,7 +7,33 @@ namespace HajimaoDesktopShop.Application.Persistence;
 public sealed record BusinessSaveData(
     long TotalExperience,
     long CashCents,
-    IReadOnlyList<BusinessStoreSaveData> Stores);
+    IReadOnlyList<BusinessStoreSaveData> Stores,
+    BusinessProcurementSaveData? Procurement = null);
+
+public sealed record BusinessProcurementSaveData(
+    long NextOrderId,
+    IReadOnlyList<ProcurementOrderSaveData> PendingOrders,
+    IReadOnlyList<AutoRestockPolicySaveData> AutoRestockPolicies);
+
+public sealed record ProcurementOrderSaveData(
+    long OrderId,
+    string StoreId,
+    string ProductId,
+    string ChannelId,
+    int Quantity,
+    long UnitCostCents,
+    int RemainingMinutes,
+    ProcurementOrderStatus Status,
+    bool IsAutomatic);
+
+public sealed record AutoRestockPolicySaveData(
+    string StoreId,
+    string ProductId,
+    bool IsEnabled,
+    int ReorderPoint,
+    int TargetQuantity,
+    string PreferredChannelId,
+    bool UseEmergencySupplierWhenOutOfStock);
 
 public sealed record BusinessStoreSaveData(
     string StoreId,

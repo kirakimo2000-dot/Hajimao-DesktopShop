@@ -8,7 +8,8 @@ internal sealed class ProcurementOrder(
     int quantity,
     long unitCostCents,
     int remainingMinutes,
-    bool isAutomatic)
+    bool isAutomatic,
+    ProcurementOrderStatus? restoredStatus = null)
 {
     public long OrderId { get; } = orderId;
 
@@ -24,9 +25,10 @@ internal sealed class ProcurementOrder(
 
     public int RemainingMinutes { get; set; } = remainingMinutes;
 
-    public ProcurementOrderStatus Status { get; set; } = remainingMinutes == 0
-        ? ProcurementOrderStatus.AwaitingSpace
-        : ProcurementOrderStatus.InTransit;
+    public ProcurementOrderStatus Status { get; set; } = restoredStatus
+        ?? (remainingMinutes == 0
+            ? ProcurementOrderStatus.AwaitingSpace
+            : ProcurementOrderStatus.InTransit);
 
     public bool IsAutomatic { get; } = isAutomatic;
 
