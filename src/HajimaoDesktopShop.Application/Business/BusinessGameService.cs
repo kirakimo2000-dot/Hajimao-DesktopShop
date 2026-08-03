@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Catalog;
+using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
@@ -9,13 +10,14 @@ using HajimaoDesktopShop.Domain.Shops;
 
 namespace HajimaoDesktopShop.Application.Business;
 
-public sealed class BusinessGameService
+public sealed class BusinessGameService : IProcurementStockGateway
 {
     private readonly object _gate = new();
     private readonly ProductDefinition[] _productDefinitions;
     private readonly Dictionary<string, ShopDefinition> _shopDefinitions;
     private readonly RetailBusiness _business;
     private readonly int _experiencePerItemSold;
+    private readonly BusinessProcurementService _procurement;
 
     public BusinessGameService(
         IEnumerable<ProductDefinition> productDefinitions,
@@ -75,6 +77,7 @@ public sealed class BusinessGameService
             new Money(openingCashCents),
             starterDefinition);
         RegisterUnlockedProducts(_business.GetShop(starterDefinition.Id));
+        _procurement = new BusinessProcurementService(this);
     }
 
     public BusinessGameService(
@@ -203,6 +206,8 @@ public sealed class BusinessGameService
 
             RegisterUnlockedProducts(shop);
         }
+
+        _procurement = new BusinessProcurementService(this);
     }
 
     public StockPurchaseResult PurchaseStock(string shopId, string productId, int quantity)
@@ -210,6 +215,50 @@ public sealed class BusinessGameService
         lock (_gate)
         {
             return GetShop(shopId).TryPurchaseStock(new ProductId(productId), quantity);
+        }
+    }
+
+    public ProcurementOrderResult PlaceProcurementOrder(
+        string shopId,
+        string productId,
+        string channelId,
+        int quantity)
+    {
+        lock (_gate)
+        {
+            return _procurement.PlaceOrder(shopId, productId, channelId, quantity, isAutomatic: false);
+        }
+    }
+
+    public void AdvanceProcurementMinute()
+    {
+        lock (_gate)
+        {
+            _procurement.AdvanceMinute();
+        }
+    }
+
+    public ProcurementSnapshot GetProcurementSnapshot()
+    {
+        lock (_gate)
+        {
+            return _procurement.GetSnapshot();
+        }
+    }
+
+    public Money QuoteProcurementUnitCost(string productId, string channelId)
+    {
+        if (string.IsNullOrWhiteSpace(productId))
+        {
+            throw new ArgumentException("Product ID is required.", nameof(productId));
+        }
+
+        lock (_gate)
+        {
+            var definition = _productDefinitions.SingleOrDefault(item =>
+                string.Equals(item.Id, productId.Trim(), StringComparison.Ordinal))
+                ?? throw new KeyNotFoundException($"Product '{productId.Trim()}' was not found.");
+            return _procurement.QuoteUnitCost(new Money(definition.WholesalePriceCents), channelId);
         }
     }
 
@@ -413,4 +462,46 @@ public sealed class BusinessGameService
             slot.Product.GrossMarginBasisPoints,
             definition.InitialSalePriceCents);
     }
+
+    bool IProcurementStockGateway.ContainsOpenStore(string storeId) =>
+        _business.StoreIds.Contains(new ShopId(storeId));
+
+    ProcurementProductState? IProcurementStockGateway.FindProduct(
+        string storeId,
+        string productId)
+    {
+        var shopId = new ShopId(storeId);
+        if (!_business.StoreIds.Contains(shopId))
+        {
+            return null;
+        }
+
+        var shop = _business.GetShop(shopId);
+        var id = new ProductId(productId);
+        if (!shop.ContainsProduct(id))
+        {
+            return null;
+        }
+
+        var slot = shop.GetInventory(id);
+        return new ProcurementProductState(
+            storeId,
+            productId,
+            slot.Quantity,
+            slot.Capacity,
+            slot.Product.WholesalePrice);
+    }
+
+    StockPurchaseResult IProcurementStockGateway.TryPayForStockOrder(
+        string storeId,
+        string productId,
+        int quantity,
+        Money unitCost) =>
+        GetShop(storeId).TryPayForStockOrder(new ProductId(productId), quantity, unitCost);
+
+    StockReceiptResult IProcurementStockGateway.TryReceivePaidStock(
+        string storeId,
+        string productId,
+        int quantity) =>
+        GetShop(storeId).TryReceivePaidStock(new ProductId(productId), quantity);
 }
