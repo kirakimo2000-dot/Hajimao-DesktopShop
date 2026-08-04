@@ -72,7 +72,7 @@ public sealed class SqliteGameSaveStoreTests
         var migrated = await new SqliteGameSaveStore(database.Path).LoadGameAsync();
 
         Assert.NotNull(migrated);
-        Assert.Equal(5, migrated.SchemaVersion);
+        Assert.Equal(6, migrated.SchemaVersion);
         Assert.Equal(88, migrated.Simulation.GameMinute);
         Assert.Equal(7, Assert.Single(migrated.Shop.Products).Quantity);
 
@@ -95,7 +95,7 @@ public sealed class SqliteGameSaveStoreTests
         var migrated = await new SqliteGameSaveStore(database.Path).LoadGameAsync();
 
         Assert.NotNull(migrated);
-        Assert.Equal(5, migrated.SchemaVersion);
+        Assert.Equal(6, migrated.SchemaVersion);
         Assert.Equal(51_250, migrated.Shop.CashCents);
         Assert.Equal(7, Assert.Single(migrated.Shop.Products).Quantity);
         Assert.Equal(88, migrated.Simulation.GameMinute);
@@ -110,7 +110,7 @@ public sealed class SqliteGameSaveStoreTests
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
         Assert.Equal(GameSaveSchema.CurrentVersion, reader.GetInt32(0));
-        Assert.Contains("\"schemaVersion\":5", reader.GetString(1), StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\":6", reader.GetString(1), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class SqliteGameSaveStoreTests
         var migrated = await new SqliteGameSaveStore(database.Path).LoadGameAsync();
 
         Assert.NotNull(migrated);
-        Assert.Equal(5, migrated.SchemaVersion);
+        Assert.Equal(6, migrated.SchemaVersion);
         Assert.NotNull(migrated.Business);
         Assert.NotNull(migrated.Business.Procurement);
         Assert.Equal(1, migrated.Business.Procurement.NextOrderId);
@@ -139,7 +139,7 @@ public sealed class SqliteGameSaveStoreTests
         var migrated = await new SqliteGameSaveStore(database.Path).LoadGameAsync();
 
         Assert.NotNull(migrated);
-        Assert.Equal(5, migrated.SchemaVersion);
+        Assert.Equal(6, migrated.SchemaVersion);
         var simulation = Assert.IsType<BusinessSimulationSaveData>(migrated.BusinessSimulation);
         var employee = Assert.Single(simulation.Employees);
         Assert.Equal(0, employee.TrainingLevel);
@@ -147,6 +147,31 @@ public sealed class SqliteGameSaveStoreTests
         Assert.Equal(700, employee.SatisfactionPermille);
         Assert.True(employee.IsAlwaysOn);
         Assert.Null(simulation.EmployeeOperations);
+    }
+
+    [Fact]
+    public async Task VersionFiveSave_MigratesStoreGrowthDefaultsWithoutLosingBusinessState()
+    {
+        using var database = new TemporaryDatabase();
+        await CreateVersionFiveDatabaseAsync(database.Path);
+
+        var migrated = await new SqliteGameSaveStore(database.Path).LoadGameAsync();
+
+        Assert.NotNull(migrated);
+        Assert.Equal(6, migrated.SchemaVersion);
+        var business = Assert.IsType<BusinessSaveData>(migrated.Business);
+        var store = Assert.Single(business.Stores);
+        Assert.Equal(51_250, business.CashCents);
+        Assert.Equal(7, Assert.Single(store.Products).Quantity);
+        Assert.Equal(0, store.OperatingCostCents);
+        Assert.Null(store.Development);
+        Assert.Empty(business.Promotions ?? []);
+
+        await using var connection = new SqliteConnection($"Data Source={database.Path};Pooling=False");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA user_version;";
+        Assert.Equal(6, Convert.ToInt32(await command.ExecuteScalarAsync()));
     }
 
     private static GameSaveData CreateSave() =>
@@ -180,8 +205,11 @@ public sealed class SqliteGameSaveStoreTests
                         2_500,
                         1_500,
                         100,
-                        [new BusinessProductSaveData("water", 230, 7)])
-                ]),
+                        [new BusinessProductSaveData("water", 230, 7)],
+                        40_000,
+                        new StoreDevelopmentSaveData(2, 3, 2))
+                ],
+                Promotions: [new StorePromotionSaveData("corner-store", "local-flyers", 217)]),
             new BusinessSimulationSaveData(
                 88,
                 42,
@@ -408,6 +436,51 @@ public sealed class SqliteGameSaveStoreTests
             INSERT INTO game_save(slot, schema_version, saved_at_utc, payload_json)
             VALUES(1, 4, '2026-08-03T13:00:00.0000000+00:00', $payload);
             PRAGMA user_version = 4;
+            """;
+        command.Parameters.AddWithValue("$payload", payloadNode.ToJsonString());
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task CreateVersionFiveDatabaseAsync(string path)
+    {
+        var payloadNode = JsonSerializer.SerializeToNode(
+            CreateSave(),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!.AsObject();
+        payloadNode["schemaVersion"] = 5;
+        var business = payloadNode["business"]!.AsObject();
+        business.Remove("promotions");
+        foreach (var storeNode in business["stores"]!.AsArray())
+        {
+            var store = storeNode!.AsObject();
+            store.Remove("operatingCostCents");
+            store.Remove("development");
+        }
+
+        var businessSimulation = payloadNode["businessSimulation"]!.AsObject();
+        foreach (var runtimeNode in businessSimulation["stores"]!.AsArray())
+        {
+            runtimeNode!.AsObject().Remove("dayStartOperatingCostCents");
+        }
+
+        await using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE game_save (
+                slot INTEGER NOT NULL PRIMARY KEY CHECK(slot = 1),
+                schema_version INTEGER NOT NULL,
+                saved_at_utc TEXT NOT NULL,
+                payload_json TEXT NOT NULL
+            );
+            CREATE TABLE desktop_window (
+                slot INTEGER NOT NULL PRIMARY KEY CHECK(slot = 1),
+                left_px REAL NOT NULL,
+                top_px REAL NOT NULL,
+                is_locked INTEGER NOT NULL CHECK(is_locked IN (0, 1))
+            );
+            INSERT INTO game_save(slot, schema_version, saved_at_utc, payload_json)
+            VALUES(1, 5, '2026-08-03T13:00:00.0000000+00:00', $payload);
+            PRAGMA user_version = 5;
             """;
         command.Parameters.AddWithValue("$payload", payloadNode.ToJsonString());
         await command.ExecuteNonQueryAsync();

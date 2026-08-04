@@ -164,7 +164,14 @@ public sealed class BusinessGameService :
                     new Money(store.RevenueCents),
                     new Money(store.StockPurchaseCostCents),
                     new Money(store.GrossProfitCents),
-                    new Money(store.WageCostCents)));
+                    new Money(store.WageCostCents),
+                    new Money(store.OperatingCostCents)),
+                store.Development is null
+                    ? null
+                    : new StoreDevelopmentState(
+                        store.Development.ExpansionLevel,
+                        store.Development.ShelfLevel,
+                        store.Development.DecorationLevel));
         }).ToArray();
 
         _experiencePerItemSold = experiencePerItemSold;
@@ -215,7 +222,12 @@ public sealed class BusinessGameService :
         }
 
         _procurement = new BusinessProcurementService(this, restoredState.Procurement);
-        _storeGrowth = new StoreGrowthService(this);
+        _storeGrowth = new StoreGrowthService(
+            this,
+            restoredState.Promotions?.Select(promotion => new StorePromotionState(
+                promotion.StoreId,
+                promotion.CampaignId,
+                promotion.RemainingMinutes)));
     }
 
     public StockPurchaseResult PurchaseStock(string shopId, string productId, int quantity)
@@ -454,13 +466,25 @@ public sealed class BusinessGameService :
                             product.Id,
                             product.SalePriceCents,
                             product.Quantity))
-                        .ToArray())))
+                        .ToArray()),
+                    store.OperatingCostCents,
+                    new StoreDevelopmentSaveData(
+                        store.Growth!.ExpansionLevel,
+                        store.Growth.ShelfLevel,
+                        store.Growth.DecorationLevel)))
+                .ToArray();
+            var promotions = _storeGrowth.CaptureState()
+                .Select(state => new StorePromotionSaveData(
+                    state.StoreId,
+                    state.CampaignId,
+                    state.RemainingMinutes))
                 .ToArray();
             return new BusinessSaveData(
                 snapshot.TotalExperience,
                 snapshot.CashCents,
                 Array.AsReadOnly(stores),
-                _procurement.CaptureSaveData());
+                _procurement.CaptureSaveData(),
+                Array.AsReadOnly(promotions));
         }
     }
 

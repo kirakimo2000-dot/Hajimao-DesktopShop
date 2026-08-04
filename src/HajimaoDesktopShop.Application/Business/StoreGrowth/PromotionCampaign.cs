@@ -15,3 +15,8 @@ public sealed record ActivePromotionSnapshot(
     int RemainingMinutes,
     int ArrivalBonusBasisPoints,
     int PurchaseBonusBasisPoints);
+
+internal sealed record StorePromotionState(
+    string StoreId,
+    string CampaignId,
+    int RemainingMinutes);

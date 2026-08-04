@@ -85,6 +85,25 @@ public sealed class StoreGrowthServiceTests
         Assert.Equal(50_000, growth.ActivePromotion.CostCents);
     }
 
+    [Fact]
+    public void CaptureAndRestore_PreservesDevelopmentExpenseAndPromotionTimer()
+    {
+        var game = CreateService(openingCashCents: 1_000_000);
+        game.UpgradeStore("corner-store", StoreUpgradeKind.Shelf);
+        game.StartPromotion("corner-store", "local-flyers");
+        game.AdvanceStoreGrowthMinutes(23);
+
+        var save = game.CaptureSaveData();
+        var restored = CreateService(save);
+
+        Assert.Equivalent(game.GetSnapshot(), restored.GetSnapshot(), strict: true);
+        Assert.Equivalent(
+            game.GetStoreGrowthSnapshot("corner-store"),
+            restored.GetStoreGrowthSnapshot("corner-store"),
+            strict: true);
+        Assert.Equal(217, restored.GetStoreGrowthSnapshot("corner-store").ActivePromotion!.RemainingMinutes);
+    }
+
     private static BusinessGameService CreateService(long openingCashCents) =>
         new(
             [new ProductDefinition("water", "矿泉水", 100, 200, 20, "ambient", 1)],
@@ -92,4 +111,12 @@ public sealed class StoreGrowthServiceTests
             new LevelCurve([0, 10]),
             starterShopId: "corner-store",
             openingCashCents: openingCashCents);
+
+    private static BusinessGameService CreateService(
+        HajimaoDesktopShop.Application.Persistence.BusinessSaveData save) =>
+        new(
+            [new ProductDefinition("water", "矿泉水", 100, 200, 20, "ambient", 1)],
+            [new ShopDefinition(new ShopId("corner-store"), "街角便利店", 1, Money.Zero)],
+            new LevelCurve([0, 10]),
+            save);
 }

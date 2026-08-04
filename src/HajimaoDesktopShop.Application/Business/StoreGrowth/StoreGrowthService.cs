@@ -20,10 +20,13 @@ internal sealed class StoreGrowthService
     private readonly Dictionary<string, ActivePromotion> _activePromotions =
         new(StringComparer.Ordinal);
 
-    public StoreGrowthService(IStoreGrowthGateway gateway)
+    public StoreGrowthService(
+        IStoreGrowthGateway gateway,
+        IEnumerable<StorePromotionState>? restoredPromotions = null)
     {
         ArgumentNullException.ThrowIfNull(gateway);
         _gateway = gateway;
+        RestorePromotions(restoredPromotions ?? []);
     }
 
     public StoreGrowthCommandResult UpgradeStore(string storeId, StoreUpgradeKind kind)
@@ -140,6 +143,52 @@ internal sealed class StoreGrowthService
             promotion?.ArrivalBonusBasisPoints ?? 0,
             promotion?.PurchaseBonusBasisPoints ?? 0,
             promotion);
+    }
+
+    public IReadOnlyList<StorePromotionState> CaptureState() =>
+        Array.AsReadOnly(_activePromotions
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => new StorePromotionState(
+                pair.Key,
+                pair.Value.Campaign.Id,
+                pair.Value.RemainingMinutes))
+            .ToArray());
+
+    private void RestorePromotions(IEnumerable<StorePromotionState> restoredPromotions)
+    {
+        ArgumentNullException.ThrowIfNull(restoredPromotions);
+        foreach (var state in restoredPromotions)
+        {
+            ArgumentNullException.ThrowIfNull(state);
+            var storeId = NormalizeStoreId(state.StoreId);
+            if (_gateway.FindDevelopment(storeId) is null)
+            {
+                throw new ArgumentException(
+                    $"Restored promotion references unknown store '{storeId}'.",
+                    nameof(restoredPromotions));
+            }
+
+            if (!Campaigns.TryGetValue(state.CampaignId, out var campaign))
+            {
+                throw new ArgumentException(
+                    $"Restored promotion '{state.CampaignId}' is unknown.",
+                    nameof(restoredPromotions));
+            }
+
+            if (state.RemainingMinutes is <= 0 || state.RemainingMinutes > campaign.DurationMinutes)
+            {
+                throw new ArgumentOutOfRangeException(nameof(restoredPromotions));
+            }
+
+            if (!_activePromotions.TryAdd(
+                    storeId,
+                    new ActivePromotion(campaign, state.RemainingMinutes)))
+            {
+                throw new ArgumentException(
+                    $"Restored store '{storeId}' has multiple active promotions.",
+                    nameof(restoredPromotions));
+            }
+        }
     }
 
     private static long? NextCost(StoreDevelopment development, StoreUpgradeKind kind)

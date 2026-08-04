@@ -208,6 +208,12 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
             if (version == 4)
             {
                 await MigrateFromFourToFiveAsync(connection, cancellationToken).ConfigureAwait(false);
+                version = 5;
+            }
+
+            if (version == 5)
+            {
+                await MigrateFromFiveToSixAsync(connection, cancellationToken).ConfigureAwait(false);
             }
 
             return connection;
@@ -435,6 +441,55 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         {
             setVersion.Transaction = (SqliteTransaction)transaction;
             setVersion.CommandText = "PRAGMA user_version = 5;";
+            await setVersion.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task MigrateFromFiveToSixAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        string? legacyPayload;
+        await using (var read = connection.CreateCommand())
+        {
+            read.Transaction = (SqliteTransaction)transaction;
+            read.CommandText = "SELECT payload_json FROM game_save WHERE slot = 1;";
+            legacyPayload = await read.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) as string;
+        }
+
+        if (legacyPayload is not null)
+        {
+            var legacy = JsonSerializer.Deserialize<LegacyGameSaveV5>(legacyPayload, JsonOptions)
+                ?? throw new InvalidDataException("SQLite v5 save payload is empty or invalid.");
+            if (legacy.SchemaVersion != 5)
+            {
+                throw new InvalidDataException(
+                    $"SQLite v5 migration expected payload schema 5, found {legacy.SchemaVersion}.");
+            }
+
+            var upgraded = legacy.UpgradeToV6();
+            await using var update = connection.CreateCommand();
+            update.Transaction = (SqliteTransaction)transaction;
+            update.CommandText = """
+                UPDATE game_save
+                SET schema_version = $schemaVersion,
+                    saved_at_utc = $savedAtUtc,
+                    payload_json = $payload
+                WHERE slot = 1;
+                """;
+            update.Parameters.AddWithValue("$schemaVersion", upgraded.SchemaVersion);
+            update.Parameters.AddWithValue("$savedAtUtc", upgraded.SavedAtUtc.ToString("O"));
+            update.Parameters.AddWithValue("$payload", JsonSerializer.Serialize(upgraded, JsonOptions));
+            await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await using (var setVersion = connection.CreateCommand())
+        {
+            setVersion.Transaction = (SqliteTransaction)transaction;
+            setVersion.CommandText = "PRAGMA user_version = 6;";
             await setVersion.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
