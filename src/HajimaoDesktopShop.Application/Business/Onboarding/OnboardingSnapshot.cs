@@ -34,9 +34,9 @@ public sealed class OnboardingSnapshot
         int completedTasks,
         OnboardingTaskId? currentTaskId)
     {
-        if (tasks.Length == 0)
+        if (tasks.Length != OrderedTaskIds.Length)
         {
-            throw new ArgumentException("At least one onboarding task is required.", nameof(tasks));
+            throw new ArgumentException("Onboarding snapshot must include every configured task.", nameof(tasks));
         }
 
         if (completedTasks < 0 || completedTasks > tasks.Length)
@@ -46,6 +46,11 @@ public sealed class OnboardingSnapshot
 
         for (var i = 0; i < tasks.Length; i++)
         {
+            if (tasks[i] is null)
+            {
+                throw new ArgumentException("Onboarding tasks cannot contain null entries.", nameof(tasks));
+            }
+
             if (i >= OrderedTaskIds.Length || tasks[i].Id != OrderedTaskIds[i])
             {
                 throw new ArgumentException("Onboarding tasks must be unique and in the configured order.", nameof(tasks));
