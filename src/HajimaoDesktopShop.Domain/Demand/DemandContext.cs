@@ -8,7 +8,9 @@ public sealed record DemandContext
         int servicePermille,
         int queueLength,
         int cleanlinessPermille,
-        int minuteOfDay)
+        int minuteOfDay,
+        int attractionBasisPoints = 0,
+        int promotionBasisPoints = 0)
     {
         if (baseBasisPoints is < 0 or > 10_000)
         {
@@ -40,12 +42,24 @@ public sealed record DemandContext
             throw new ArgumentOutOfRangeException(nameof(minuteOfDay));
         }
 
+        if (attractionBasisPoints is < 0 or > 10_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(attractionBasisPoints));
+        }
+
+        if (promotionBasisPoints is < 0 or > 10_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(promotionBasisPoints));
+        }
+
         BaseBasisPoints = baseBasisPoints;
         PriceIndexBasisPoints = priceIndexBasisPoints;
         ServicePermille = servicePermille;
         QueueLength = queueLength;
         CleanlinessPermille = cleanlinessPermille;
         MinuteOfDay = minuteOfDay;
+        AttractionBasisPoints = attractionBasisPoints;
+        PromotionBasisPoints = promotionBasisPoints;
     }
 
     public int BaseBasisPoints { get; }
@@ -59,4 +73,8 @@ public sealed record DemandContext
     public int CleanlinessPermille { get; }
 
     public int MinuteOfDay { get; }
+
+    public int AttractionBasisPoints { get; }
+
+    public int PromotionBasisPoints { get; }
 }

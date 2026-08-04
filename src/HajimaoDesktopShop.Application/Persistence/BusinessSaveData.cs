@@ -8,7 +8,8 @@ public sealed record BusinessSaveData(
     long TotalExperience,
     long CashCents,
     IReadOnlyList<BusinessStoreSaveData> Stores,
-    BusinessProcurementSaveData? Procurement = null);
+    BusinessProcurementSaveData? Procurement = null,
+    IReadOnlyList<StorePromotionSaveData>? Promotions = null);
 
 public sealed record BusinessProcurementSaveData(
     long NextOrderId,
@@ -41,7 +42,19 @@ public sealed record BusinessStoreSaveData(
     long StockPurchaseCostCents,
     long GrossProfitCents,
     long WageCostCents,
-    IReadOnlyList<BusinessProductSaveData> Products);
+    IReadOnlyList<BusinessProductSaveData> Products,
+    long OperatingCostCents = 0,
+    StoreDevelopmentSaveData? Development = null);
+
+public sealed record StoreDevelopmentSaveData(
+    int ExpansionLevel,
+    int ShelfLevel,
+    int DecorationLevel);
+
+public sealed record StorePromotionSaveData(
+    string StoreId,
+    string CampaignId,
+    int RemainingMinutes);
 
 public sealed record BusinessProductSaveData(
     string ProductId,
@@ -106,7 +119,8 @@ public sealed record StoreRuntimeSaveData(
     long DayStartGrossProfitCents,
     long DayStartWageCostCents,
     long DayQueueLengthTotal,
-    int DayTickCount);
+    int DayTickCount,
+    long DayStartOperatingCostCents = 0);
 
 public sealed record ActiveCheckoutSaveData(
     string ProductId,

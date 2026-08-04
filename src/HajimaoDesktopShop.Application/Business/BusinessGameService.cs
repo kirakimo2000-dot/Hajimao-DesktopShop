@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Employees;
+using HajimaoDesktopShop.Application.Business.StoreGrowth;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
@@ -11,7 +12,10 @@ using HajimaoDesktopShop.Domain.Shops;
 
 namespace HajimaoDesktopShop.Application.Business;
 
-public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOperationsGateway
+public sealed class BusinessGameService :
+    IProcurementStockGateway,
+    IEmployeeOperationsGateway,
+    IStoreGrowthGateway
 {
     private readonly object _gate = new();
     private readonly ProductDefinition[] _productDefinitions;
@@ -19,6 +23,7 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
     private readonly RetailBusiness _business;
     private readonly int _experiencePerItemSold;
     private readonly BusinessProcurementService _procurement;
+    private readonly StoreGrowthService _storeGrowth;
 
     public BusinessGameService(
         IEnumerable<ProductDefinition> productDefinitions,
@@ -79,6 +84,7 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
             starterDefinition);
         RegisterUnlockedProducts(_business.GetShop(starterDefinition.Id));
         _procurement = new BusinessProcurementService(this);
+        _storeGrowth = new StoreGrowthService(this);
     }
 
     public BusinessGameService(
@@ -158,7 +164,14 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
                     new Money(store.RevenueCents),
                     new Money(store.StockPurchaseCostCents),
                     new Money(store.GrossProfitCents),
-                    new Money(store.WageCostCents)));
+                    new Money(store.WageCostCents),
+                    new Money(store.OperatingCostCents)),
+                store.Development is null
+                    ? null
+                    : new StoreDevelopmentState(
+                        store.Development.ExpansionLevel,
+                        store.Development.ShelfLevel,
+                        store.Development.DecorationLevel));
         }).ToArray();
 
         _experiencePerItemSold = experiencePerItemSold;
@@ -209,6 +222,12 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
         }
 
         _procurement = new BusinessProcurementService(this, restoredState.Procurement);
+        _storeGrowth = new StoreGrowthService(
+            this,
+            restoredState.Promotions?.Select(promotion => new StorePromotionState(
+                promotion.StoreId,
+                promotion.CampaignId,
+                promotion.RemainingMinutes)));
     }
 
     public StockPurchaseResult PurchaseStock(string shopId, string productId, int quantity)
@@ -339,6 +358,46 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
         }
     }
 
+    public StoreGrowthCommandResult UpgradeStore(string shopId, StoreUpgradeKind kind)
+    {
+        lock (_gate)
+        {
+            return _storeGrowth.UpgradeStore(shopId, kind);
+        }
+    }
+
+    public StoreGrowthCommandResult StartPromotion(string shopId, string campaignId)
+    {
+        lock (_gate)
+        {
+            return _storeGrowth.StartPromotion(shopId, campaignId);
+        }
+    }
+
+    public void AdvanceStoreGrowthMinute()
+    {
+        lock (_gate)
+        {
+            _storeGrowth.AdvanceMinute();
+        }
+    }
+
+    public void AdvanceStoreGrowthMinutes(int minutes)
+    {
+        lock (_gate)
+        {
+            _storeGrowth.AdvanceMinutes(minutes);
+        }
+    }
+
+    public StoreGrowthSnapshot GetStoreGrowthSnapshot(string shopId)
+    {
+        lock (_gate)
+        {
+            return _storeGrowth.GetSnapshot(shopId);
+        }
+    }
+
     public BusinessSnapshot GetSnapshot()
     {
         lock (_gate)
@@ -407,13 +466,25 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
                             product.Id,
                             product.SalePriceCents,
                             product.Quantity))
-                        .ToArray())))
+                        .ToArray()),
+                    store.OperatingCostCents,
+                    new StoreDevelopmentSaveData(
+                        store.Growth!.ExpansionLevel,
+                        store.Growth.ShelfLevel,
+                        store.Growth.DecorationLevel)))
+                .ToArray();
+            var promotions = _storeGrowth.CaptureState()
+                .Select(state => new StorePromotionSaveData(
+                    state.StoreId,
+                    state.CampaignId,
+                    state.RemainingMinutes))
                 .ToArray();
             return new BusinessSaveData(
                 snapshot.TotalExperience,
                 snapshot.CashCents,
                 Array.AsReadOnly(stores),
-                _procurement.CaptureSaveData());
+                _procurement.CaptureSaveData(),
+                Array.AsReadOnly(promotions));
         }
     }
 
@@ -474,7 +545,9 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
             shop.TotalGrossProfit.Cents,
             Array.AsReadOnly(products),
             shop.TotalWageCost.Cents,
-            shop.TotalNetProfit.Cents);
+            shop.TotalNetProfit.Cents,
+            shop.TotalOperatingCost.Cents,
+            _storeGrowth.GetSnapshot(shopId.Value));
     }
 
     private static ProductSnapshot CreateProductSnapshot(Shop shop, ProductDefinition definition)
@@ -535,4 +608,20 @@ public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOpe
         string productId,
         int quantity) =>
         GetShop(storeId).TryReceivePaidStock(new ProductId(productId), quantity);
+
+    StoreDevelopment? IStoreGrowthGateway.FindDevelopment(string storeId)
+    {
+        var shopId = new ShopId(storeId);
+        return _business.StoreIds.Contains(shopId)
+            ? _business.GetShop(shopId).Development
+            : null;
+    }
+
+    StoreUpgradeResult IStoreGrowthGateway.TryUpgradeStore(
+        string storeId,
+        StoreUpgradeKind kind) =>
+        _business.TryUpgradeStore(new ShopId(storeId), kind);
+
+    bool IStoreGrowthGateway.TryChargePromotion(string storeId, Money cost) =>
+        _business.TryPayStorePromotion(new ShopId(storeId), cost);
 }

@@ -69,6 +69,30 @@ public sealed class OfflineSettlementServiceTests
     }
 
     [Fact]
+    public void ActivePromotion_IsIdenticalAcrossOnlineAndOfflineTicks()
+    {
+        var initial = CreateSimulation(withStaff: true);
+        initial.Service.UpgradeStore("corner-store", StoreUpgradeKind.Expansion);
+        initial.Service.StartPromotion("corner-store", "local-flyers");
+        var businessSave = initial.Service.CaptureSaveData();
+        var simulationSave = initial.Simulation.CaptureSaveData();
+        var online = RestoreSimulation(businessSave, simulationSave);
+        var offline = RestoreSimulation(businessSave, simulationSave);
+
+        online.Simulation.AdvanceRealSeconds(240);
+        OfflineSettlementService.Settle(
+            offline.Simulation,
+            SavedAt,
+            SavedAt.AddMinutes(4));
+
+        Assert.Equivalent(
+            online.Simulation.GetSnapshot(),
+            offline.Simulation.GetSnapshot(),
+            strict: true);
+        Assert.Null(offline.Service.GetStoreGrowthSnapshot("corner-store").ActivePromotion);
+    }
+
+    [Fact]
     public void DefaultEightHourTwoStoreSettlement_StaysWithinPerformanceBoundary()
     {
         var session = CreateSimulation(openSecondStore: true);

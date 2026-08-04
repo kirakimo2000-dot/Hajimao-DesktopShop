@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Business.StoreGrowth;
 
 namespace HajimaoDesktopShop.Application.Business;
 
@@ -16,4 +17,6 @@ public sealed record BusinessStoreSnapshot(
     long GrossProfitCents,
     IReadOnlyList<ProductSnapshot> Products,
     long WageCostCents = 0,
-    long NetProfitCents = 0);
+    long NetProfitCents = 0,
+    long OperatingCostCents = 0,
+    StoreGrowthSnapshot? Growth = null);

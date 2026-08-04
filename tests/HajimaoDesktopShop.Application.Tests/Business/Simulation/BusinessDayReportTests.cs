@@ -37,7 +37,10 @@ public sealed class BusinessDayReportTests
         Assert.Equal(store.RevenueCents, storeReport.RevenueCents);
         Assert.Equal(store.GrossProfitCents, storeReport.GrossProfitCents);
         Assert.Equal(store.WageCostCents, storeReport.WageCostCents);
-        Assert.Equal(storeReport.GrossProfitCents - storeReport.WageCostCents, storeReport.NetProfitCents);
+        Assert.Equal(store.OperatingCostCents, storeReport.OperatingCostCents);
+        Assert.Equal(
+            storeReport.GrossProfitCents - storeReport.WageCostCents - storeReport.OperatingCostCents,
+            storeReport.NetProfitCents);
         Assert.InRange(storeReport.ClosingCleanlinessPermille, 0, 1_000);
         Assert.True(storeReport.AverageQueueLengthBasisPoints >= 0);
     }

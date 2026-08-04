@@ -12,7 +12,15 @@ public static class DemandModel
         var cleanliness = Math.Clamp((context.CleanlinessPermille - 1_000) * 2, -2_000, 2_000);
         var time = CalculateTimeAdjustment(context.MinuteOfDay);
 
-        return CreateBreakdown(context.BaseBasisPoints, price, service, queue, cleanliness, time);
+        return CreateBreakdown(
+            context.BaseBasisPoints,
+            price,
+            service,
+            queue,
+            cleanliness,
+            time,
+            context.AttractionBasisPoints,
+            context.PromotionBasisPoints);
     }
 
     public static DemandBreakdown CalculatePurchase(DemandContext context)
@@ -25,7 +33,15 @@ public static class DemandModel
         var cleanliness = Math.Clamp(context.CleanlinessPermille - 1_000, -1_000, 1_000);
         var time = CalculateTimeAdjustment(context.MinuteOfDay) / 2;
 
-        return CreateBreakdown(context.BaseBasisPoints, price, service, queue, cleanliness, time);
+        return CreateBreakdown(
+            context.BaseBasisPoints,
+            price,
+            service,
+            queue,
+            cleanliness,
+            time,
+            context.AttractionBasisPoints,
+            context.PromotionBasisPoints);
     }
 
     private static DemandBreakdown CreateBreakdown(
@@ -34,9 +50,18 @@ public static class DemandModel
         int service,
         int queue,
         int cleanliness,
-        int time)
+        int time,
+        int attraction,
+        int promotion)
     {
-        var total = (long)baseBasisPoints + price + service + queue + cleanliness + time;
+        var total = (long)baseBasisPoints
+            + price
+            + service
+            + queue
+            + cleanliness
+            + time
+            + attraction
+            + promotion;
         return new DemandBreakdown(
             baseBasisPoints,
             price,
@@ -44,7 +69,9 @@ public static class DemandModel
             queue,
             cleanliness,
             time,
-            checked((int)Math.Clamp(total, 0L, 10_000L)));
+            checked((int)Math.Clamp(total, 0L, 10_000L)),
+            attraction,
+            promotion);
     }
 
     private static int CalculateTimeAdjustment(int minuteOfDay) => minuteOfDay switch
