@@ -75,14 +75,12 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
 
     private void DrawStorefronts(SKCanvas canvas, CommercialStreetSnapshot street)
     {
-        var unlockedSlots = street.Tier switch
+        var unlockedSlots = CommercialStreetTrafficModel.GetUnlockedStorefrontCount(street.Tier);
+        if (street.Stores.Count > unlockedSlots)
         {
-            CommercialStreetTier.Corner => 1,
-            CommercialStreetTier.Neighbors => 2,
-            CommercialStreetTier.Street => 4,
-            CommercialStreetTier.Block => 5,
-            _ => 1
-        };
+            throw new InvalidOperationException(
+                $"Commercial street tier '{street.Tier}' cannot render {street.Stores.Count} opened stores.");
+        }
 
         for (var index = 0; index < 5; index++)
         {

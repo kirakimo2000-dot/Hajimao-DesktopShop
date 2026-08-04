@@ -71,6 +71,23 @@ public sealed class CommercialStreetTrafficServiceTests
         Assert.Equal(1, random.IntegerCalls);
     }
 
+    [Fact]
+    public void CreateSnapshot_PromotesPresentationTierToContainDomainOpenedStores()
+    {
+        var service = new CommercialStreetTrafficService(new FixedRandomSource());
+
+        var snapshot = service.CreateSnapshot(
+            gameMinute: 0,
+            playerLevel: 1,
+            [
+                new StreetStoreDemand("corner", "街角店", 8_000),
+                new StreetStoreDemand("station", "车站店", 5_000)
+            ]);
+
+        Assert.Equal(CommercialStreetTier.Neighbors, snapshot.Tier);
+        Assert.Equal(2, snapshot.Stores.Count);
+    }
+
     private sealed class FixedRandomSource(
         IEnumerable<double>? doubles = null,
         IEnumerable<int>? integers = null) : IRandomSource

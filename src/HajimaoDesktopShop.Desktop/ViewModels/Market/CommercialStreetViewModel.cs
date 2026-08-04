@@ -81,14 +81,21 @@ public sealed class CommercialStreetViewModel : ObservableObject
         Stores = Array.AsReadOnly(snapshot.Stores
             .Select(store => new CommercialStreetStoreItemViewModel(
                 store.StoreName,
-                $"吸引力 {store.AttractionBasisPoints / 100m:0.00}%",
-                $"客流份额 {store.TrafficShareBasisPoints / 100m:0.00}%"))
+                FormatPercentage("吸引力", store.AttractionBasisPoints),
+                FormatPercentage("客流份额", store.TrafficShareBasisPoints)))
             .ToArray());
         SceneFrame = new CommercialStreetSceneFrame(
             snapshot,
             reduceMotion ? 0 : animationFrame,
             reduceMotion);
     }
+
+    private static string FormatPercentage(string label, int basisPoints) =>
+        string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} {1:0.00}%",
+            label,
+            basisPoints / 100m);
 }
 
 public sealed record CommercialStreetStoreItemViewModel(

@@ -22,6 +22,28 @@ public static class CommercialStreetTrafficModel
         };
     }
 
+    public static int GetUnlockedStorefrontCount(int playerLevel) =>
+        GetUnlockedStorefrontCount(GetTier(playerLevel));
+
+    public static int GetUnlockedStorefrontCount(CommercialStreetTier tier) => tier switch
+    {
+        CommercialStreetTier.Corner => 1,
+        CommercialStreetTier.Neighbors => 2,
+        CommercialStreetTier.Street => 4,
+        CommercialStreetTier.Block => 5,
+        _ => throw new ArgumentOutOfRangeException(nameof(tier))
+    };
+
+    public static CommercialStreetTier GetTierForStorefrontCount(int openStoreCount) =>
+        openStoreCount switch
+        {
+            1 => CommercialStreetTier.Corner,
+            2 => CommercialStreetTier.Neighbors,
+            3 or 4 => CommercialStreetTier.Street,
+            5 => CommercialStreetTier.Block,
+            _ => throw new ArgumentOutOfRangeException(nameof(openStoreCount))
+        };
+
     public static StreetWeather GetWeather(long gameMinute)
     {
         if (gameMinute < 0)

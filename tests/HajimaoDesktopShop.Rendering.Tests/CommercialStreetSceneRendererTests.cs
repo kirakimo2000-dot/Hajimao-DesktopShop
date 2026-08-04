@@ -45,6 +45,21 @@ public sealed class CommercialStreetSceneRendererTests
         Assert.Equal(capped, overflow);
     }
 
+    [Fact]
+    public void Renderer_RejectsMoreOpenedStoresThanTheSnapshotTierCanDisplay()
+    {
+        var snapshot = CreateSnapshot(StreetWeather.Clear, pedestrians: 0, vehicles: 0) with
+        {
+            Tier = CommercialStreetTier.Corner
+        };
+        using var bitmap = new SKBitmap(420, 160);
+        using var canvas = new SKCanvas(bitmap);
+        using var renderer = new CommercialStreetSceneRenderer();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            renderer.Render(canvas, bitmap.Info, new CommercialStreetSceneFrame(snapshot)));
+    }
+
     private static string RenderHash(
         int animationFrame,
         bool reduceMotion,

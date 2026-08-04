@@ -20,6 +20,10 @@ public sealed class CommercialStreetTrafficService
     {
         ArgumentNullException.ThrowIfNull(storeDemands);
         var stores = ValidateAndOrder(storeDemands);
+        var playerTier = CommercialStreetTrafficModel.GetTier(playerLevel);
+        var storefrontTier = CommercialStreetTrafficModel.GetTierForStorefrontCount(stores.Length);
+        var tier = (CommercialStreetTier)Math.Max((int)playerTier, (int)storefrontTier);
+
         var weather = CommercialStreetTrafficModel.GetWeather(gameMinute);
         var traffic = CommercialStreetTrafficModel.CalculateSharedTrafficBasisPoints(
             stores.Max(store => store.AttractionBasisPoints),
@@ -45,7 +49,7 @@ public sealed class CommercialStreetTrafficService
         }
 
         return new CommercialStreetSnapshot(
-            CommercialStreetTrafficModel.GetTier(playerLevel),
+            tier,
             weather,
             traffic,
             CommercialStreetTrafficModel.GetVisiblePedestrianCount(traffic),

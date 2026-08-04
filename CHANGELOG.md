@@ -20,6 +20,7 @@
 - 商业街不可变快照公开天气、街区阶段、共享客流、可见路人/车辆以及逐店吸引力和客流份额。
 - 独立 Skia 像素商业街：五个固定街铺位、最多六名路人、两辆车和雨/风环境层；复用正式角色图集与最近邻采样。
 - 管理页正式开放商业街场景及各店客流数据；底部状态栏可在 56/34 像素之间收起和展开。
+- 正式等级曲线从 6 级延伸到 10 级，使 Lv.10 完整街区成为实际可达的长期挂机目标。
 
 ### Changed
 
@@ -30,7 +31,7 @@
 
 ### Verification
 
-- Debug 全量测试 247/247 通过；Domain 81、Application 95、Infrastructure 17、Rendering 13、Desktop 41。
+- Release 全量测试 260/260 通过；Domain 90、Application 96、Infrastructure 17、Rendering 14、Desktop 43。
 - Release 门禁、真实进程冒烟、代码审阅和清理记录见 `docs/progress/v0.1.8-commercial-street.md`。
 
 ## [0.1.7] - 2026-08-04

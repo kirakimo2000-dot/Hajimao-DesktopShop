@@ -18,6 +18,35 @@ public sealed class CommercialStreetTrafficModelTests
     }
 
     [Theory]
+    [InlineData(1, 1)]
+    [InlineData(3, 2)]
+    [InlineData(5, 4)]
+    [InlineData(10, 5)]
+    public void GetUnlockedStorefrontCount_BoundsVisibleAndRoutableStores(
+        int playerLevel,
+        int expected)
+    {
+        Assert.Equal(
+            expected,
+            CommercialStreetTrafficModel.GetUnlockedStorefrontCount(playerLevel));
+    }
+
+    [Theory]
+    [InlineData(1, CommercialStreetTier.Corner)]
+    [InlineData(2, CommercialStreetTier.Neighbors)]
+    [InlineData(3, CommercialStreetTier.Street)]
+    [InlineData(4, CommercialStreetTier.Street)]
+    [InlineData(5, CommercialStreetTier.Block)]
+    public void GetTierForStorefrontCount_ProvidesAConsistentPresentationFloor(
+        int openStoreCount,
+        CommercialStreetTier expected)
+    {
+        Assert.Equal(
+            expected,
+            CommercialStreetTrafficModel.GetTierForStorefrontCount(openStoreCount));
+    }
+
+    [Theory]
     [InlineData(0, StreetWeather.Clear)]
     [InlineData(360, StreetWeather.Cloudy)]
     [InlineData(720, StreetWeather.Rain)]
