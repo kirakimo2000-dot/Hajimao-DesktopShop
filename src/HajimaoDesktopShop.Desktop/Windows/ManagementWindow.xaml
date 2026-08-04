@@ -15,7 +15,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="64" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="{DynamicResource Brush.Surface}"
@@ -186,7 +186,24 @@
                         </Grid>
 
                         <Grid Visibility="{Binding IsCommercialStreetSection, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel><TextBlock Text="商业街" FontSize="18" FontWeight="Bold"/><TextBlock Text="0.1.6 展示已开店铺；共享街道模拟将在 0.1.8 开放。" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,8,0,12"/><ItemsControl ItemsSource="{Binding Stores}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4"><Run Text="■ "/><Run Text="{Binding Name, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding IsOpen, Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="160"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><TextBlock Text="{Binding CommercialStreet.WeatherText}" Foreground="{DynamicResource Brush.Primary}"/><TextBlock Text=" · "/><TextBlock Text="{Binding CommercialStreet.TierText}"/></StackPanel>
+                                <TextBlock Text="商业街" FontSize="18" FontWeight="Bold"/>
+                            </DockPanel>
+                            <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" Margin="0,8,0,0">
+                                <controls:CommercialStreetSceneControl x:Name="StreetScene"
+                                                                       Frame="{Binding CommercialStreet.SceneFrame}"
+                                                                       AutomationProperties.Name="共享客流像素商业街"/>
+                            </Border>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,6">
+                                <TextBlock Text="{Binding CommercialStreet.TrafficText}" Foreground="{DynamicResource Brush.Primary}"/>
+                                <TextBlock Text=" · "/>
+                                <TextBlock Text="{Binding CommercialStreet.ActivityText}" Foreground="{DynamicResource Brush.TextMuted}"/>
+                            </StackPanel>
+                            <ItemsControl Grid.Row="3" ItemsSource="{Binding CommercialStreet.Stores}">
+                                <ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,2"><Run Text="■ "/><Run Text="{Binding Name, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding AttractionText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding TrafficShareText, Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
                     </Grid>
                 </Border>
@@ -209,12 +226,24 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="{DynamicResource Brush.SurfaceElevated}"
+        <Border x:Name="StatusBar" Grid.Row="2" Height="{Binding StatusBarHeight}"
+                Background="{DynamicResource Brush.SurfaceElevated}"
                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,2,0,0">
-            <Grid Margin="12,8">
+            <Grid Margin="12,4">
                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="{Binding SoundToggleText}" Style="{DynamicResource PixelButton}" Command="{Binding ToggleMuteCommand}"/><Button Content="锁定桌面小店" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleLockCommand}"/><Button Content="切换鼠标穿透" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleClickThroughCommand}"/></StackPanel>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
+                           Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           AutomationProperties.LiveSetting="Polite"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="{Binding SoundToggleText}" Style="{DynamicResource PixelButton}" Command="{Binding ToggleMuteCommand}"
+                            Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="锁定桌面小店" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleLockCommand}"
+                            Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="切换鼠标穿透" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleClickThroughCommand}"
+                            Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Tag="status-toggle" Content="{Binding StatusBarToggleText}" Style="{DynamicResource PixelButton}" Margin="8,0,0,0"
+                            Command="{Binding ToggleStatusBarCommand}" AutomationProperties.Name="收起或展开底部状态栏"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

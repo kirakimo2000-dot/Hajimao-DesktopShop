@@ -29,6 +29,11 @@ public sealed class ManagementWindowTests
                     .Count(button => Equals(button.Tag, "management-navigation")));
             var scene = Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
             Assert.Equal("实时像素店铺场景", AutomationProperties.GetName(scene));
+            var street = Assert.IsType<CommercialStreetSceneControl>(window.FindName("StreetScene"));
+            Assert.Equal("共享客流像素商业街", AutomationProperties.GetName(street));
+            Assert.Single(
+                FindLogicalChildren<Button>(window),
+                button => Equals(button.Tag, "status-toggle"));
             Assert.DoesNotContain(
                 FindLogicalChildren<Button>(window),
                 button => button.Content?.ToString() is "2x" or "4x" or "暂停" or "动画" or "特效" or "倍速");

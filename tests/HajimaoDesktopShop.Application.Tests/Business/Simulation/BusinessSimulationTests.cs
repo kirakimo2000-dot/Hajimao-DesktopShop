@@ -8,13 +8,14 @@ using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Shops;
+using HajimaoDesktopShop.Domain.Streets;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Simulation;
 
 public sealed class BusinessSimulationTests
 {
     [Fact]
-    public void Advance_ProcessesEveryOpenStoreInOrdinalOrderIncludingNewStores()
+    public void Advance_ProcessesEveryOpenStoreThenRoutesOneSharedVisitor()
     {
         var service = CreateService();
         var simulation = new BusinessSimulation(
@@ -34,8 +35,9 @@ public sealed class BusinessSimulationTests
 
         Assert.Equal(1, snapshot.GameMinute);
         Assert.Equal(["alpha-store", "zeta-store"], snapshot.Stores.Select(store => store.StoreId));
-        Assert.All(snapshot.Stores, store => Assert.Equal(1, store.Visitors));
-        Assert.All(snapshot.Stores, store => Assert.Equal(1, store.CheckoutQueueLength));
+        Assert.All(snapshot.Stores, store => Assert.Equal(959, store.ServicePermille));
+        Assert.Equal(1, snapshot.Stores.Sum(store => store.Visitors));
+        Assert.Equal(1, snapshot.Stores.Sum(store => store.CheckoutQueueLength));
     }
 
     [Fact]
@@ -108,6 +110,45 @@ public sealed class BusinessSimulationTests
 
         Assert.Equal(988, Assert.Single(dirty.GetSnapshot().Stores).CleanlinessPermille);
         Assert.Equal(997, Assert.Single(clean.GetSnapshot().Stores).CleanlinessPermille);
+    }
+
+    [Fact]
+    public void MultipleStores_CompeteForAtMostOneSharedStreetVisitorPerMinute()
+    {
+        var service = CreateService();
+        Assert.Equal(OpenShopStatus.Success, service.OpenStore("alpha-store").Status);
+        service.PurchaseStock("zeta-store", "water", 2);
+        service.PurchaseStock("alpha-store", "water", 2);
+        var simulation = new BusinessSimulation(
+            service,
+            [],
+            new ScriptedRandomSource(0, 0),
+            CreateAlwaysBusyOptions());
+
+        simulation.AdvanceRealSecond();
+
+        var stores = simulation.GetSnapshot().Stores;
+        Assert.Equal(1, stores.Sum(store => store.Visitors));
+        Assert.Equal(1, stores.Count(store => store.Visitors == 1));
+        Assert.Equal(2, simulation.GetSnapshot().Street.Stores.Count);
+    }
+
+    [Fact]
+    public void StreetSnapshot_ChangesWeatherWithoutAddingAPlayerSpeedControl()
+    {
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 8_000));
+
+        simulation.AdvanceRealSeconds(720);
+
+        var snapshot = simulation.GetSnapshot();
+        Assert.Equal(StreetWeather.Rain, snapshot.Street.Weather);
+        Assert.Equal(6_700, Assert.Single(snapshot.Stores).ArrivalDemand.FinalBasisPoints);
+        Assert.Equal(4_690, snapshot.Street.SharedTrafficBasisPoints);
+        Assert.Equal(720, snapshot.GameMinute);
     }
 
     [Fact]

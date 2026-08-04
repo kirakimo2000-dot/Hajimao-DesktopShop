@@ -16,6 +16,7 @@ public sealed class MarketViewModelTests
         Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
         Assert.Equal(1, viewModel.SceneFrame.AnimationFrame);
         Assert.False(viewModel.SceneFrame.ReduceMotion);
+        Assert.Equal(1, viewModel.CommercialStreet.SceneFrame!.AnimationFrame);
     }
 
     [Fact]
@@ -70,5 +71,25 @@ public sealed class MarketViewModelTests
         Assert.Equal("station-store", viewModel.SelectedStoreId);
         Assert.Equal("车站便利店", viewModel.SelectedStoreName);
         Assert.False(station.IsOpen);
+    }
+
+    [Fact]
+    public void ToggleStatusBar_ChangesPresentationHeightWithoutChangingGameTime()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
+
+        viewModel.ToggleStatusBarCommand.Execute(null);
+
+        Assert.False(viewModel.IsStatusBarExpanded);
+        Assert.Equal(34d, viewModel.StatusBarHeight);
+        Assert.Equal("展开状态栏", viewModel.StatusBarToggleText);
+        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
+
+        viewModel.ToggleStatusBarCommand.Execute(null);
+
+        Assert.True(viewModel.IsStatusBarExpanded);
+        Assert.Equal(56d, viewModel.StatusBarHeight);
+        Assert.Equal("收起状态栏", viewModel.StatusBarToggleText);
     }
 }

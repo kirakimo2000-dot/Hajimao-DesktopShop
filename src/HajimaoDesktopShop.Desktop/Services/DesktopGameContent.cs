@@ -19,7 +19,7 @@ public static class DesktopGameContent
     });
 
     public static LevelCurve LevelCurve { get; } =
-        new([0, 40, 120, 300, 650, 1_200]);
+        new([0, 40, 120, 300, 650, 1_200, 2_000, 3_200, 5_000, 7_500]);
 
     public static IReadOnlyList<StoreEmployeeAssignment> CreateStarterAssignments() =>
         Array.AsReadOnly(new[]
