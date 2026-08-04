@@ -1,15 +1,13 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
-using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Persistence;
-using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Desktop.Services;
-using HajimaoDesktopShop.Desktop.ViewModels;
+using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
 using HajimaoDesktopShop.Infrastructure.Configuration;
 using HajimaoDesktopShop.Infrastructure.Persistence;
-using HajimaoDesktopShop.Infrastructure.Simulation;
 
 namespace HajimaoDesktopShop.Desktop;
 
@@ -19,10 +17,10 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _refreshTimer;
     private DispatcherTimer? _autosaveTimer;
     private AutosaveCoordinator? _autosaveCoordinator;
-    private ShopSimulation? _simulation;
+    private BusinessSession? _session;
     private GameSoundService? _soundService;
     private TrayIconService? _trayIconService;
-    private GameViewModel? _viewModel;
+    private MarketViewModel? _viewModel;
     private DesktopShopWindow? _desktopWindow;
     private ManagementWindow? _managementWindow;
     private bool _isExiting;
@@ -42,25 +40,25 @@ public partial class App : System.Windows.Application
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
             var savedPlacement = await saveStore.LoadDesktopWindowPlacementAsync();
-            var game = savedGame is null
-                ? new ShopGameService(products, openingCashCents: 50_000)
-                : new ShopGameService(products, savedGame.Shop);
-            _simulation = savedGame is null
-                ? new ShopSimulation(game, new SeededRandomSource(Environment.TickCount))
-                : new ShopSimulation(
-                    game,
-                    new SeededRandomSource(Environment.TickCount),
-                    savedGame.Simulation);
+            _session = DesktopBusinessSessionFactory.Create(
+                products,
+                savedGame,
+                Environment.TickCount);
 
             if (savedGame is null)
             {
-                foreach (var starter in products.Take(3))
+                var starterStore = _session.Game.GetSnapshot().Stores.Single();
+                foreach (var starter in starterStore.Products.Take(3))
                 {
-                    _simulation.QueueRestock(starter.Id, 5);
+                    _session.Game.PlaceProcurementOrder(
+                        starterStore.Id,
+                        starter.Id,
+                        "local-wholesale",
+                        Math.Min(5, starter.Capacity));
                 }
             }
 
-            _viewModel = new GameViewModel(game, _simulation);
+            _viewModel = new MarketViewModel(_session);
             _soundService = new GameSoundService(_viewModel, new SystemGameSoundOutput());
             if (savedPlacement is not null)
             {
@@ -84,7 +82,7 @@ public partial class App : System.Windows.Application
             _trayIconService.OpenManagementRequested += OnOpenManagementRequested;
             _trayIconService.ExitRequested += OnTrayExitRequested;
 
-            _simulationLoop = new SimulationLoop(_simulation);
+            _simulationLoop = new SimulationLoop(_session.Simulation.AdvanceRealSecond);
             _simulationLoop.Start();
             _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -95,7 +93,7 @@ public partial class App : System.Windows.Application
 
             _autosaveCoordinator = new AutosaveCoordinator(
                 saveStore,
-                () => _simulation.CaptureSaveData(),
+                () => _session.CaptureSaveData(),
                 CaptureDesktopWindowPlacement);
             _autosaveTimer = new DispatcherTimer(DispatcherPriority.Background)
             {

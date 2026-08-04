@@ -1,10 +1,7 @@
-using HajimaoDesktopShop.Application.Business.Simulation;
-
 namespace HajimaoDesktopShop.Rendering;
 
 public sealed record BusinessShopFrame(
-    BusinessSimulationSnapshot Snapshot,
-    string StoreId,
+    BusinessShopSceneFrame Scene,
     string CashText,
     string PlayerLevelText,
     string GameTimeText,

@@ -37,7 +37,7 @@
         </Style>
     </Window.Resources>
     <Grid Background="#17191D" MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown">
-        <controls:DesktopShopSurfaceControl Frame="{Binding DesktopFrame}" />
+        <controls:BusinessDesktopShopSurfaceControl Frame="{Binding DesktopFrame}" />
         <Canvas>
             <Button Canvas.Left="307" Canvas.Top="5" Width="48" Height="34"
                     Style="{StaticResource SurfaceHitTarget}"

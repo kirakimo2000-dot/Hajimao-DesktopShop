@@ -1,10 +1,8 @@
 using System.Runtime.ExceptionServices;
 using System.Windows.Controls;
-using HajimaoDesktopShop.Application.Catalog;
-using HajimaoDesktopShop.Application.Game;
-using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Desktop.Controls;
-using HajimaoDesktopShop.Desktop.ViewModels;
+using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
+using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Windows;
@@ -19,14 +17,10 @@ public sealed class DesktopShopWindowRenderingTests
         {
             try
             {
-                var game = new ShopGameService(
-                    [new ProductDefinition("water", "矿泉水", 100, 180, 20, "ambient")],
-                    openingCashCents: 50_000);
-                var simulation = new ShopSimulation(game, new NoSpawnRandomSource(), customerSpawnChance: 0d);
-                var window = new DesktopShopWindow(new GameViewModel(game, simulation));
+                var window = new DesktopShopWindow(new MarketViewModel(MarketTestSession.Create()));
                 var root = Assert.IsType<Grid>(window.Content);
 
-                var surface = Assert.IsType<DesktopShopSurfaceControl>(root.Children[0]);
+                var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.Children[0]);
                 Assert.True(surface.UsesLogicalPixelScaling);
                 var hitTargets = Assert.IsType<Canvas>(root.Children[1]);
                 Assert.Equal(3, hitTargets.Children.Count);
@@ -55,11 +49,7 @@ public sealed class DesktopShopWindowRenderingTests
         {
             try
             {
-                var game = new ShopGameService(
-                    [new ProductDefinition("water", "矿泉水", 100, 180, 20, "ambient")],
-                    openingCashCents: 50_000);
-                var simulation = new ShopSimulation(game, new NoSpawnRandomSource(), customerSpawnChance: 0d);
-                var viewModel = new GameViewModel(game, simulation);
+                var viewModel = new MarketViewModel(MarketTestSession.Create());
                 var desktop = new DesktopShopWindow(viewModel);
                 var management = new ManagementWindow(viewModel);
 
@@ -81,12 +71,5 @@ public sealed class DesktopShopWindowRenderingTests
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
         }
-    }
-
-    private sealed class NoSpawnRandomSource : IRandomSource
-    {
-        public double NextDouble() => 1d;
-
-        public int Next(int exclusiveMax) => 0;
     }
 }

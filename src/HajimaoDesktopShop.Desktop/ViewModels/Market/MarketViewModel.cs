@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Rendering;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
@@ -19,7 +20,13 @@ public sealed class MarketViewModel : ObservableObject
     private string _gameTimeText = "第 1 天 00:00";
     private string _stockWarningText = "缺货/低库存 0";
     private string _customerCountText = "顾客/队列 0";
-    private BusinessShopFrame? _sceneFrame;
+    private string _statusMessage = "小店准备营业";
+    private bool _isLocked;
+    private bool _isClickThrough;
+    private bool _isMuted;
+    private int _lastCompletedSales;
+    private BusinessShopSceneFrame? _sceneFrame;
+    private BusinessShopFrame? _desktopFrame;
 
     public MarketViewModel(BusinessSession session)
     {
@@ -27,11 +34,17 @@ public sealed class MarketViewModel : ObservableObject
         _session = session;
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
+        ToggleLockCommand = new RelayCommand(ToggleLock);
+        ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
+        ToggleMuteCommand = new RelayCommand(ToggleMute);
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
         EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
         StoreGrowth = new StoreGrowthManagementViewModel(session, () => SelectedStoreId);
         Finance = new FinanceViewModel(session, () => SelectedStoreId);
+        ProductManagement.FeedbackRaised += RelayFeedback;
+        EmployeeManagement.FeedbackRaised += RelayFeedback;
+        StoreGrowth.FeedbackRaised += RelayFeedback;
         Refresh();
     }
 
@@ -50,6 +63,14 @@ public sealed class MarketViewModel : ObservableObject
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
 
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
+
+    public IRelayCommand ToggleLockCommand { get; }
+
+    public IRelayCommand ToggleClickThroughCommand { get; }
+
+    public IRelayCommand ToggleMuteCommand { get; }
+
+    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
 
     public string TimeModeText => "固定现实 1x";
 
@@ -123,15 +144,59 @@ public sealed class MarketViewModel : ObservableObject
         private set => SetProperty(ref _customerCountText, value);
     }
 
-    public BusinessShopFrame? SceneFrame
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set => SetProperty(ref _statusMessage, value);
+    }
+
+    public bool IsLocked
+    {
+        get => _isLocked;
+        private set => SetProperty(ref _isLocked, value);
+    }
+
+    public bool IsClickThrough
+    {
+        get => _isClickThrough;
+        private set => SetProperty(ref _isClickThrough, value);
+    }
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        private set
+        {
+            if (SetProperty(ref _isMuted, value))
+            {
+                OnPropertyChanged(nameof(SoundToggleText));
+            }
+        }
+    }
+
+    public string SoundToggleText => IsMuted ? "开启音效" : "静音";
+
+    public BusinessShopSceneFrame? SceneFrame
     {
         get => _sceneFrame;
         private set => SetProperty(ref _sceneFrame, value);
     }
 
+    public BusinessShopFrame? DesktopFrame
+    {
+        get => _desktopFrame;
+        private set => SetProperty(ref _desktopFrame, value);
+    }
+
     public void Refresh()
     {
         var snapshot = _session.Simulation.GetSnapshot();
+        var completedSales = snapshot.Stores.Sum(item => item.CompletedSales);
+        if (completedSales > _lastCompletedSales)
+        {
+            _lastCompletedSales = completedSales;
+            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.SaleCompleted));
+        }
         SynchronizeStores(_session.Game.GetStoreCatalogSnapshot());
 
         if (string.IsNullOrEmpty(SelectedStoreId))
@@ -155,16 +220,16 @@ public sealed class MarketViewModel : ObservableObject
             product.Quantity == 0 || product.Quantity * 4 < product.Capacity) ?? 0;
         StockWarningText = $"缺货/低库存 {warningCount}";
         CustomerCountText = $"顾客/队列 {operations?.CheckoutQueueLength ?? 0}";
-        SceneFrame = new BusinessShopFrame(
-            snapshot,
-            SelectedStoreId,
+        SceneFrame = new BusinessShopSceneFrame(snapshot, SelectedStoreId);
+        DesktopFrame = new BusinessShopFrame(
+            SceneFrame,
             CashText,
             PlayerLevelText,
             GameTimeText,
             StockWarningText,
             CustomerCountText,
-            IsLocked: false,
-            IsClickThrough: false);
+            IsLocked,
+            IsClickThrough);
         Overview.Synchronize(Stores);
         ProductManagement.Refresh();
         EmployeeManagement.Refresh();
@@ -172,7 +237,45 @@ public sealed class MarketViewModel : ObservableObject
         Finance.Refresh();
     }
 
+    public void RestoreDesktopState(bool isLocked)
+    {
+        IsLocked = isLocked;
+        IsClickThrough = false;
+        Refresh();
+    }
+
+    public void ReportSystemMessage(string message)
+    {
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            StatusMessage = message.Trim();
+        }
+    }
+
     private void Navigate(ManagementSection section) => SelectedSection = section;
+
+    private void ToggleLock()
+    {
+        IsLocked = !IsLocked;
+        StatusMessage = IsLocked ? "桌面小店已锁定" : "桌面小店可拖动";
+        Refresh();
+    }
+
+    private void ToggleClickThrough()
+    {
+        IsClickThrough = !IsClickThrough;
+        StatusMessage = IsClickThrough ? "鼠标穿透已开启" : "鼠标穿透已关闭";
+        Refresh();
+    }
+
+    private void ToggleMute()
+    {
+        IsMuted = !IsMuted;
+        StatusMessage = IsMuted ? "音效已静音" : "音效已开启";
+    }
+
+    private void RelayFeedback(object? sender, GameFeedbackEventArgs e) =>
+        FeedbackRaised?.Invoke(this, e);
 
     private void SelectStore(StoreNavigationItemViewModel? store)
     {
