@@ -413,6 +413,26 @@ public sealed class BusinessGameService :
         }
     }
 
+    public IReadOnlyList<StoreCatalogItemSnapshot> GetStoreCatalogSnapshot()
+    {
+        lock (_gate)
+        {
+            var openStoreIds = _business.StoreIds
+                .Select(id => id.Value)
+                .ToHashSet(StringComparer.Ordinal);
+            return Array.AsReadOnly(_shopDefinitions.Values
+                .OrderBy(definition => definition.RequiredPlayerLevel)
+                .ThenBy(definition => definition.Id.Value, StringComparer.Ordinal)
+                .Select(definition => new StoreCatalogItemSnapshot(
+                    definition.Id.Value,
+                    definition.Name,
+                    definition.RequiredPlayerLevel,
+                    definition.OpeningCost.Cents,
+                    openStoreIds.Contains(definition.Id.Value)))
+                .ToArray());
+        }
+    }
+
     public bool ContainsStoreDefinition(string shopId)
     {
         if (string.IsNullOrWhiteSpace(shopId))
