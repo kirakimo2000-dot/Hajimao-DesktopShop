@@ -82,6 +82,11 @@
 
 ## 0.1.9 发布候选范围发现
 
+- 日志与稳定性阶段基线：`Serilog.Extensions.Hosting` 10.0.0 只被 Desktop 引用，源码除退出失败的 `Debug.WriteLine` 外没有正式日志；Infrastructure 当前没有 Logging 目录或 Serilog 依赖。正式实现需把抽象事件契约放在 Application、文件适配器放在 Infrastructure、配置与生命周期放在 Desktop，Domain 保持零日志依赖。
+- 现有 `OfflineSettlementService` 是静态无副作用入口，`BusinessSimulation` 已可批量确定性推进；稳定性报告应组合现有不可变快照与推进 API，不在 Domain 增加测试捷径，也不复制 Tick 逻辑。
+- NuGet 官方页面确认当前稳定版 `Serilog` 为 4.4.0、`Serilog.Sinks.File` 为 7.0.0；文件 sink 支持按日滚动、文件大小限制和保留数量。现有应用未使用 Generic Host，因此计划移除 Desktop 的闲置 `Serilog.Extensions.Hosting`，由 Infrastructure 封装 Serilog core + file sink，Desktop 只依赖 Application 日志契约。
+- 稳定性审计发现正式接线缺口：`OfflineSettlementService` 有在线/离线一致性与默认八小时性能测试，但 `DesktopBusinessSessionFactory.Create` 恢复存档后只构造 `BusinessSession`，没有调用离线结算；全仓生产代码也无其他调用点。因此当前正式 WPF 启动不会应用关闭期间收益，README 所述离线挂机只在底层能力/测试成立。必须先写 Desktop 工厂回归测试并在恢复后调用同一离线管线，再把结果送入结构化日志。
+- 现有 SQLite 测试已覆盖 v1～v6 逐级迁移、未来版本拒绝和窗口位置往返；稳定性子阶段无需重写迁移，只需增加从真实旧存档恢复后执行离线结算并重新捕获 v6 的组合测试。
 - 2026-08-04 项目报告目标为桌面纯文本 `Hajimao DesktopShop项目进度与底层逻辑报告.txt`，当前不存在同名文件，可直接新建而不会覆盖用户资料。报告必须明确：远端已发布版本是 0.1.8；本地 `agent/v0.1.9-release-candidate` 已完成教程与品牌子阶段，但尚未发布、合并或打标签。
 - 报告事实基线使用 README、产品定位、技术基础、路线图、task_plan、progress 与实际源码交叉核对；历史原型中的暂停/倍速不代表正式产品，正式 0.1.x 经营始终固定现实 1x。
 - 领域层关键公式已从源码确认：进店基础概率 3,000 基点、购买基础概率 9,000 基点、基础收银 2 分钟；需求总分由价格、服务、队列、整洁度、时段、成长吸引力和促销修正组成并夹在 0～10,000。员工有效效率使用基础效率×培训×体力×满意度的纯整数乘法，工资以“时薪分×已工作分钟÷60”并保留 0～59 分余数精确结算。
@@ -164,3 +169,17 @@
 ## Visual/Browser Findings
 
 - 暂无新的视觉参考；像素风方向已记录为统一网格、整数缩放、关闭插值和高辨识轮廓。
+- 2026-08-04：复核文件布局时确认 `BusinessSession` 位于 `Application/Business`，离线结算位于 `Application/Business/Offline`，桌面组合测试位于 `Desktop.Tests/Services`；后续计划与实现均以实际命名空间为准。
+- 2026-08-04：`OfflineSettlementResult` 已提供 requested/applied/capped/anomaly 及结算前后现金、营收、毛利、工资、净利、销量总计，足够直接作为启动结果与结构化日志载荷，无需修改 Domain。
+- 2026-08-04：现有桌面工厂测试只验证新局与无时间流逝恢复；将用显式 `nowUtc` 新增失败测试，锁定恢复时必须执行真实离线推进，同时避免测试依赖系统时钟。
+- 2026-08-04：`BusinessSimulationSnapshot` 已包含全局游戏分钟、业务总览、逐店经营指标、员工、商业街和最后日结，正式稳定性审计可只比较不可变快照并调用公开批量推进，不需要测试专用入口。
+- 2026-08-04：查阅旧计划时误猜了 `2026-08-03-v0.1.9-onboarding-core.md`；实际文件为 `2026-08-04-v0.1.9-onboarding.md`，已改用 `rg`/目录枚举定位。
+- 2026-08-04：桌面项目已有受控 `GlobalUsings.cs`，生命周期日志组合可复用基础集合/线程类型；日志 sink 的创建、异常吞吐和释放仍由 `App` 明确负责，避免后台模拟或 ViewModel 直接依赖 Infrastructure。
+- 2026-08-04：`ApplicationDataPathPolicy` 的存档与日志目录现共享同一基目录解析，因此 `HAJIMAO_DATA_DIRECTORY` 隔离配置会同时隔离数据库与日志，便于便携包和自动化验收。
+- 2026-08-04：`BusinessSimulation.AdvanceRealSeconds` 明确拒绝 0，但稳定性审计需要“零时长基线报告”；审计服务会对 0 直接返回同快照/0 批次，对负值报错，不改变模拟引擎的正数推进契约。
+- 2026-08-04：模拟快照的逐店运行状态已按 `StoreId` 排序，业务快照未承诺同样的呈现顺序；审计投影仍将显式按 ID 连接并排序，避免报告稳定性依赖内部集合顺序。
+- 2026-08-04：收尾审阅发现日志初始化仍处于启动主 `try` 内，目录不可写会让非关键诊断阻止游戏；已改为安全降级空 sink。同时增加完整启动标记，避免启动失败路径写入“正常退出”。
+- 2026-08-04：离线结算若只等待五秒自动存档，早期异常退出可能从旧 `SavedAtUtc` 重复结算；Desktop 在实际应用正数离线秒后会立即保存以启动 UTC 为时间戳的 schema v6 检查点，时钟回退不覆盖时间戳。
+- 2026-08-04：最终依赖/边界复核确认 Serilog 实现引用只存在于 Infrastructure（Desktop 组合根仅构造适配器）；Domain、Rendering、ViewModel/WPF 均无日志实现依赖。发布目标仍为 0.1.9，`VersionPrefix` 按候选阶段策略暂留 0.1.8，存档 schema 保持 v6。
+- 2026-08-04：最终版本复核首次误猜 `Persistence/GameSaveSchema.cs`；实际常量位于 `Persistence/GameSaveData.cs`，`CurrentVersion = 6`，已用 `rg --files` 校正。
+- 2026-08-04：最终审阅 Critical 0、Important 0、Minor 0；重点复核 UTC/封顶、结算后检查点、sink 所有权/并发释放、异常降级、保留上限、报告排序/checked 差值及固定现实 1x，未发现剩余阻断项。

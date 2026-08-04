@@ -7,22 +7,31 @@ public sealed class SimulationLoop : IAsyncDisposable
     private readonly object _gate = new();
     private readonly Action _advanceRealSecond;
     private readonly TimeSpan _interval;
+    private readonly Action<Exception>? _reportFailure;
     private CancellationTokenSource? _cancellation;
     private Task? _loopTask;
 
-    public SimulationLoop(ShopSimulation simulation, TimeSpan? interval = null)
+    public SimulationLoop(
+        ShopSimulation simulation,
+        TimeSpan? interval = null,
+        Action<Exception>? reportFailure = null)
         : this(
             (simulation ?? throw new ArgumentNullException(nameof(simulation))).AdvanceRealSecond,
-            interval)
+            interval,
+            reportFailure)
     {
     }
 
-    public SimulationLoop(Action advanceRealSecond, TimeSpan? interval = null)
+    public SimulationLoop(
+        Action advanceRealSecond,
+        TimeSpan? interval = null,
+        Action<Exception>? reportFailure = null)
     {
         ArgumentNullException.ThrowIfNull(advanceRealSecond);
 
         _advanceRealSecond = advanceRealSecond;
         _interval = interval ?? TimeSpan.FromSeconds(1);
+        _reportFailure = reportFailure;
         if (_interval <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(interval));
@@ -76,6 +85,17 @@ public sealed class SimulationLoop : IAsyncDisposable
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+        }
+        catch (Exception exception)
+        {
+            try
+            {
+                _reportFailure?.Invoke(exception);
+            }
+            catch
+            {
+                // Diagnostic reporting must not fault shutdown or mask the simulation failure.
+            }
         }
     }
 }

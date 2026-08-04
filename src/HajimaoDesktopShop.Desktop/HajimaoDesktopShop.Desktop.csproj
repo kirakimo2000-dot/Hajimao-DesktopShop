@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="Serilog.Extensions.Hosting" />
   </ItemGroup>
 
   <ItemGroup>

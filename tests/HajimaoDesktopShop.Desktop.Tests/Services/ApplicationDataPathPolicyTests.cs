@@ -27,4 +27,27 @@ public sealed class ApplicationDataPathPolicyTests
                 "hajimao.db"),
             path);
     }
+
+    [Fact]
+    public void ResolveLogDirectory_UsesLogsFolderBelowExplicitDirectory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "hajimao-isolated-profile");
+
+        var path = ApplicationDataPathPolicy.ResolveLogDirectory(directory);
+
+        Assert.Equal(Path.Combine(Path.GetFullPath(directory), "logs"), path);
+    }
+
+    [Fact]
+    public void ResolveLogDirectory_DefaultsToProductLocalApplicationDataLogsFolder()
+    {
+        var path = ApplicationDataPathPolicy.ResolveLogDirectory(null);
+
+        Assert.Equal(
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "HajimaoDesktopShop",
+                "logs"),
+            path);
+    }
 }

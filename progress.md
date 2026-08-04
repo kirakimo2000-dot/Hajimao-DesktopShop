@@ -302,6 +302,9 @@
 
 - **Status:** planning
 - Actions taken:
+  - 开始 0.1.9 日志与稳定性子阶段；确认当前 Serilog 只有 Desktop 包引用、没有正式 sink/事件边界，稳定性能力可基于现有 `BusinessSimulation` 批量推进和不可变快照建立，不需要 Domain 测试捷径。
+  - 经 NuGet 官方元数据核对，日志适配器将固定稳定版 `Serilog` 4.4.0 与 `Serilog.Sinks.File` 7.0.0；不引入未实际使用的 Generic Host，文件 sink 由 Infrastructure 完全封装。
+  - 稳定性审计发现正式 Desktop 恢复路径未调用已有 `OfflineSettlementService`，导致真实启动不会补算关闭期间收益；已将此缺口提升为本子阶段第一项，按 TDD 修复后再接日志与审计报告。
   - 应用户要求开始生成桌面纯文本项目报告；已核对版本分支、产品/路线文档和 Domain/Application/Infrastructure/Rendering/Desktop 实际模块，并提取等级、店铺、商品、员工、需求、采购、成长、商业街、离线与 schema v6 的源码参数。
   - 已生成 `C:\Users\86427\Desktop\Hajimao DesktopShop项目进度与底层逻辑报告.txt`：644 行、22 个章节，完整覆盖当前进度、版本历史、模块边界、经营 Tick、经济/需求、员工、采购、成长、商业街、挂机、存档、渲染、已知差距和后续计划；严格 UTF-8 与关键章节检查通过。
   - 用户将正式项目显示名恢复为 `Hajimao DesktopShop`；已盘点旧名称分布并固定兼容边界：只修改用户可见品牌、现行文档与远端仓库名，不改程序集命名空间、存档目录或数据库标识。
@@ -346,3 +349,14 @@
   - 将 0.1.9 拆为教程/回归与日志、安装发布、多显示器验收三个可独立验证的子计划。
 - Next actions:
   - 保存并执行 `v0.1.9 logging-and-stability` 计划，先覆盖正式日志边界、平衡场景与长时/兼容回归，不发布、不打标签、不标记 0.1.9 完成。
+- 2026-08-04：新增 `docs/superpowers/plans/2026-08-04-v0.1.9-logging-stability.md`，将本子阶段拆成生产离线结算、应用诊断契约、Serilog 文件适配、生命周期故障、长时经营审计和发布门禁六项任务；自检确认不改 Domain、不扩 UI、不变更 schema v6。
+- 2026-08-04：Task 1 RED 已确认：`DesktopBusinessSessionFactoryTests` 因缺少显式 `nowUtc`、启动结果及离线结算字段而编译失败，证明测试覆盖的是尚未接入生产组合根的新行为。
+- 2026-08-04：Task 1 focused GREEN：5/5 桌面会话工厂测试通过；新局明确无离线结算，恢复会按显式 UTC 推进、执行自定义上限并报告系统时钟回退，`App` 已使用结算后的真实会话。
+- 2026-08-04：Task 1 full GREEN：Desktop 测试 60/60 通过。Task 2 RED/GREEN 完成：8/8 诊断契约聚焦测试、129/129 Application 测试通过；事件会复制只读属性，Application 不持有时间戳、路径或 Serilog 类型。
+- 2026-08-04：Task 3 RED/GREEN 完成：2/2 Serilog 适配器测试、19/19 Infrastructure 测试通过；已移除未使用的 Hosting 包，改为 Infrastructure 独占 Serilog 4.4.0 + File Sink 7.0.0，采用每日/5MB 双滚动、保留 14 文件并即时刷盘。
+- 2026-08-04：Task 4 RED/GREEN 完成：8/8 路径/循环聚焦测试、64/64 Desktop 测试通过；隔离数据目录会同步隔离 `logs`，非取消型模拟异常只报告一次并停止循环，`App` 已记录低噪声生命周期/离线/存档故障并负责 sink 释放。
+- 2026-08-04：Task 5 RED/GREEN 完成：4/4 审计聚焦测试、133/133 Application 测试通过；报告按店铺 ID 稳定输出现金/经验及客流、成交、流失、营收、采购、毛利、工资、运营费、净利、工资失败、队列、整洁和库存差值。既有两店 28,800 秒门禁单测 418ms 通过。
+- 2026-08-04：收尾审阅修正日志初始化单点故障、启动失败误记正常退出及离线结算五秒窗口重复收益风险；修正后 Desktop 64/64、Release 构建 0 警告/0 错误。
+- 2026-08-04：日志与稳定性最终门禁通过：Domain 90、Application 133、Infrastructure 19、Rendering 14、Desktop 64，共 320/320；10 项目无已知直接/传递 NuGet 漏洞，变更范围格式与 `git diff --check` 退出 0。下一步为多显示器矩阵及 Windows 安装/便携发布物。
+- 2026-08-04：最终代码审阅 Critical 0、Important 0、Minor 0；日志实现未泄漏至 Domain/Rendering/ViewModel/WPF，0.1.9 与 schema v6 兼容边界保持不变。
+- 2026-08-04：完成 Release `dotnet clean`（0 警告/0 错误）；无运行中 Hajimao 进程、`TestResults` 或 `__pycache__` 残留，准备建立日志与稳定性子阶段 Git 检查点。
