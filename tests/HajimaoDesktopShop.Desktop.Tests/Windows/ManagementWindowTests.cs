@@ -1,5 +1,6 @@
 using System.Runtime.ExceptionServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
@@ -26,10 +27,11 @@ public sealed class ManagementWindowTests
                 7,
                 FindLogicalChildren<Button>(window)
                     .Count(button => Equals(button.Tag, "management-navigation")));
-            Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
+            var scene = Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
+            Assert.Equal("实时像素店铺场景", AutomationProperties.GetName(scene));
             Assert.DoesNotContain(
                 FindLogicalChildren<Button>(window),
-                button => button.Content?.ToString() is "2x" or "4x" or "暂停");
+                button => button.Content?.ToString() is "2x" or "4x" or "暂停" or "动画" or "特效" or "倍速");
 
             window.Close();
         });

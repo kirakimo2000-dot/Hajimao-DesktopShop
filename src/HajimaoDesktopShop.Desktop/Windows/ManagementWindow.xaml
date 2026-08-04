@@ -88,7 +88,9 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border Grid.Row="0" Style="{DynamicResource PixelPanel}" Padding="0">
-                    <controls:BusinessShopSceneControl x:Name="LiveScene" Frame="{Binding SceneFrame}" />
+                    <controls:BusinessShopSceneControl x:Name="LiveScene"
+                                                       Frame="{Binding SceneFrame}"
+                                                       AutomationProperties.Name="实时像素店铺场景" />
                 </Border>
 
                 <Border Grid.Row="2" Style="{DynamicResource PixelPanel}" Padding="12">
