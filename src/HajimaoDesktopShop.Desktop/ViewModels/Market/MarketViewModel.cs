@@ -26,6 +26,7 @@ public sealed class MarketViewModel : ObservableObject
     private bool _isLocked;
     private bool _isClickThrough;
     private bool _isMuted;
+    private bool _isStatusBarExpanded = true;
     private int _lastCompletedSales;
     private int _animationFrame;
     private BusinessShopSceneFrame? _sceneFrame;
@@ -41,11 +42,13 @@ public sealed class MarketViewModel : ObservableObject
         ToggleLockCommand = new RelayCommand(ToggleLock);
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
         ToggleMuteCommand = new RelayCommand(ToggleMute);
+        ToggleStatusBarCommand = new RelayCommand(ToggleStatusBar);
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
         EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
         StoreGrowth = new StoreGrowthManagementViewModel(session, () => SelectedStoreId);
         Finance = new FinanceViewModel(session, () => SelectedStoreId);
+        CommercialStreet = new CommercialStreetViewModel();
         ProductManagement.FeedbackRaised += RelayFeedback;
         EmployeeManagement.FeedbackRaised += RelayFeedback;
         StoreGrowth.FeedbackRaised += RelayFeedback;
@@ -64,6 +67,8 @@ public sealed class MarketViewModel : ObservableObject
 
     public FinanceViewModel Finance { get; }
 
+    public CommercialStreetViewModel CommercialStreet { get; }
+
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
 
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
@@ -73,6 +78,8 @@ public sealed class MarketViewModel : ObservableObject
     public IRelayCommand ToggleClickThroughCommand { get; }
 
     public IRelayCommand ToggleMuteCommand { get; }
+
+    public IRelayCommand ToggleStatusBarCommand { get; }
 
     public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
 
@@ -180,6 +187,23 @@ public sealed class MarketViewModel : ObservableObject
 
     public string SoundToggleText => IsMuted ? "开启音效" : "静音";
 
+    public bool IsStatusBarExpanded
+    {
+        get => _isStatusBarExpanded;
+        private set
+        {
+            if (SetProperty(ref _isStatusBarExpanded, value))
+            {
+                OnPropertyChanged(nameof(StatusBarHeight));
+                OnPropertyChanged(nameof(StatusBarToggleText));
+            }
+        }
+    }
+
+    public double StatusBarHeight => IsStatusBarExpanded ? 56d : 34d;
+
+    public string StatusBarToggleText => IsStatusBarExpanded ? "收起状态栏" : "展开状态栏";
+
     public BusinessShopSceneFrame? SceneFrame
     {
         get => _sceneFrame;
@@ -230,6 +254,7 @@ public sealed class MarketViewModel : ObservableObject
             SelectedStoreId,
             reduceMotion ? 0 : _animationFrame,
             reduceMotion);
+        CommercialStreet.Refresh(snapshot.Street, SceneFrame.AnimationFrame, reduceMotion);
         if (!reduceMotion)
         {
             _animationFrame = (_animationFrame + 1) % PixelArtBudget.CharacterFrameCount;
@@ -286,6 +311,8 @@ public sealed class MarketViewModel : ObservableObject
         IsMuted = !IsMuted;
         StatusMessage = IsMuted ? "音效已静音" : "音效已开启";
     }
+
+    private void ToggleStatusBar() => IsStatusBarExpanded = !IsStatusBarExpanded;
 
     private void RelayFeedback(object? sender, GameFeedbackEventArgs e) =>
         FeedbackRaised?.Invoke(this, e);
