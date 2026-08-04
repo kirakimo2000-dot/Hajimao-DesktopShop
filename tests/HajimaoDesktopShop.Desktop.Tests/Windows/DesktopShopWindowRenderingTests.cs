@@ -19,6 +19,7 @@ public sealed class DesktopShopWindowRenderingTests
             {
                 var window = new DesktopShopWindow(new MarketViewModel(MarketTestSession.Create()));
                 var root = Assert.IsType<Grid>(window.Content);
+                Assert.Equal(4, root.ContextMenu?.Items.Count);
 
                 var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.Children[0]);
                 Assert.True(surface.UsesLogicalPixelScaling);

@@ -37,6 +37,17 @@
         </Style>
     </Window.Resources>
     <Grid Background="#17191D" MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown">
+        <Grid.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="打开经营管理" Click="OnOpenManagementClick" />
+                <MenuItem Header="锁定 / 解锁位置"
+                          Command="{Binding PlacementTarget.DataContext.ToggleLockCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                <MenuItem Header="切换鼠标穿透"
+                          Command="{Binding PlacementTarget.DataContext.ToggleClickThroughCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                <MenuItem Header="静音 / 开启音效"
+                          Command="{Binding PlacementTarget.DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            </ContextMenu>
+        </Grid.ContextMenu>
         <controls:BusinessDesktopShopSurfaceControl Frame="{Binding DesktopFrame}" />
         <Canvas>
             <Button Canvas.Left="307" Canvas.Top="5" Width="48" Height="34"
