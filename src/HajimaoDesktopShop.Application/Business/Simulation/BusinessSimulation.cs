@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Business.Employees;
+using HajimaoDesktopShop.Application.Business.Street;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Domain.Demand;
@@ -18,6 +19,7 @@ public sealed class BusinessSimulation
     private readonly SimulationClock _clock;
     private readonly IStatefulRandomSource? _statefulRandom;
     private readonly EmployeeOperationsService _employeeOperations;
+    private readonly CommercialStreetTrafficService _streetTraffic;
     private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
     private BusinessDayReport? _lastCompletedDay;
 
@@ -37,6 +39,7 @@ public sealed class BusinessSimulation
         _options = options ?? new BusinessSimulationOptions();
         _clock = new SimulationClock();
         _employeeOperations = CreateEmployeeOperations(game, assignments, nameof(assignments));
+        _streetTraffic = new CommercialStreetTrafficService(random);
         SynchronizeStores();
     }
 
@@ -66,6 +69,7 @@ public sealed class BusinessSimulation
             employeeSaves,
             restoredState.EmployeeOperations,
             nameof(restoredState));
+        _streetTraffic = new CommercialStreetTrafficService(random);
         _statefulRandom.RestoreState(restoredState.RandomState);
         _lastCompletedDay = restoredState.LastCompletedDay;
         RestoreStores(restoredState.Stores);
@@ -102,11 +106,13 @@ public sealed class BusinessSimulation
                     store,
                     business.Stores.Single(snapshot => snapshot.Id == store.StoreId)))
                 .ToArray();
+            var street = CreateStreetSnapshot(business, stores);
             return new BusinessSimulationSnapshot(
                 _clock.GameMinute,
                 business,
                 Array.AsReadOnly(stores),
                 _employeeOperations.GetSnapshot(),
+                street,
                 _lastCompletedDay);
         }
     }
@@ -357,7 +363,25 @@ public sealed class BusinessSimulation
         SynchronizeStores();
         foreach (var store in _stores.Values.OrderBy(runtime => runtime.StoreId, StringComparer.Ordinal))
         {
-            ProcessStore(store);
+            ProcessStoreOperations(store);
+        }
+
+        var business = _game.GetSnapshot();
+        var storeOperations = _stores.Values
+            .OrderBy(runtime => runtime.StoreId, StringComparer.Ordinal)
+            .Select(runtime => CreateStoreSnapshot(
+                runtime,
+                business.Stores.Single(store => store.Id == runtime.StoreId)))
+            .ToArray();
+        var street = CreateStreetSnapshot(business, storeOperations);
+        var visitingStoreId = _streetTraffic.TryRouteVisitor(street);
+        if (visitingStoreId is not null)
+        {
+            ProcessVisitorAndQueuePurchase(_stores[visitingStoreId]);
+        }
+
+        foreach (var store in _stores.Values)
+        {
             store.RecordQueueSample();
         }
 
@@ -413,7 +437,7 @@ public sealed class BusinessSimulation
         _lastCompletedDay = new BusinessDayReport(dayNumber, Array.AsReadOnly(reports));
     }
 
-    private void ProcessStore(StoreRuntime runtime)
+    private void ProcessStoreOperations(StoreRuntime runtime)
     {
         var paidEmployees = PayEmployees(runtime);
         ProcessCleaners(runtime, paidEmployees);
@@ -422,7 +446,6 @@ public sealed class BusinessSimulation
         var cashier = runtime.Employees.FirstOrDefault(employee =>
             employee.Role == EmployeeRole.Cashier && paidEmployees.Contains(employee.Id));
         ProcessCheckout(runtime, cashier);
-        TryVisitAndQueuePurchase(runtime);
     }
 
     private HashSet<EmployeeId> PayEmployees(StoreRuntime runtime)
@@ -513,16 +536,10 @@ public sealed class BusinessSimulation
         }
     }
 
-    private void TryVisitAndQueuePurchase(StoreRuntime runtime)
+    private void ProcessVisitorAndQueuePurchase(StoreRuntime runtime)
     {
         var store = _game.GetSnapshot().Stores.Single(snapshot => snapshot.Id == runtime.StoreId);
         var growth = store.Growth ?? _game.GetStoreGrowthSnapshot(runtime.StoreId);
-        var arrival = CalculateArrivalDemand(runtime, store);
-        if (_random.NextDouble() >= arrival.FinalBasisPoints / 10_000d)
-        {
-            return;
-        }
-
         runtime.Visitors++;
         runtime.CleanlinessPermille = Math.Max(
             0,
@@ -568,6 +585,21 @@ public sealed class BusinessSimulation
             runtime.ServicePermille,
             runtime.WagePaymentFailures,
             CalculateArrivalDemand(runtime, store));
+
+    private CommercialStreetSnapshot CreateStreetSnapshot(
+        BusinessSnapshot business,
+        IReadOnlyList<StoreOperationsSnapshot> storeOperations) =>
+        _streetTraffic.CreateSnapshot(
+            _clock.GameMinute,
+            business.PlayerLevel,
+            storeOperations.Select(operations =>
+            {
+                var store = business.Stores.Single(item => item.Id == operations.StoreId);
+                return new StreetStoreDemand(
+                    store.Id,
+                    store.Name,
+                    operations.ArrivalDemand.FinalBasisPoints);
+            }));
 
     private DemandBreakdown CalculateArrivalDemand(
         StoreRuntime runtime,

@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Domain.Demand;
 using HajimaoDesktopShop.Application.Business.Employees;
+using HajimaoDesktopShop.Application.Business.Street;
 
 namespace HajimaoDesktopShop.Application.Business.Simulation;
 
@@ -8,6 +9,7 @@ public sealed record BusinessSimulationSnapshot(
     BusinessSnapshot Business,
     IReadOnlyList<StoreOperationsSnapshot> Stores,
     EmployeeOperationsSnapshot Employees,
+    CommercialStreetSnapshot Street,
     BusinessDayReport? LastCompletedDay = null);
 
 public sealed record StoreOperationsSnapshot(

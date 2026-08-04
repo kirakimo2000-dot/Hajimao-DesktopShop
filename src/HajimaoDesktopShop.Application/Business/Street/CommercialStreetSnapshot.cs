@@ -1,0 +1,22 @@
+using HajimaoDesktopShop.Domain.Streets;
+
+namespace HajimaoDesktopShop.Application.Business.Street;
+
+public sealed record CommercialStreetSnapshot(
+    CommercialStreetTier Tier,
+    StreetWeather Weather,
+    int SharedTrafficBasisPoints,
+    int VisiblePedestrians,
+    int VisibleVehicles,
+    IReadOnlyList<CommercialStreetStoreSnapshot> Stores);
+
+public sealed record CommercialStreetStoreSnapshot(
+    string StoreId,
+    string StoreName,
+    int AttractionBasisPoints,
+    int TrafficShareBasisPoints);
+
+public sealed record StreetStoreDemand(
+    string StoreId,
+    string StoreName,
+    int AttractionBasisPoints);
