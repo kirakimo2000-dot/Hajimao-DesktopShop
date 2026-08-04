@@ -19,6 +19,7 @@ public partial class App : System.Windows.Application
     private AutosaveCoordinator? _autosaveCoordinator;
     private BusinessSession? _session;
     private GameSoundService? _soundService;
+    private PixelGameSoundOutput? _soundOutput;
     private TrayIconService? _trayIconService;
     private MarketViewModel? _viewModel;
     private DesktopShopWindow? _desktopWindow;
@@ -33,10 +34,8 @@ public partial class App : System.Windows.Application
         {
             var catalogPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
             var products = await new JsonProductCatalog(catalogPath).LoadAsync();
-            var savePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "HajimaoDesktopShop",
-                "hajimao.db");
+            var savePath = ApplicationDataPathPolicy.ResolveSavePath(
+                Environment.GetEnvironmentVariable(ApplicationDataPathPolicy.OverrideEnvironmentVariable));
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
             var savedPlacement = await saveStore.LoadDesktopWindowPlacementAsync();
@@ -58,8 +57,11 @@ public partial class App : System.Windows.Application
                 }
             }
 
-            _viewModel = new MarketViewModel(_session);
-            _soundService = new GameSoundService(_viewModel, new SystemGameSoundOutput());
+            _viewModel = new MarketViewModel(
+                _session,
+                reduceMotion: () => !SystemParameters.ClientAreaAnimation);
+            _soundOutput = new PixelGameSoundOutput();
+            _soundService = new GameSoundService(_viewModel, _soundOutput);
             if (savedPlacement is not null)
             {
                 _viewModel.RestoreDesktopState(savedPlacement.IsLocked);
@@ -139,6 +141,7 @@ public partial class App : System.Windows.Application
         }
 
         _soundService?.Dispose();
+        _soundOutput?.Dispose();
         if (_trayIconService is not null)
         {
             _trayIconService.OpenShopRequested -= OnTrayOpenShopRequested;

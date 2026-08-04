@@ -9,6 +9,11 @@
     <PackageReference Include="SkiaSharp.Views.WPF" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\PixelArt\market-atlas.png"
+                      LogicalName="HajimaoDesktopShop.Rendering.Assets.PixelArt.market-atlas.png" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
   </PropertyGroup>

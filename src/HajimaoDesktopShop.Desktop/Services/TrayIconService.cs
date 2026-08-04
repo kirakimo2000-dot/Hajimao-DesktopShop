@@ -7,10 +7,12 @@ public sealed class TrayIconService : IDisposable
 {
     private readonly Forms.NotifyIcon _notifyIcon;
     private readonly Forms.ContextMenuStrip _contextMenu;
+    private readonly Icon _icon;
     private bool _disposed;
 
-    public TrayIconService()
+    public TrayIconService(Icon? icon = null)
     {
+        _icon = icon ?? TrayIconFactory.Create();
         _contextMenu = new Forms.ContextMenuStrip();
         _contextMenu.Items.Add("显示桌面小店", null, (_, _) => OpenShopRequested?.Invoke(this, EventArgs.Empty));
         _contextMenu.Items.Add("打开经营管理", null, (_, _) => OpenManagementRequested?.Invoke(this, EventArgs.Empty));
@@ -20,7 +22,7 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon = new Forms.NotifyIcon
         {
             Text = "Hajimao Market · 持续经营中",
-            Icon = SystemIcons.Application,
+            Icon = _icon,
             ContextMenuStrip = _contextMenu,
             Visible = true
         };
@@ -47,6 +49,7 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
         _contextMenu.Dispose();
+        _icon.Dispose();
     }
 
     private void OnDoubleClick(object? sender, EventArgs e) =>

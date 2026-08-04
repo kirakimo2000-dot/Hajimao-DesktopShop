@@ -1,4 +1,3 @@
-using System.Media;
 using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 
@@ -7,23 +6,6 @@ namespace HajimaoDesktopShop.Desktop.Services;
 public interface IGameSoundOutput
 {
     void Play(GameFeedbackKind kind);
-}
-
-public sealed class SystemGameSoundOutput : IGameSoundOutput
-{
-    public void Play(GameFeedbackKind kind)
-    {
-        var sound = kind switch
-        {
-            GameFeedbackKind.RestockQueued => SystemSounds.Asterisk,
-            GameFeedbackKind.PriceChanged => SystemSounds.Beep,
-            GameFeedbackKind.SaleCompleted => SystemSounds.Exclamation,
-            GameFeedbackKind.ProcurementOrdered => SystemSounds.Asterisk,
-            GameFeedbackKind.PromotionStarted => SystemSounds.Exclamation,
-            _ => SystemSounds.Beep
-        };
-        sound.Play();
-    }
 }
 
 public sealed class GameSoundService : IDisposable

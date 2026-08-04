@@ -5,6 +5,33 @@ namespace HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 public sealed class MarketViewModelTests
 {
     [Fact]
+    public void Refresh_AdvancesPresentationFrameWithoutChangingGameTime()
+    {
+        var session = MarketTestSession.Create();
+        var viewModel = new MarketViewModel(session, reduceMotion: () => false);
+        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
+
+        viewModel.Refresh();
+
+        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
+        Assert.Equal(1, viewModel.SceneFrame.AnimationFrame);
+        Assert.False(viewModel.SceneFrame.ReduceMotion);
+    }
+
+    [Fact]
+    public void Refresh_ReducedMotionLocksTheSeedFrame()
+    {
+        var viewModel = new MarketViewModel(
+            MarketTestSession.Create(),
+            reduceMotion: () => true);
+
+        viewModel.Refresh();
+
+        Assert.Equal(0, viewModel.SceneFrame!.AnimationFrame);
+        Assert.True(viewModel.SceneFrame.ReduceMotion);
+    }
+
+    [Fact]
     public void Refresh_MapsBusinessStatusAndSelectedStoreWithoutOwningRules()
     {
         var session = MarketTestSession.Create();

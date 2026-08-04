@@ -1,10 +1,20 @@
 using System.Runtime.ExceptionServices;
+using System.Drawing;
 using HajimaoDesktopShop.Desktop.Services;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Services;
 
 public sealed class TrayIconServiceTests
 {
+    [Fact]
+    public void Factory_CreatesDistinctThirtyTwoPixelMarketIcon()
+    {
+        using var icon = TrayIconFactory.Create();
+
+        Assert.Equal(new Size(32, 32), icon.Size);
+        Assert.NotEqual(SystemIcons.Application.Handle, icon.Handle);
+    }
+
     [Fact]
     public void Lifecycle_ShowsOneIconUntilDisposed()
     {
