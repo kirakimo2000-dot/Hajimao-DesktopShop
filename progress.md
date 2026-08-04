@@ -283,7 +283,7 @@
 
 ### Phase 15: 正式版 0.1.8 商业街 Beta
 
-- **Status:** complete; publication in progress
+- **Status:** complete and published
 - Actions taken:
   - 新增 Lv.1/Lv.3/Lv.5/Lv.10 街区解锁、四种六小时天气、开店协同和场景角色预算的纯领域规则。
   - 所有店铺先完成工资、清洁与结账，再从同一共享街道人流中按吸引力加权分配至多一名访客。
@@ -294,6 +294,6 @@
   - 独立审阅发现商业街阶段可能容纳不下领域层已开店铺；增加 Domain 铺位规则，Application 取等级阶段与实际店数所需阶段的较高者，Rendering 拒绝损坏快照。
   - 自检发现正式等级曲线最高 Lv.6；补齐 Lv.7～Lv.10 阈值，使完整街区真实可达。
   - 所有新增与审阅修复行为均先出现预期 RED；Release 全量 260/260 通过。
+  - 独立复审为 Critical 0、Important 0、Minor 0；PR #4 合并至 `main`，最终版本由 `v0.1.8` 标签固定。
 - Next actions:
-  - 完成 Release 门禁、真实进程冒烟、独立审阅、GitHub PR/标签和工作区清理。
   - 0.1.9 集中教程、平衡、长时稳定、安装包、多显示器矩阵和正式日志。
