@@ -2,15 +2,15 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using HajimaoDesktopShop.Desktop.Services;
-using HajimaoDesktopShop.Desktop.ViewModels;
+using HajimaoDesktopShop.Desktop.ViewModels.Market;
 
 namespace HajimaoDesktopShop.Desktop.Windows;
 
 public partial class DesktopShopWindow : Window
 {
-    private readonly GameViewModel _viewModel;
+    private readonly MarketViewModel _viewModel;
 
-    public DesktopShopWindow(GameViewModel viewModel)
+    public DesktopShopWindow(MarketViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         InitializeComponent();
@@ -58,7 +58,7 @@ public partial class DesktopShopWindow : Window
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(GameViewModel.IsClickThrough))
+        if (e.PropertyName == nameof(MarketViewModel.IsClickThrough))
         {
             WindowInteractionService.SetClickThrough(this, _viewModel.IsClickThrough);
         }

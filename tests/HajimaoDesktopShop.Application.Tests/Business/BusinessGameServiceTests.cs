@@ -10,6 +10,29 @@ namespace HajimaoDesktopShop.Application.Tests.Business;
 public sealed class BusinessGameServiceTests
 {
     [Fact]
+    public void StoreCatalog_ExposesOpenAndLockedStoresWithoutLeakingDefinitions()
+    {
+        var service = CreateService();
+
+        var stores = service.GetStoreCatalogSnapshot();
+
+        Assert.Collection(
+            stores,
+            store =>
+            {
+                Assert.True(store.IsOpen);
+                Assert.Equal("corner-store", store.Id);
+            },
+            store =>
+            {
+                Assert.False(store.IsOpen);
+                Assert.Equal("station-store", store.Id);
+                Assert.Equal(2, store.RequiredPlayerLevel);
+                Assert.Equal(30_000, store.OpeningCostCents);
+            });
+    }
+
+    [Fact]
     public void NewBusiness_StartsWithOneStoreAndOnlyLevelOneProducts()
     {
         var service = CreateService();

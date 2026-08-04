@@ -4,7 +4,12 @@ public enum GameFeedbackKind
 {
     RestockQueued,
     PriceChanged,
-    SaleCompleted
+    SaleCompleted,
+    ProcurementOrdered,
+    AutoRestockChanged,
+    EmployeeChanged,
+    StoreGrowthChanged,
+    PromotionStarted
 }
 
 public sealed class GameFeedbackEventArgs(GameFeedbackKind kind) : EventArgs

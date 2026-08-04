@@ -9,6 +9,29 @@ namespace HajimaoDesktopShop.Desktop.Tests.Services;
 public sealed class SimulationLoopTests
 {
     [Fact]
+    public async Task DelegateLoop_AdvancesAtFixedBoundaryThenStops()
+    {
+        var advances = 0;
+        await using var loop = new SimulationLoop(
+            () => Interlocked.Increment(ref advances),
+            TimeSpan.FromMilliseconds(10));
+
+        loop.Start();
+        var timeout = Stopwatch.StartNew();
+        while (Volatile.Read(ref advances) == 0 && timeout.Elapsed < TimeSpan.FromSeconds(2))
+        {
+            await Task.Delay(10);
+        }
+
+        await loop.StopAsync();
+        var stoppedAt = Volatile.Read(ref advances);
+        await Task.Delay(40);
+
+        Assert.True(stoppedAt > 0);
+        Assert.Equal(stoppedAt, Volatile.Read(ref advances));
+    }
+
+    [Fact]
     public async Task StartAndStopAsync_AdvancesThenStopsSimulation()
     {
         var game = new ShopGameService(

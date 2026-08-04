@@ -2,12 +2,15 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:HajimaoDesktopShop.Desktop.Controls"
+        xmlns:market="clr-namespace:HajimaoDesktopShop.Desktop.ViewModels.Market"
         Title="Hajimao Market · 经营管理"
         Width="1180" Height="720" MinWidth="960" MinHeight="640"
-        WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Background}"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="64" />
@@ -15,118 +18,201 @@
             <RowDefinition Height="56" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,2">
+        <Border Grid.Row="0" Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,2">
             <Grid Margin="16,8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="190" />
+                    <ColumnDefinition Width="210" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="HAJIMAO MARKET" FontFamily="Consolas" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" />
-                    <TextBlock Text="桌面角落持续经营" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
+                    <TextBlock Text="HAJIMAO MARKET" FontFamily="Consolas" FontSize="18"
+                               FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" />
+                    <TextBlock Text="传统桌面放置经营" FontSize="12"
+                               Foreground="{DynamicResource Brush.TextMuted}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <StackPanel Margin="0,0,24,0"><TextBlock Text="现金" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" /><TextBlock Text="{Binding CashText}" Style="{DynamicResource MetricText}" FontSize="18" /></StackPanel>
-                    <StackPanel Margin="0,0,24,0"><TextBlock Text="累计收入" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" /><TextBlock Text="{Binding RevenueText}" Style="{DynamicResource MetricText}" /></StackPanel>
-                    <StackPanel Margin="0,0,24,0"><TextBlock Text="累计毛利" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" /><TextBlock Text="{Binding GrossProfitText}" Foreground="{DynamicResource Brush.Success}" FontFamily="Consolas" FontWeight="Bold" /></StackPanel>
-                    <TextBlock Text="{Binding GameTimeText}" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" />
+                    <StackPanel Margin="0,0,28,0">
+                        <TextBlock Text="现金" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
+                        <TextBlock Text="{Binding CashText}" Style="{DynamicResource MetricText}" FontSize="18" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,28,0">
+                        <TextBlock Text="玩家等级" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
+                        <TextBlock Text="{Binding PlayerLevelText}" Style="{DynamicResource MetricText}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="游戏时间" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
+                        <TextBlock Text="{Binding GameTimeText}" FontFamily="Consolas" />
+                    </StackPanel>
                 </StackPanel>
-                <Border Grid.Column="2" Style="{DynamicResource PixelPanel}" Padding="10,6" VerticalAlignment="Center">
-                    <TextBlock Text="现实时间经营 · 持续 1x" Foreground="{DynamicResource Brush.TextMuted}" AutomationProperties.Name="现实时间固定经营" />
+                <Border Grid.Column="2" Style="{DynamicResource PixelPanel}" Padding="10,6">
+                    <TextBlock Text="{Binding TimeModeText}" Foreground="{DynamicResource Brush.TextMuted}"
+                               AutomationProperties.Name="固定现实一倍速" />
                 </Border>
             </Grid>
         </Border>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="152" />
+                <ColumnDefinition Width="154" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="272" />
+                <ColumnDefinition Width="250" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,2,0" Padding="8">
+            <Border Grid.Column="0" Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,2,0" Padding="8">
                 <StackPanel>
-                    <TextBlock Text="经营模块" FontWeight="Bold" Margin="8,8,8,12" />
-                    <Button Content="店铺实况" Style="{DynamicResource PrimaryPixelButton}" HorizontalContentAlignment="Left" />
-                    <Button Content="商品与进货" Style="{DynamicResource PixelButton}" HorizontalContentAlignment="Left" Margin="0,8,0,0" />
-                    <Button Content="员工任务" Style="{DynamicResource PixelButton}" HorizontalContentAlignment="Left" Margin="0,8,0,0" />
-                    <Button Content="财务统计" Style="{DynamicResource PixelButton}" HorizontalContentAlignment="Left" Margin="0,8,0,0" />
-                    <Separator Margin="0,16" Background="{DynamicResource Brush.Border}" />
-                    <Button Content="装修（后续开放）" Style="{DynamicResource PixelButton}" IsEnabled="False" HorizontalContentAlignment="Left" />
-                    <Button Content="商业街（后续开放）" Style="{DynamicResource PixelButton}" IsEnabled="False" HorizontalContentAlignment="Left" Margin="0,8,0,0" />
+                    <TextBlock Text="经营模块" FontWeight="Bold" Margin="8,8,8,10" />
+                    <Button Tag="management-navigation" Content="店铺" Style="{DynamicResource PrimaryPixelButton}"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.Store}" />
+                    <Button Tag="management-navigation" Content="商品" Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.Products}" />
+                    <Button Tag="management-navigation" Content="进货" Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.Procurement}" />
+                    <Button Tag="management-navigation" Content="员工" Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.Employees}" />
+                    <Button Tag="management-navigation" Content="成长" Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.Growth}" />
+                    <Button Tag="management-navigation" Content="财务" Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.Finance}" />
+                    <Button Tag="management-navigation" Content="商业街" Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static market:ManagementSection.CommercialStreet}" />
                 </StackPanel>
             </Border>
 
             <Grid Grid.Column="1" Margin="12">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="252" />
-                    <RowDefinition Height="12" />
+                    <RowDefinition Height="210" />
+                    <RowDefinition Height="10" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                  <Border Grid.Row="0" Style="{DynamicResource PixelPanel}" Padding="0"><controls:ShopSceneControl Snapshot="{Binding SceneSnapshot}" /></Border>
+                <Border Grid.Row="0" Style="{DynamicResource PixelPanel}" Padding="0">
+                    <controls:BusinessShopSceneControl x:Name="LiveScene" Frame="{Binding SceneFrame}" />
+                </Border>
+
                 <Border Grid.Row="2" Style="{DynamicResource PixelPanel}" Padding="12">
                     <Grid>
-                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                        <Grid Margin="0,0,0,8">
-                            <TextBlock Text="商品经营" FontSize="17" FontWeight="Bold" />
-                            <TextBlock Text="补货由员工领取任务后完成；售价每次调整 ¥0.10" HorizontalAlignment="Right" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
-                        </Grid>
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding Products}">
+                        <Grid Visibility="{Binding IsStoreSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                            <TextBlock Text="店铺总览" FontSize="18" FontWeight="Bold" />
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding Overview.Stores}" Margin="0,10,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" Margin="0,0,0,8" Padding="10">
+                                        <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}"
+                                                BorderThickness="2" Padding="10" Margin="0,0,0,8">
                                             <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="112" /><ColumnDefinition Width="72" /><ColumnDefinition Width="108" /><ColumnDefinition Width="76" /><ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel><TextBlock Text="{Binding Name}" FontWeight="Bold" /><TextBlock Text="{Binding StockStatusText}" Foreground="{DynamicResource Brush.Warning}" FontSize="12" /></StackPanel>
-                                                <StackPanel Grid.Column="1"><TextBlock Text="库存" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" /><TextBlock Text="{Binding InventoryText}" FontFamily="Consolas" /></StackPanel>
-                                                <StackPanel Grid.Column="2"><TextBlock Text="进价 / 售价" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" /><TextBlock><Run Text="{Binding WholesalePriceText, Mode=OneWay}" /><Run Text=" / " /><Run Text="{Binding SalePriceText, Mode=OneWay}" /></TextBlock></StackPanel>
-                                                <StackPanel Grid.Column="3"><TextBlock Text="单件利润" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" /><TextBlock Text="{Binding UnitProfitText}" Foreground="{DynamicResource Brush.Success}" FontFamily="Consolas" /></StackPanel>
-                                                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                    <Button Content="- ¥0.10" Style="{DynamicResource PixelButton}" Command="{Binding DataContext.DecreasePriceCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" AutomationProperties.Name="降低商品售价" />
-                                                    <Button Content="+ ¥0.10" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding DataContext.IncreasePriceCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" AutomationProperties.Name="提高商品售价" />
-                                                    <Button Content="补货 ×5" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0" Command="{Binding DataContext.QueueRestockCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" AutomationProperties.Name="安排补货五件" />
+                                                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                                    <TextBlock Foreground="{DynamicResource Brush.TextMuted}" FontSize="12">
+                                                        <Run Text="解锁等级 Lv."/><Run Text="{Binding RequiredPlayerLevel, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <Button Content="查看" Style="{DynamicResource PixelButton}"
+                                                            Command="{Binding DataContext.SelectStoreCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" />
+                                                    <Button Content="开设" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0"
+                                                            Command="{Binding DataContext.Overview.OpenStoreCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsProductsSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                            <TextBlock Text="商品定价与毛利" FontSize="18" FontWeight="Bold" />
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                <ItemsControl ItemsSource="{Binding ProductManagement.Products}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}"
+                                                    BorderThickness="2" Padding="9" Margin="0,0,0,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="90"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <StackPanel><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Text="{Binding ShelfKind}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12"/></StackPanel>
+                                                    <StackPanel Grid.Column="1"><TextBlock Text="库存" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock><Run Text="{Binding Quantity, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding Capacity, Mode=OneWay}"/></TextBlock></StackPanel>
+                                                    <StackPanel Grid.Column="2"><TextBlock Text="毛利率" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding GrossMarginText}" Foreground="{DynamicResource Brush.Success}"/></StackPanel>
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal"><Button Content="- ¥0.10" Style="{DynamicResource PixelButton}" Command="{Binding DecreasePriceCommand}"/><Button Content="+ ¥0.10" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0" Command="{Binding IncreasePriceCommand}"/></StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsProcurementSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="采购与自动补货" FontSize="18" FontWeight="Bold"/>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                <ItemsControl ItemsSource="{Binding ProductManagement.Products}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" Padding="9" Margin="0,0,0,8">
+                                                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <StackPanel><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Foreground="{DynamicResource Brush.TextMuted}"><Run Text="补货点 "/><Run Text="{Binding ReorderPoint, Mode=OneWay}"/><Run Text=" · 目标 "/><Run Text="{Binding TargetQuantity, Mode=OneWay}"/></TextBlock></StackPanel>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="本地 ×5" Style="{DynamicResource PixelButton}" Command="{Binding OrderLocalCommand}"/><Button Content="区域 ×6" Margin="5,0,0,0" Style="{DynamicResource PixelButton}" Command="{Binding OrderRegionalCommand}"/><Button Content="厂家 ×24" Margin="5,0,0,0" Style="{DynamicResource PixelButton}" Command="{Binding OrderDirectCommand}"/><Button Content="自动补货" Margin="5,0,0,0" Style="{DynamicResource PrimaryPixelButton}" Command="{Binding ToggleAutoRestockCommand}"/></StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsEmployeesSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <DockPanel><TextBlock Text="员工与排班" FontSize="18" FontWeight="Bold"/><Button DockPanel.Dock="Right" Content="刷新候选人" Style="{DynamicResource PixelButton}" Command="{Binding EmployeeManagement.RefreshCandidatesCommand}"/></DockPanel>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0"><StackPanel>
+                                <ItemsControl ItemsSource="{Binding EmployeeManagement.Employees}"><ItemsControl.ItemTemplate><DataTemplate><Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" Padding="9" Margin="0,0,0,8"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Foreground="{DynamicResource Brush.TextMuted}"><Run Text="效率 "/><Run Text="{Binding EfficiencyText, Mode=OneWay}"/><Run Text=" · 班次 "/><Run Text="{Binding ShiftText, Mode=OneWay}"/></TextBlock></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="培训" Style="{DynamicResource PixelButton}" Command="{Binding TrainCommand}"/><Button Content="调至当前店" Style="{DynamicResource PixelButton}" Margin="5,0,0,0" Command="{Binding AssignToSelectedStoreCommand}"/><Button Content="白班" Style="{DynamicResource PixelButton}" Margin="5,0,0,0" Command="{Binding SetDayShiftCommand}"/><Button Content="夜班" Style="{DynamicResource PixelButton}" Margin="5,0,0,0" Command="{Binding SetNightShiftCommand}"/></StackPanel></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                <TextBlock Text="候选人" FontWeight="Bold" Margin="0,4,0,8"/><ItemsControl ItemsSource="{Binding EmployeeManagement.Candidates}"><ItemsControl.ItemTemplate><DataTemplate><Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" Padding="9" Margin="0,0,0,8"><DockPanel><Button DockPanel.Dock="Right" Content="招聘" Style="{DynamicResource PrimaryPixelButton}" Command="{Binding HireCommand}"/><TextBlock Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center"/></DockPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                            </StackPanel></ScrollViewer>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsGrowthSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel><TextBlock Text="店铺成长与促销" FontSize="18" FontWeight="Bold"/><TextBlock Text="{Binding StoreGrowth.ActivePromotionText}" Foreground="{DynamicResource Brush.Primary}" Margin="0,8"/><WrapPanel><Button Content="扩建" Style="{DynamicResource PixelButton}" Command="{Binding StoreGrowth.UpgradeExpansionCommand}"/><Button Content="升级货架" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding StoreGrowth.UpgradeShelfCommand}"/><Button Content="装修" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding StoreGrowth.UpgradeDecorationCommand}"/></WrapPanel><WrapPanel Margin="0,10,0,0"><Button Content="本地传单" Style="{DynamicResource PrimaryPixelButton}" Command="{Binding StoreGrowth.StartFlyersCommand}"/><Button Content="折扣券" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding StoreGrowth.StartCouponsCommand}"/><Button Content="节庆活动" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding StoreGrowth.StartFestivalCommand}"/></WrapPanel></StackPanel>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsFinanceSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel><TextBlock Text="财务账本" FontSize="18" FontWeight="Bold"/><UniformGrid Columns="3" Margin="0,12,0,0"><StackPanel Margin="6"><TextBlock Text="营业收入" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Finance.RevenueText}" Style="{DynamicResource MetricText}"/></StackPanel><StackPanel Margin="6"><TextBlock Text="采购成本" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Finance.StockCostText}" FontFamily="Consolas"/></StackPanel><StackPanel Margin="6"><TextBlock Text="毛利" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Finance.GrossProfitText}" Foreground="{DynamicResource Brush.Success}"/></StackPanel><StackPanel Margin="6"><TextBlock Text="工资" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Finance.WageCostText}" FontFamily="Consolas"/></StackPanel><StackPanel Margin="6"><TextBlock Text="运营成本" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Finance.OperatingCostText}" FontFamily="Consolas"/></StackPanel><StackPanel Margin="6"><TextBlock Text="净利润" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Finance.NetProfitText}" Style="{DynamicResource MetricText}"/></StackPanel></UniformGrid><TextBlock Text="{Binding Finance.LatestDayText}" Margin="6,14,6,0" Foreground="{DynamicResource Brush.TextMuted}"/></StackPanel>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsCommercialStreetSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel><TextBlock Text="商业街" FontSize="18" FontWeight="Bold"/><TextBlock Text="0.1.6 展示已开店铺；共享街道模拟将在 0.1.8 开放。" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,8,0,12"/><ItemsControl ItemsSource="{Binding Stores}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4"><Run Text="■ "/><Run Text="{Binding Name, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding IsOpen, Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+                        </Grid>
                     </Grid>
                 </Border>
             </Grid>
 
-            <Border Grid.Column="2" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2,0,0,0" Padding="12">
+            <Border Grid.Column="2" Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2,0,0,0" Padding="12">
                 <StackPanel>
-                    <TextBlock Text="经营警告" FontSize="17" FontWeight="Bold" />
-                    <Border Background="#3A292C" BorderBrush="{DynamicResource Brush.Warning}" BorderThickness="2" Padding="10" Margin="0,8,0,16">
-                        <StackPanel><TextBlock Text="{Binding StockWarningText}" Foreground="{DynamicResource Brush.Warning}" FontWeight="Bold" /><TextBlock Text="商品缺货时顾客会直接离店。使用商品卡片补货。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,4,0,0" /></StackPanel>
+                    <TextBlock Text="当前店铺" FontSize="17" FontWeight="Bold" />
+                    <TextBlock Text="{Binding SelectedStoreName}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6,0,12" />
+                    <TextBlock Text="运营警告" FontSize="17" FontWeight="Bold" />
+                    <Border Background="#3A292C" BorderBrush="{DynamicResource Brush.Warning}" BorderThickness="2" Padding="10" Margin="0,8,0,12">
+                        <StackPanel><TextBlock Text="{Binding StockWarningText}" Foreground="{DynamicResource Brush.Warning}" FontWeight="Bold"/><TextBlock Text="缺货会造成顾客流失；补货按现实时间到达。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,5,0,0"/></StackPanel>
                     </Border>
-                    <TextBlock Text="员工状态" FontSize="17" FontWeight="Bold" />
-                    <ItemsControl ItemsSource="{Binding Employees}" Margin="0,8,0,16">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" Padding="8" Margin="0,0,0,8">
-                                    <StackPanel><TextBlock><Run Text="{Binding Name, Mode=OneWay}" FontWeight="Bold" /><Run Text=" · " /><Run Text="{Binding RoleText, Mode=OneWay}" /></TextBlock><TextBlock Text="{Binding StateText}" Foreground="{DynamicResource Brush.Success}" FontSize="12" /><TextBlock Text="{Binding CurrentTask}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" TextWrapping="Wrap" /></StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Text="财务摘要" FontSize="17" FontWeight="Bold" />
-                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="采购支出" Foreground="{DynamicResource Brush.TextMuted}" /><TextBlock Text="{Binding ExpenseText}" FontFamily="Consolas" /></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="累计毛利" Foreground="{DynamicResource Brush.TextMuted}" /><TextBlock Text="{Binding GrossProfitText}" Foreground="{DynamicResource Brush.Success}" FontFamily="Consolas" /></StackPanel></Grid>
+                    <TextBlock Text="{Binding CustomerCountText}" />
+                    <TextBlock Text="{Binding ProductManagement.StatusMessage}" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                    <TextBlock Text="{Binding EmployeeManagement.StatusMessage}" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{Binding StoreGrowth.StatusMessage}" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap" Margin="0,6,0,0" />
                 </StackPanel>
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,2,0,0">
+        <Border Grid.Row="2" Background="{DynamicResource Brush.SurfaceElevated}"
+                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,2,0,0">
             <Grid Margin="12,8">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="{Binding SoundToggleText}" Style="{DynamicResource PixelButton}" Command="{Binding ToggleMuteCommand}" AutomationProperties.Name="切换游戏音效" /><Button Content="锁定桌面小店" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleLockCommand}" /><Button Content="切换鼠标穿透" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleClickThroughCommand}" /></StackPanel>
+                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="{Binding SoundToggleText}" Style="{DynamicResource PixelButton}" Command="{Binding ToggleMuteCommand}"/><Button Content="锁定桌面小店" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleLockCommand}"/><Button Content="切换鼠标穿透" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleClickThroughCommand}"/></StackPanel>
             </Grid>
         </Border>
     </Grid>
