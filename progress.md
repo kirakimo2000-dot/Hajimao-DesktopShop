@@ -313,6 +313,8 @@
   - 已确认 `AssemblyInfo.cs` 自 0.1.0 起未改动；仅针对本次全部 C# 变更执行 `dotnet format --verify-no-changes` 后退出 0。手工 diff 复核确认品牌改名未触碰版本、存档 schema、业务玩法或数据路径。
   - 独立审阅首轮 Critical 0、Important 1、Minor 0；Important 指出旧阶段报告/计划不应改写为新名称。已撤回 0.1.3～0.1.8 的历史名称改动，保留 0.1.9 覆盖决定、当前 README/资产资料与新 GitHub URL；复审只剩 1 项记录措辞 Minor，已同步最终历史保留策略。
   - 修正审阅意见后的完整门禁再次通过：Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 57，总计 299/299；Release 构建 0 警告/0 错误；本次 C# 格式校验与 `git diff --check` 均退出 0；新 origin 的 `main` 可读取并指向 `d06568d`。
+  - 品牌子阶段最终复审 Critical 0、Important 0、Minor 0；实现与记录以提交 `134357f` 建立 v0.1.9 本地检查点，仍不发布、不打标签，下一步继续正式日志与稳定性计划。
+  - 子阶段收尾已执行 Release `dotnet clean`：0 警告/0 错误；无运行中游戏进程、`TestResults` 或 `__pycache__`，工作树干净。
   - 恢复原始需求、路线图与 0.1.8 发布记录，确认继续使用 .NET 10/WPF 分层、固定现实 1x 和 schema v6 兼容边界。
   - 创建 `agent/v0.1.9-release-candidate` 隔离工作树。
   - 首次组合命令在创建工作树后没有切换工作目录，因而在主工作树完成了 260/260 基线；已记录该路径错误，下一步在隔离工作树重新执行恢复和测试。
