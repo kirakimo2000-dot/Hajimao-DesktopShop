@@ -105,6 +105,8 @@ public sealed class RetailBusiness
         return new OpenShopResult(OpenShopStatus.Success, definition.Id, definition.OpeningCost);
     }
 
+    public bool TryPayOperatingExpense(Money amount) => _wallet.TryDebit(amount);
+
     public WagePaymentResult TryPayEmployeeMinute(ShopId shopId, Employee employee)
     {
         ArgumentNullException.ThrowIfNull(employee);

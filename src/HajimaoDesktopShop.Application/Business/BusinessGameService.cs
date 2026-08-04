@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.Procurement;
+using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
@@ -10,7 +11,7 @@ using HajimaoDesktopShop.Domain.Shops;
 
 namespace HajimaoDesktopShop.Application.Business;
 
-public sealed class BusinessGameService : IProcurementStockGateway
+public sealed class BusinessGameService : IProcurementStockGateway, IEmployeeOperationsGateway
 {
     private readonly object _gate = new();
     private readonly ProductDefinition[] _productDefinitions;
@@ -363,6 +364,27 @@ public sealed class BusinessGameService : IProcurementStockGateway
         lock (_gate)
         {
             return _shopDefinitions.ContainsKey(shopId.Trim());
+        }
+    }
+
+    public bool IsStoreOpen(string storeId)
+    {
+        if (string.IsNullOrWhiteSpace(storeId))
+        {
+            return false;
+        }
+
+        lock (_gate)
+        {
+            return _business.StoreIds.Contains(new ShopId(storeId));
+        }
+    }
+
+    public bool TryDebitEmployeeExpense(Money amount)
+    {
+        lock (_gate)
+        {
+            return _business.TryPayOperatingExpense(amount);
         }
     }
 

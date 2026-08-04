@@ -1,0 +1,355 @@
+using System.Globalization;
+using HajimaoDesktopShop.Domain.Economy;
+using HajimaoDesktopShop.Domain.Employees;
+
+namespace HajimaoDesktopShop.Application.Business.Employees;
+
+public sealed class EmployeeOperationsService
+{
+    private const int CandidatePoolSize = 3;
+    private const int DefaultShiftStartMinute = 480;
+    private const int DefaultShiftEndMinute = 960;
+    private const ulong SplitMixIncrement = 0x9E3779B97F4A7C15UL;
+
+    private static readonly string[] CandidateNames =
+        ["小葵", "小满", "阿澄", "桃子", "晴川", "安禾", "铃兰", "星野"];
+
+    private static readonly EmployeeRole[] CandidateRoles =
+        [
+            EmployeeRole.Cashier,
+            EmployeeRole.Restocker,
+            EmployeeRole.SalesAssistant,
+            EmployeeRole.Cleaner,
+            EmployeeRole.Manager,
+            EmployeeRole.Buyer
+        ];
+
+    private readonly object _gate = new();
+    private readonly IEmployeeOperationsGateway _gateway;
+    private readonly Dictionary<string, EmployeeCandidate> _candidates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Employee> _employees = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _storeByEmployee = new(StringComparer.Ordinal);
+    private readonly EmployeeRoster _roster = new();
+    private ulong _candidateRandomState;
+    private long _nextCandidateId;
+
+    public EmployeeOperationsService(
+        IEmployeeOperationsGateway gateway,
+        ulong candidateRandomState = 0x48414A494D414FUL,
+        long nextCandidateId = 1,
+        IEnumerable<EmployeeCandidate>? candidates = null)
+    {
+        ArgumentNullException.ThrowIfNull(gateway);
+        if (nextCandidateId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(nextCandidateId));
+        }
+
+        _gateway = gateway;
+        _candidateRandomState = candidateRandomState;
+        _nextCandidateId = nextCandidateId;
+
+        if (candidates is null)
+        {
+            RefreshCandidatesCore();
+            return;
+        }
+
+        foreach (var candidate in candidates)
+        {
+            ArgumentNullException.ThrowIfNull(candidate);
+            if (!_candidates.TryAdd(candidate.CandidateId, candidate))
+            {
+                throw new ArgumentException(
+                    $"Candidate '{candidate.CandidateId}' is duplicated.",
+                    nameof(candidates));
+            }
+        }
+    }
+
+    public EmployeeOperationsSnapshot GetSnapshot()
+    {
+        lock (_gate)
+        {
+            var candidates = _candidates.Values
+                .OrderBy(candidate => candidate.CandidateId, StringComparer.Ordinal)
+                .ToArray();
+            var employees = _employees.Values
+                .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
+                .Select(employee =>
+                {
+                    var shift = _roster.GetShift(employee.Id.Value)
+                        ?? throw new InvalidOperationException("Every registered employee must have a shift.");
+                    return new EmployeeOperationsEmployeeSnapshot(
+                        employee.Id.Value,
+                        employee.Name,
+                        employee.Role,
+                        employee.EfficiencyPermille,
+                        employee.EffectiveEfficiencyPermille,
+                        employee.HourlyWage.Cents,
+                        employee.TrainingLevel,
+                        employee.EnergyPermille,
+                        employee.SatisfactionPermille,
+                        _storeByEmployee[employee.Id.Value],
+                        shift.StartMinute,
+                        shift.EndMinute);
+                })
+                .ToArray();
+            return new EmployeeOperationsSnapshot(
+                _candidateRandomState,
+                _nextCandidateId,
+                Array.AsReadOnly(candidates),
+                Array.AsReadOnly(employees));
+        }
+    }
+
+    public void RefreshCandidates()
+    {
+        lock (_gate)
+        {
+            RefreshCandidatesCore();
+        }
+    }
+
+    public EmployeeCommandResult Hire(string candidateId, string storeId)
+    {
+        var normalizedCandidateId = NormalizeId(candidateId, nameof(candidateId));
+        var normalizedStoreId = NormalizeId(storeId, nameof(storeId));
+        lock (_gate)
+        {
+            if (!_candidates.TryGetValue(normalizedCandidateId, out var candidate))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.UnknownCandidate,
+                    null,
+                    Money.Zero);
+            }
+
+            if (!_gateway.IsStoreOpen(normalizedStoreId))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.UnknownStore,
+                    null,
+                    candidate.HireCost);
+            }
+
+            var employeeId = CreateEmployeeId(candidate.CandidateId);
+            if (_employees.ContainsKey(employeeId))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.DuplicateEmployee,
+                    employeeId,
+                    Money.Zero);
+            }
+
+            if (!_gateway.TryDebitEmployeeExpense(candidate.HireCost))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.InsufficientFunds,
+                    null,
+                    candidate.HireCost);
+            }
+
+            var employee = new Employee(
+                new EmployeeId(employeeId),
+                candidate.Name,
+                candidate.Role,
+                candidate.EfficiencyPermille,
+                candidate.HourlyWage);
+            _employees.Add(employeeId, employee);
+            _storeByEmployee.Add(employeeId, normalizedStoreId);
+            _roster.SetShift(new EmployeeShift(
+                employeeId,
+                normalizedStoreId,
+                DefaultShiftStartMinute,
+                DefaultShiftEndMinute));
+            _candidates.Remove(normalizedCandidateId);
+            return new EmployeeCommandResult(
+                EmployeeCommandStatus.Success,
+                employeeId,
+                candidate.HireCost);
+        }
+    }
+
+    public EmployeeCommandResult Train(string employeeId)
+    {
+        var normalizedEmployeeId = NormalizeId(employeeId, nameof(employeeId));
+        lock (_gate)
+        {
+            if (!_employees.TryGetValue(normalizedEmployeeId, out var employee))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.UnknownEmployee,
+                    normalizedEmployeeId,
+                    Money.Zero);
+            }
+
+            if (employee.TrainingLevel >= 5)
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.MaximumTraining,
+                    normalizedEmployeeId,
+                    Money.Zero);
+            }
+
+            var cost = employee.HourlyWage * checked((employee.TrainingLevel + 1) * 8);
+            if (!_gateway.TryDebitEmployeeExpense(cost))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.InsufficientFunds,
+                    normalizedEmployeeId,
+                    cost);
+            }
+
+            employee.CompleteTraining();
+            return new EmployeeCommandResult(
+                EmployeeCommandStatus.Success,
+                normalizedEmployeeId,
+                cost);
+        }
+    }
+
+    public EmployeeCommandResult AssignStore(string employeeId, string storeId)
+    {
+        var normalizedEmployeeId = NormalizeId(employeeId, nameof(employeeId));
+        var normalizedStoreId = NormalizeId(storeId, nameof(storeId));
+        lock (_gate)
+        {
+            if (!_employees.ContainsKey(normalizedEmployeeId))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.UnknownEmployee,
+                    normalizedEmployeeId,
+                    Money.Zero);
+            }
+
+            if (!_gateway.IsStoreOpen(normalizedStoreId))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.UnknownStore,
+                    normalizedEmployeeId,
+                    Money.Zero);
+            }
+
+            var current = _roster.GetShift(normalizedEmployeeId)
+                ?? throw new InvalidOperationException("Every registered employee must have a shift.");
+            _storeByEmployee[normalizedEmployeeId] = normalizedStoreId;
+            _roster.SetShift(new EmployeeShift(
+                normalizedEmployeeId,
+                normalizedStoreId,
+                current.StartMinute,
+                current.EndMinute));
+            return new EmployeeCommandResult(
+                EmployeeCommandStatus.Success,
+                normalizedEmployeeId,
+                Money.Zero);
+        }
+    }
+
+    public EmployeeCommandResult SetShift(string employeeId, int startMinute, int endMinute)
+    {
+        var normalizedEmployeeId = NormalizeId(employeeId, nameof(employeeId));
+        lock (_gate)
+        {
+            if (!_employees.ContainsKey(normalizedEmployeeId))
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.UnknownEmployee,
+                    normalizedEmployeeId,
+                    Money.Zero);
+            }
+
+            try
+            {
+                _roster.SetShift(new EmployeeShift(
+                    normalizedEmployeeId,
+                    _storeByEmployee[normalizedEmployeeId],
+                    startMinute,
+                    endMinute));
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return new EmployeeCommandResult(
+                    EmployeeCommandStatus.InvalidShift,
+                    normalizedEmployeeId,
+                    Money.Zero);
+            }
+
+            return new EmployeeCommandResult(
+                EmployeeCommandStatus.Success,
+                normalizedEmployeeId,
+                Money.Zero);
+        }
+    }
+
+    private void RefreshCandidatesCore()
+    {
+        _candidates.Clear();
+        for (var index = 0; index < CandidatePoolSize; index++)
+        {
+            var candidate = GenerateCandidate();
+            _candidates.Add(candidate.CandidateId, candidate);
+        }
+    }
+
+    private EmployeeCandidate GenerateCandidate()
+    {
+        var candidateNumber = _nextCandidateId;
+        _nextCandidateId = checked(_nextCandidateId + 1L);
+        var name = CandidateNames[NextCandidateInt(CandidateNames.Length)];
+        var role = CandidateRoles[NextCandidateInt(CandidateRoles.Length)];
+        var efficiency = 800 + (NextCandidateInt(21) * 25);
+        var roleWage = role switch
+        {
+            EmployeeRole.Manager => 2_800,
+            EmployeeRole.Buyer => 2_500,
+            EmployeeRole.Restocker => 2_100,
+            EmployeeRole.Cleaner => 1_900,
+            _ => 2_000
+        };
+        var hourlyWage = new Money(roleWage + ((efficiency - 800) / 25 * 25L));
+        return new EmployeeCandidate(
+            $"candidate-{candidateNumber:D6}",
+            name,
+            role,
+            efficiency,
+            hourlyWage);
+    }
+
+    private int NextCandidateInt(int exclusiveMaximum)
+    {
+        _candidateRandomState = unchecked(_candidateRandomState + SplitMixIncrement);
+        var mixed = _candidateRandomState;
+        mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9UL;
+        mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBUL;
+        mixed ^= mixed >> 31;
+        return checked((int)(mixed % (uint)exclusiveMaximum));
+    }
+
+    private static string CreateEmployeeId(string candidateId)
+    {
+        const string prefix = "candidate-";
+        if (candidateId.StartsWith(prefix, StringComparison.Ordinal)
+            && long.TryParse(
+                candidateId.AsSpan(prefix.Length),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var numericId)
+            && numericId > 0)
+        {
+            return $"employee-{numericId:D6}";
+        }
+
+        return $"employee-{candidateId}";
+    }
+
+    private static string NormalizeId(string value, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("ID is required.", parameterName);
+        }
+
+        return value.Trim();
+    }
+}
