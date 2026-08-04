@@ -15,4 +15,5 @@ public sealed record StoreDayReport(
     long WageCostCents,
     long NetProfitCents,
     int ClosingCleanlinessPermille,
-    int AverageQueueLengthBasisPoints);
+    int AverageQueueLengthBasisPoints,
+    long OperatingCostCents = 0);

@@ -7,4 +7,6 @@ public sealed record DemandBreakdown(
     int QueueAdjustmentBasisPoints,
     int CleanlinessAdjustmentBasisPoints,
     int TimeAdjustmentBasisPoints,
-    int FinalBasisPoints);
+    int FinalBasisPoints,
+    int AttractionAdjustmentBasisPoints = 0,
+    int PromotionAdjustmentBasisPoints = 0);

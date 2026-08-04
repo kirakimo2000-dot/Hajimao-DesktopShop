@@ -362,6 +362,7 @@ public sealed class BusinessSimulation
         }
 
         _game.AdvanceProcurementMinute();
+        _game.AdvanceStoreGrowthMinute();
 
         var completedMinute = checked(_clock.GameMinute + 1L);
         if (completedMinute % 1_440L == 0)
@@ -515,6 +516,7 @@ public sealed class BusinessSimulation
     private void TryVisitAndQueuePurchase(StoreRuntime runtime)
     {
         var store = _game.GetSnapshot().Stores.Single(snapshot => snapshot.Id == runtime.StoreId);
+        var growth = store.Growth ?? _game.GetStoreGrowthSnapshot(runtime.StoreId);
         var arrival = CalculateArrivalDemand(runtime, store);
         if (_random.NextDouble() >= arrival.FinalBasisPoints / 10_000d)
         {
@@ -538,9 +540,10 @@ public sealed class BusinessSimulation
             _options.BasePurchaseBasisPoints,
             CalculatePriceIndex(selected),
             runtime.ServicePermille,
-            runtime.QueueLength,
+            CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
             runtime.CleanlinessPermille,
-            CurrentMinuteOfDay));
+            CurrentMinuteOfDay,
+            promotionBasisPoints: growth.PromotionPurchaseBonusBasisPoints));
         if (_random.NextDouble() >= purchase.FinalBasisPoints / 10_000d)
         {
             runtime.LostSales++;
@@ -568,14 +571,22 @@ public sealed class BusinessSimulation
 
     private DemandBreakdown CalculateArrivalDemand(
         StoreRuntime runtime,
-        BusinessStoreSnapshot store) =>
-        DemandModel.CalculateArrival(new DemandContext(
+        BusinessStoreSnapshot store)
+    {
+        var growth = store.Growth ?? _game.GetStoreGrowthSnapshot(runtime.StoreId);
+        return DemandModel.CalculateArrival(new DemandContext(
             _options.BaseArrivalBasisPoints,
             CalculateAveragePriceIndex(store.Products),
             runtime.ServicePermille,
-            runtime.QueueLength,
+            CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
             runtime.CleanlinessPermille,
-            CurrentMinuteOfDay));
+            CurrentMinuteOfDay,
+            growth.AttractionBonusBasisPoints,
+            growth.PromotionArrivalBonusBasisPoints));
+    }
+
+    private static int CalculateEffectiveQueueLength(int queueLength, int comfortCapacity) =>
+        Math.Max(0, queueLength - comfortCapacity);
 
     private int CurrentMinuteOfDay => checked((int)(_clock.GameMinute % 1_440L));
 
@@ -691,6 +702,7 @@ public sealed class BusinessSimulation
             DayStartRevenueCents = saved.DayStartRevenueCents;
             DayStartGrossProfitCents = saved.DayStartGrossProfitCents;
             DayStartWageCostCents = saved.DayStartWageCostCents;
+            DayStartOperatingCostCents = saved.DayStartOperatingCostCents;
             DayQueueLengthTotal = saved.DayQueueLengthTotal;
             DayTickCount = saved.DayTickCount;
         }
@@ -743,7 +755,8 @@ public sealed class BusinessSimulation
                 DayStartGrossProfitCents,
                 DayStartWageCostCents,
                 DayQueueLengthTotal,
-                DayTickCount);
+                DayTickCount,
+                DayStartOperatingCostCents);
 
         private int DayStartVisitors { get; set; }
 
@@ -758,6 +771,8 @@ public sealed class BusinessSimulation
         private long DayStartGrossProfitCents { get; set; }
 
         private long DayStartWageCostCents { get; set; }
+
+        private long DayStartOperatingCostCents { get; set; }
 
         private long DayQueueLengthTotal { get; set; }
 
@@ -774,6 +789,7 @@ public sealed class BusinessSimulation
             var revenue = checked(store.RevenueCents - DayStartRevenueCents);
             var grossProfit = checked(store.GrossProfitCents - DayStartGrossProfitCents);
             var wageCost = checked(store.WageCostCents - DayStartWageCostCents);
+            var operatingCost = checked(store.OperatingCostCents - DayStartOperatingCostCents);
             var averageQueue = DayTickCount == 0
                 ? 0
                 : checked((int)(DayQueueLengthTotal * 10_000L / DayTickCount));
@@ -786,9 +802,10 @@ public sealed class BusinessSimulation
                 revenue,
                 grossProfit,
                 wageCost,
-                checked(grossProfit - wageCost),
+                checked(grossProfit - wageCost - operatingCost),
                 CleanlinessPermille,
-                averageQueue);
+                averageQueue,
+                operatingCost);
         }
 
         public void StartNextDay(BusinessStoreSnapshot store)
@@ -800,6 +817,7 @@ public sealed class BusinessSimulation
             DayStartRevenueCents = store.RevenueCents;
             DayStartGrossProfitCents = store.GrossProfitCents;
             DayStartWageCostCents = store.WageCostCents;
+            DayStartOperatingCostCents = store.OperatingCostCents;
             DayQueueLengthTotal = 0;
             DayTickCount = 0;
         }

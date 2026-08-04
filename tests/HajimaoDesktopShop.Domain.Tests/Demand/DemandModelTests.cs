@@ -31,6 +31,24 @@ public sealed class DemandModelTests
         Assert.Equal(-800, dirty.CleanlinessAdjustmentBasisPoints);
     }
 
+    [Fact]
+    public void GrowthAndPromotion_AddSeparateExplainableDemandAdjustments()
+    {
+        var result = DemandModel.CalculateArrival(new DemandContext(
+            3_000,
+            10_000,
+            1_000,
+            0,
+            1_000,
+            900,
+            attractionBasisPoints: 650,
+            promotionBasisPoints: 1_200));
+
+        Assert.Equal(650, result.AttractionAdjustmentBasisPoints);
+        Assert.Equal(1_200, result.PromotionAdjustmentBasisPoints);
+        Assert.Equal(4_850, result.FinalBasisPoints);
+    }
+
     [Theory]
     [InlineData(120, -1_500)]
     [InlineData(480, 800)]

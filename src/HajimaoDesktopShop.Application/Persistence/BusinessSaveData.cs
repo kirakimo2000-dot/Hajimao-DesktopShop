@@ -106,7 +106,8 @@ public sealed record StoreRuntimeSaveData(
     long DayStartGrossProfitCents,
     long DayStartWageCostCents,
     long DayQueueLengthTotal,
-    int DayTickCount);
+    int DayTickCount,
+    long DayStartOperatingCostCents = 0);
 
 public sealed record ActiveCheckoutSaveData(
     string ProductId,
