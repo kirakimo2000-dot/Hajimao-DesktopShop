@@ -127,17 +127,30 @@ public sealed class OnboardingProgressServiceTests
             new OnboardingSnapshot([], completedTasks: 0, currentTaskId: null));
         Assert.Throws<ArgumentNullException>(() =>
             new OnboardingSnapshot(null!, completedTasks: 0, currentTaskId: null));
+    }
+
+    [Fact]
+    public void Snapshot_RejectsOutOfOrderTasks()
+    {
+        var tasks = FullTaskStates();
+        (tasks[0], tasks[1]) = (tasks[1], tasks[0]);
+
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot(
-                [new OnboardingTaskState(OnboardingTaskId.AdjustPrice, IsCompleted: false)],
+                tasks,
                 completedTasks: 0,
-                currentTaskId: OnboardingTaskId.AdjustPrice));
+                currentTaskId: OnboardingTaskId.RestockProduct));
+    }
+
+    [Fact]
+    public void Snapshot_RejectsDuplicateTasks()
+    {
+        var tasks = FullTaskStates();
+        tasks[1] = new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: false);
+
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot(
-                [
-                    new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: false),
-                    new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: false)
-                ],
+                tasks,
                 completedTasks: 0,
                 currentTaskId: OnboardingTaskId.RestockProduct));
     }
@@ -168,21 +181,29 @@ public sealed class OnboardingProgressServiceTests
     [Fact]
     public void Snapshot_RejectsInconsistentCompletionMetadata()
     {
+        var completedCountMismatchTasks = FullTaskStates();
+        completedCountMismatchTasks[0] = completedCountMismatchTasks[0] with { IsCompleted = true };
+
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot(
-                [new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: true)],
+                completedCountMismatchTasks,
                 completedTasks: 0,
-                currentTaskId: null));
+                currentTaskId: OnboardingTaskId.AdjustPrice));
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot(
-                [new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: false)],
+                FullTaskStates(),
                 completedTasks: 0,
-                currentTaskId: null));
+                currentTaskId: OnboardingTaskId.AdjustPrice));
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot(
-                [new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: false)],
-                completedTasks: 1,
+                FullTaskStates(isCompleted: true),
+                completedTasks: 7,
                 currentTaskId: OnboardingTaskId.RestockProduct));
+        Assert.Throws<ArgumentException>(() =>
+            new OnboardingSnapshot(
+                FullTaskStates(),
+                completedTasks: 0,
+                currentTaskId: null));
     }
 
     [Fact]
@@ -239,15 +260,15 @@ public sealed class OnboardingProgressServiceTests
         Assert.Equal(expectedCompleted.Order(), completed.Order());
     }
 
-    private static OnboardingTaskState[] FullTaskStates() =>
+    private static OnboardingTaskState[] FullTaskStates(bool isCompleted = false) =>
     [
-        new(OnboardingTaskId.RestockProduct, IsCompleted: false),
-        new(OnboardingTaskId.AdjustPrice, IsCompleted: false),
-        new(OnboardingTaskId.EnableAutoRestock, IsCompleted: false),
-        new(OnboardingTaskId.CompleteFirstSale, IsCompleted: false),
-        new(OnboardingTaskId.TrainEmployee, IsCompleted: false),
-        new(OnboardingTaskId.UpgradeStore, IsCompleted: false),
-        new(OnboardingTaskId.OpenSecondStore, IsCompleted: false)
+        new(OnboardingTaskId.RestockProduct, isCompleted),
+        new(OnboardingTaskId.AdjustPrice, isCompleted),
+        new(OnboardingTaskId.EnableAutoRestock, isCompleted),
+        new(OnboardingTaskId.CompleteFirstSale, isCompleted),
+        new(OnboardingTaskId.TrainEmployee, isCompleted),
+        new(OnboardingTaskId.UpgradeStore, isCompleted),
+        new(OnboardingTaskId.OpenSecondStore, isCompleted)
     ];
 
     private static BusinessSimulationSnapshot Simulation(
