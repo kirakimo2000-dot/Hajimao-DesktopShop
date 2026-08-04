@@ -20,4 +20,10 @@ public sealed record EmployeeOperationsEmployeeSnapshot(
     int SatisfactionPermille,
     string StoreId,
     int ShiftStartMinute,
-    int ShiftEndMinute);
+    int ShiftEndMinute,
+    bool IsAlwaysOn);
+
+internal sealed record EmployeeRuntimeAssignment(
+    string StoreId,
+    Employee Employee,
+    EmployeeShift Shift);

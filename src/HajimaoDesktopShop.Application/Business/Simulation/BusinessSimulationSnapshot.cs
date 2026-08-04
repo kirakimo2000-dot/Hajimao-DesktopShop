@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Domain.Demand;
+using HajimaoDesktopShop.Application.Business.Employees;
 
 namespace HajimaoDesktopShop.Application.Business.Simulation;
 
@@ -6,6 +7,7 @@ public sealed record BusinessSimulationSnapshot(
     long GameMinute,
     BusinessSnapshot Business,
     IReadOnlyList<StoreOperationsSnapshot> Stores,
+    EmployeeOperationsSnapshot Employees,
     BusinessDayReport? LastCompletedDay = null);
 
 public sealed record StoreOperationsSnapshot(

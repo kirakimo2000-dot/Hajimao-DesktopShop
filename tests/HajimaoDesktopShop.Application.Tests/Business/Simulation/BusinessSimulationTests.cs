@@ -106,7 +106,7 @@ public sealed class BusinessSimulationTests
         clean.AdvanceRealSeconds(2);
 
         Assert.Equal(988, Assert.Single(dirty.GetSnapshot().Stores).CleanlinessPermille);
-        Assert.Equal(998, Assert.Single(clean.GetSnapshot().Stores).CleanlinessPermille);
+        Assert.Equal(997, Assert.Single(clean.GetSnapshot().Stores).CleanlinessPermille);
     }
 
     [Fact]
@@ -128,6 +128,50 @@ public sealed class BusinessSimulationTests
         Assert.Equal(0, store.CompletedSales);
         Assert.Equal(1, store.CheckoutQueueLength);
         Assert.Equal(0, Assert.Single(simulation.GetSnapshot().Business.Stores).WageCostCents);
+    }
+
+    [Fact]
+    public void OffShiftEmployee_DoesNotReceiveWageOrServiceCreditAndRecovers()
+    {
+        var service = CreateService();
+        var employee = CreateEmployee("cashier", EmployeeRole.Cashier, 1_000, 6_000);
+        employee.RecordWorkedConditionMinute();
+        var simulation = new BusinessSimulation(
+            service,
+            [new StoreEmployeeAssignment("zeta-store", employee)],
+            new ScriptedRandomSource(1),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+        simulation.Employees.SetShift("cashier", 480, 960);
+
+        simulation.AdvanceRealSecond();
+        var store = Assert.Single(simulation.GetSnapshot().Stores);
+        var employeeSnapshot = Assert.Single(simulation.Employees.GetSnapshot().Employees);
+
+        Assert.Equal(0, employee.WorkedMinutes);
+        Assert.Equal(1_000, employeeSnapshot.EnergyPermille);
+        Assert.Equal(0, store.ServicePermille);
+        Assert.Equal(0, Assert.Single(simulation.GetSnapshot().Business.Stores).WageCostCents);
+    }
+
+    [Fact]
+    public void WorkingEmployee_LosesEnergyAndUsesEffectiveEfficiency()
+    {
+        var service = CreateService();
+        var employee = CreateEmployee("cashier", EmployeeRole.Cashier, 1_000, 60);
+        var simulation = new BusinessSimulation(
+            service,
+            [new StoreEmployeeAssignment("zeta-store", employee)],
+            new ScriptedRandomSource(1),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        simulation.AdvanceRealSecond();
+        var store = Assert.Single(simulation.GetSnapshot().Stores);
+        var employeeSnapshot = Assert.Single(simulation.Employees.GetSnapshot().Employees);
+
+        Assert.Equal(1, employee.WorkedMinutes);
+        Assert.Equal(998, employeeSnapshot.EnergyPermille);
+        Assert.Equal(959, employeeSnapshot.EffectiveEfficiencyPermille);
+        Assert.Equal(959, store.ServicePermille);
     }
 
     [Fact]
@@ -238,7 +282,7 @@ public sealed class BusinessSimulationTests
 
         var originalStore = original.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
         var restoredStore = restored.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
-        Assert.Equal(1_000, originalStore.ServicePermille);
+        Assert.Equal(959, originalStore.ServicePermille);
         Assert.Equivalent(originalStore, restoredStore, strict: true);
     }
 

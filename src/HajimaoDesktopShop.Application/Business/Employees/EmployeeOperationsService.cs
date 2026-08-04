@@ -92,7 +92,8 @@ public sealed class EmployeeOperationsService
                         employee.SatisfactionPermille,
                         _storeByEmployee[employee.Id.Value],
                         shift.StartMinute,
-                        shift.EndMinute);
+                        shift.EndMinute,
+                        shift.IsAlwaysOn);
                 })
                 .ToArray();
             return new EmployeeOperationsSnapshot(
@@ -171,6 +172,39 @@ public sealed class EmployeeOperationsService
         }
     }
 
+    public void RegisterExistingEmployee(
+        string storeId,
+        Employee employee,
+        EmployeeShift? shift = null)
+    {
+        var normalizedStoreId = NormalizeId(storeId, nameof(storeId));
+        ArgumentNullException.ThrowIfNull(employee);
+        lock (_gate)
+        {
+            var employeeId = employee.Id.Value;
+            if (_employees.ContainsKey(employeeId))
+            {
+                throw new ArgumentException(
+                    $"Employee '{employeeId}' cannot be registered more than once.",
+                    nameof(employee));
+            }
+
+            var registeredShift = shift
+                ?? EmployeeShift.CreateLegacyAlwaysOn(employeeId, normalizedStoreId);
+            if (!string.Equals(registeredShift.EmployeeId, employeeId, StringComparison.Ordinal)
+                || !string.Equals(registeredShift.StoreId, normalizedStoreId, StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "The restored shift must match the employee and store assignment.",
+                    nameof(shift));
+            }
+
+            _employees.Add(employeeId, employee);
+            _storeByEmployee.Add(employeeId, normalizedStoreId);
+            _roster.SetShift(registeredShift);
+        }
+    }
+
     public EmployeeCommandResult Train(string employeeId)
     {
         var normalizedEmployeeId = NormalizeId(employeeId, nameof(employeeId));
@@ -234,11 +268,13 @@ public sealed class EmployeeOperationsService
             var current = _roster.GetShift(normalizedEmployeeId)
                 ?? throw new InvalidOperationException("Every registered employee must have a shift.");
             _storeByEmployee[normalizedEmployeeId] = normalizedStoreId;
-            _roster.SetShift(new EmployeeShift(
-                normalizedEmployeeId,
-                normalizedStoreId,
-                current.StartMinute,
-                current.EndMinute));
+            _roster.SetShift(current.IsAlwaysOn
+                ? EmployeeShift.CreateLegacyAlwaysOn(normalizedEmployeeId, normalizedStoreId)
+                : new EmployeeShift(
+                    normalizedEmployeeId,
+                    normalizedStoreId,
+                    current.StartMinute,
+                    current.EndMinute));
             return new EmployeeCommandResult(
                 EmployeeCommandStatus.Success,
                 normalizedEmployeeId,
@@ -279,6 +315,65 @@ public sealed class EmployeeOperationsService
                 EmployeeCommandStatus.Success,
                 normalizedEmployeeId,
                 Money.Zero);
+        }
+    }
+
+    internal IReadOnlyList<EmployeeRuntimeAssignment> GetRuntimeAssignments()
+    {
+        lock (_gate)
+        {
+            return _employees.Values
+                .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
+                .Select(employee => new EmployeeRuntimeAssignment(
+                    _storeByEmployee[employee.Id.Value],
+                    employee,
+                    _roster.GetShift(employee.Id.Value)
+                        ?? throw new InvalidOperationException("Every registered employee must have a shift.")))
+                .ToArray();
+        }
+    }
+
+    internal IReadOnlyList<Employee> ResolveAvailableEmployees(
+        string storeId,
+        int localMinute)
+    {
+        var normalizedStoreId = NormalizeId(storeId, nameof(storeId));
+        lock (_gate)
+        {
+            var available = new List<Employee>();
+            foreach (var employee in _employees.Values
+                         .Where(employee => string.Equals(
+                             _storeByEmployee[employee.Id.Value],
+                             normalizedStoreId,
+                             StringComparison.Ordinal))
+                         .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal))
+            {
+                if (!_roster.IsScheduled(employee.Id.Value, normalizedStoreId, localMinute))
+                {
+                    employee.RecordRestMinute();
+                    continue;
+                }
+
+                if (employee.CanWork)
+                {
+                    available.Add(employee);
+                }
+            }
+
+            return available;
+        }
+    }
+
+    internal void RecordPaidWorkCondition(EmployeeId employeeId)
+    {
+        lock (_gate)
+        {
+            if (!_employees.TryGetValue(employeeId.Value, out var employee))
+            {
+                throw new KeyNotFoundException($"Employee '{employeeId.Value}' was not found.");
+            }
+
+            employee.RecordWorkedConditionMinute();
         }
     }
 

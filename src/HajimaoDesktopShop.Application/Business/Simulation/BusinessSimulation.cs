@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Domain.Demand;
@@ -16,7 +17,7 @@ public sealed class BusinessSimulation
     private readonly BusinessSimulationOptions _options;
     private readonly SimulationClock _clock;
     private readonly IStatefulRandomSource? _statefulRandom;
-    private readonly Dictionary<string, Employee[]> _staffByStore;
+    private readonly EmployeeOperationsService _employeeOperations;
     private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
     private BusinessDayReport? _lastCompletedDay;
 
@@ -35,7 +36,7 @@ public sealed class BusinessSimulation
         _statefulRandom = random as IStatefulRandomSource;
         _options = options ?? new BusinessSimulationOptions();
         _clock = new SimulationClock();
-        _staffByStore = CreateStaffMap(assignments, nameof(assignments));
+        _employeeOperations = CreateEmployeeOperations(game, assignments, nameof(assignments));
         SynchronizeStores();
     }
 
@@ -55,18 +56,18 @@ public sealed class BusinessSimulation
 
         var employeeSaves = restoredState.Employees?.ToArray()
             ?? throw new ArgumentException("Restored employees are required.", nameof(restoredState));
-        var assignments = employeeSaves.Select(RestoreAssignment).ToArray();
-
         _game = game;
         _random = random;
         _statefulRandom = random;
         _options = options ?? new BusinessSimulationOptions();
         _clock = new SimulationClock(restoredState.GameMinute);
-        _staffByStore = CreateStaffMap(assignments, nameof(restoredState));
+        _employeeOperations = RestoreEmployeeOperations(game, employeeSaves, nameof(restoredState));
         _statefulRandom.RestoreState(restoredState.RandomState);
         _lastCompletedDay = restoredState.LastCompletedDay;
         RestoreStores(restoredState.Stores);
     }
+
+    public EmployeeOperationsService Employees => _employeeOperations;
 
     public void AdvanceRealSecond() => AdvanceRealSeconds(1);
 
@@ -101,6 +102,7 @@ public sealed class BusinessSimulation
                 _clock.GameMinute,
                 business,
                 Array.AsReadOnly(stores),
+                _employeeOperations.GetSnapshot(),
                 _lastCompletedDay);
         }
     }
@@ -115,15 +117,16 @@ public sealed class BusinessSimulation
                     "Complete simulation saves require an IStatefulRandomSource.");
             }
 
-            var employees = _staffByStore
-                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-                .SelectMany(pair => pair.Value
-                    .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal)
-                    .Select(employee =>
+            var employees = _employeeOperations.GetRuntimeAssignments()
+                .OrderBy(assignment => assignment.StoreId, StringComparer.Ordinal)
+                .ThenBy(assignment => assignment.Employee.Id.Value, StringComparer.Ordinal)
+                .Select(assignment =>
                     {
+                        var employee = assignment.Employee;
                         var work = employee.CaptureWorkState();
+                        var condition = employee.CaptureConditionState();
                         return new EmployeeAssignmentSaveData(
-                            pair.Key,
+                            assignment.StoreId,
                             employee.Id.Value,
                             employee.Name,
                             employee.Role,
@@ -131,8 +134,16 @@ public sealed class BusinessSimulation
                             employee.HourlyWage.Cents,
                             work.WorkedMinutes,
                             work.TotalWagesAccrued.Cents,
-                            work.WageRemainderCents);
-                    }))
+                            work.WageRemainderCents,
+                            condition.TrainingLevel,
+                            condition.EnergyPermille,
+                            condition.SatisfactionPermille,
+                            condition.WorkMinutesTowardSatisfactionLoss,
+                            condition.RestMinutesTowardSatisfactionGain,
+                            assignment.Shift.StartMinute,
+                            assignment.Shift.EndMinute,
+                            assignment.Shift.IsAlwaysOn);
+                    })
                 .ToArray();
             var stores = _stores.Values
                 .OrderBy(store => store.StoreId, StringComparer.Ordinal)
@@ -145,6 +156,24 @@ public sealed class BusinessSimulation
                 Array.AsReadOnly(stores),
                 _lastCompletedDay);
         }
+    }
+
+    private static EmployeeOperationsService CreateEmployeeOperations(
+        BusinessGameService game,
+        IEnumerable<StoreEmployeeAssignment> assignments,
+        string parameterName)
+    {
+        var staffByStore = CreateStaffMap(assignments, parameterName);
+        var operations = new EmployeeOperationsService(game);
+        foreach (var pair in staffByStore.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            foreach (var employee in pair.Value)
+            {
+                operations.RegisterExistingEmployee(pair.Key, employee);
+            }
+        }
+
+        return operations;
     }
 
     private static Dictionary<string, Employee[]> CreateStaffMap(
@@ -177,20 +206,57 @@ public sealed class BusinessSimulation
                 StringComparer.Ordinal);
     }
 
-    private static StoreEmployeeAssignment RestoreAssignment(EmployeeAssignmentSaveData saved)
+    private static EmployeeOperationsService RestoreEmployeeOperations(
+        BusinessGameService game,
+        IEnumerable<EmployeeAssignmentSaveData> savedEmployees,
+        string parameterName)
     {
-        ArgumentNullException.ThrowIfNull(saved);
-        var employee = Employee.Restore(
-            new EmployeeId(saved.EmployeeId),
-            saved.Name,
-            saved.Role,
-            saved.EfficiencyPermille,
-            new Money(saved.HourlyWageCents),
-            new EmployeeWorkState(
-                saved.WorkedMinutes,
-                new Money(saved.TotalWagesAccruedCents),
-                saved.WageRemainderCents));
-        return new StoreEmployeeAssignment(saved.StoreId, employee);
+        var saves = savedEmployees.ToArray();
+        if (saves.Any(saved => saved is null))
+        {
+            throw new ArgumentException("Restored employees cannot contain null.", parameterName);
+        }
+
+        var duplicate = saves
+            .GroupBy(saved => saved.EmployeeId, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new ArgumentException(
+                $"Employee '{duplicate.Key}' cannot be restored more than once.",
+                parameterName);
+        }
+
+        var operations = new EmployeeOperationsService(game);
+        foreach (var saved in saves.OrderBy(saved => saved.EmployeeId, StringComparer.Ordinal))
+        {
+            var employee = Employee.Restore(
+                new EmployeeId(saved.EmployeeId),
+                saved.Name,
+                saved.Role,
+                saved.EfficiencyPermille,
+                new Money(saved.HourlyWageCents),
+                new EmployeeWorkState(
+                    saved.WorkedMinutes,
+                    new Money(saved.TotalWagesAccruedCents),
+                    saved.WageRemainderCents),
+                new EmployeeConditionState(
+                    saved.TrainingLevel,
+                    saved.EnergyPermille,
+                    saved.SatisfactionPermille,
+                    saved.WorkMinutesTowardSatisfactionLoss,
+                    saved.RestMinutesTowardSatisfactionGain));
+            var shift = saved.IsAlwaysOn
+                ? EmployeeShift.CreateLegacyAlwaysOn(saved.EmployeeId, saved.StoreId)
+                : new EmployeeShift(
+                    saved.EmployeeId,
+                    saved.StoreId,
+                    saved.ShiftStartMinute,
+                    saved.ShiftEndMinute);
+            operations.RegisterExistingEmployee(saved.StoreId, employee, shift);
+        }
+
+        return operations;
     }
 
     private void RestoreStores(IReadOnlyList<StoreRuntimeSaveData> savedStores)
@@ -222,7 +288,9 @@ public sealed class BusinessSimulation
                 nameof(savedStores));
         }
 
-        var unknownStaffStore = _staffByStore.Keys
+        var unknownStaffStore = _employeeOperations.GetRuntimeAssignments()
+            .Select(assignment => assignment.StoreId)
+            .Distinct(StringComparer.Ordinal)
             .Where(storeId => !_game.ContainsStoreDefinition(storeId))
             .Order(StringComparer.Ordinal)
             .FirstOrDefault();
@@ -236,8 +304,8 @@ public sealed class BusinessSimulation
         foreach (var saved in saves)
         {
             var store = business.Stores.Single(snapshot => snapshot.Id == saved.StoreId);
-            _staffByStore.TryGetValue(saved.StoreId, out var staff);
-            _stores.Add(saved.StoreId, new StoreRuntime(store, staff ?? [], saved));
+            var staff = GetEmployeesForStore(saved.StoreId);
+            _stores.Add(saved.StoreId, new StoreRuntime(store, staff, saved));
         }
     }
 
@@ -263,17 +331,27 @@ public sealed class BusinessSimulation
     {
         foreach (var store in _game.GetSnapshot().Stores.OrderBy(store => store.Id, StringComparer.Ordinal))
         {
-            if (_stores.ContainsKey(store.Id))
+            var staff = GetEmployeesForStore(store.Id);
+            if (_stores.TryGetValue(store.Id, out var runtime))
             {
+                runtime.Employees = staff;
                 continue;
             }
 
-            _staffByStore.TryGetValue(store.Id, out var staff);
             _stores.Add(
                 store.Id,
-                new StoreRuntime(store, staff ?? [], _options.InitialCleanlinessPermille));
+                new StoreRuntime(store, staff, _options.InitialCleanlinessPermille));
         }
     }
+
+    private Employee[] GetEmployeesForStore(string storeId) =>
+        _employeeOperations.GetRuntimeAssignments()
+            .Where(assignment => string.Equals(
+                assignment.StoreId,
+                storeId,
+                StringComparison.Ordinal))
+            .Select(assignment => assignment.Employee)
+            .ToArray();
 
     private void CompleteDay(int dayNumber)
     {
@@ -306,11 +384,15 @@ public sealed class BusinessSimulation
     private HashSet<EmployeeId> PayEmployees(StoreRuntime runtime)
     {
         var paid = new HashSet<EmployeeId>();
-        foreach (var employee in runtime.Employees)
+        var available = _employeeOperations.ResolveAvailableEmployees(
+            runtime.StoreId,
+            CurrentMinuteOfDay);
+        foreach (var employee in available)
         {
             var payment = _game.PayEmployeeMinute(runtime.StoreId, employee);
             if (payment.Status == WagePaymentStatus.Success)
             {
+                _employeeOperations.RecordPaidWorkCondition(employee.Id);
                 paid.Add(employee.Id);
             }
             else
@@ -328,7 +410,9 @@ public sealed class BusinessSimulation
                      employee.Role == EmployeeRole.Cleaner && paidEmployees.Contains(employee.Id)))
         {
             var scaledRecovery = checked(
-                (long)_options.CleanerBaseRecoveryPermille * cleaner.EfficiencyPermille / 1_000L);
+                (long)_options.CleanerBaseRecoveryPermille
+                * cleaner.EffectiveEfficiencyPermille
+                / 1_000L);
             var recovery = checked((int)Math.Clamp(scaledRecovery, 1L, 1_000L));
             runtime.CleanlinessPermille = Math.Min(1_000, runtime.CleanlinessPermille + recovery);
         }
@@ -349,7 +433,7 @@ public sealed class BusinessSimulation
             return 0;
         }
 
-        var average = customerFacing.Sum(employee => (long)employee.EfficiencyPermille)
+        var average = customerFacing.Sum(employee => (long)employee.EffectiveEfficiencyPermille)
             / customerFacing.Length;
         return checked((int)Math.Clamp(average, 0L, 2_000L));
     }
@@ -570,7 +654,7 @@ public sealed class BusinessSimulation
 
         public string StoreId { get; }
 
-        public Employee[] Employees { get; }
+        public Employee[] Employees { get; set; }
 
         public Queue<string> CheckoutQueue { get; } = [];
 

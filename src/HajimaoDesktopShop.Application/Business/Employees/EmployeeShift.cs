@@ -35,7 +35,31 @@ public sealed record EmployeeShift
         StartMinute = startMinute;
         EndMinute = endMinute;
         DurationMinutes = durationMinutes;
+        IsAlwaysOn = false;
     }
+
+    private EmployeeShift(string employeeId, string storeId)
+    {
+        if (string.IsNullOrWhiteSpace(employeeId))
+        {
+            throw new ArgumentException("Employee ID is required.", nameof(employeeId));
+        }
+
+        if (string.IsNullOrWhiteSpace(storeId))
+        {
+            throw new ArgumentException("Store ID is required.", nameof(storeId));
+        }
+
+        EmployeeId = employeeId.Trim();
+        StoreId = storeId.Trim();
+        StartMinute = 0;
+        EndMinute = 0;
+        DurationMinutes = MinutesPerDay;
+        IsAlwaysOn = true;
+    }
+
+    public static EmployeeShift CreateLegacyAlwaysOn(string employeeId, string storeId) =>
+        new(employeeId, storeId);
 
     public string EmployeeId { get; }
 
@@ -47,9 +71,16 @@ public sealed record EmployeeShift
 
     public int DurationMinutes { get; }
 
+    public bool IsAlwaysOn { get; }
+
     public bool ContainsMinute(int minute)
     {
         ValidateMinute(minute, nameof(minute));
+        if (IsAlwaysOn)
+        {
+            return true;
+        }
+
         return EndMinute > StartMinute
             ? minute >= StartMinute && minute < EndMinute
             : minute >= StartMinute || minute < EndMinute;

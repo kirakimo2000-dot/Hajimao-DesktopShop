@@ -61,6 +61,10 @@ public sealed class OfflineSettlementServiceTests
 
         Assert.Equal(3_600, result.AppliedSeconds);
         Assert.Equivalent(online.Simulation.GetSnapshot(), offline.Simulation.GetSnapshot(), strict: true);
+        Assert.Equivalent(
+            online.Simulation.Employees.GetSnapshot().Employees,
+            offline.Simulation.Employees.GetSnapshot().Employees,
+            strict: true);
         Assert.Equivalent(online.Simulation.CaptureSaveData(), offline.Simulation.CaptureSaveData(), strict: true);
     }
 

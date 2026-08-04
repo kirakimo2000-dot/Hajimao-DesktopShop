@@ -64,7 +64,15 @@ public sealed record EmployeeAssignmentSaveData(
     long HourlyWageCents,
     int WorkedMinutes,
     long TotalWagesAccruedCents,
-    long WageRemainderCents);
+    long WageRemainderCents,
+    int TrainingLevel = 0,
+    int EnergyPermille = 1_000,
+    int SatisfactionPermille = 700,
+    int WorkMinutesTowardSatisfactionLoss = 0,
+    int RestMinutesTowardSatisfactionGain = 0,
+    int ShiftStartMinute = 0,
+    int ShiftEndMinute = 0,
+    bool IsAlwaysOn = true);
 
 public sealed record StoreRuntimeSaveData(
     string StoreId,
