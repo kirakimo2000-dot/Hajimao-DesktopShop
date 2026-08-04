@@ -95,6 +95,10 @@
 - 教程进度无需升级 schema：采购成本、当前/参考售价、自动补货策略、营业收入、员工培训级别、店铺成长和已开店数都已存在于正式快照及 v6 存档中。教程可做成无可变状态的 Application 投影，恢复旧存档时自然重建进度。
 - 教程任务只返回稳定 `OnboardingTaskId` 与完成状态；中文标题、引导文字和管理页导航映射留在 Desktop ViewModel，Application 不引用 WPF 或界面枚举。
 - 第一条任务应为真实进货而不是“查看页面”；完整任务链依次覆盖进货、调价、自动补货、首笔销售、培训、成长和开设第二家店，持续强化挂机经营而非速度控制。
+- 0.1.9 新手任务最终架构为七项无状态 Application 投影：`RestockProduct`、`AdjustPrice`、`EnableAutoRestock`、`CompleteFirstSale`、`TrainEmployee`、`UpgradeStore`、`OpenSecondStore` 均从 schema v6 已持久化的 business/simulation/procurement 快照派生，不新增迁移、不保存教程进度、不让 Desktop 或 WPF 持有可变教程状态。
+- `OnboardingSnapshot` 的公开契约要求完整七项任务集合、稳定顺序、无 null entry、无重复 ID、`CompletedTasks` 与实际完成数一致，且完成时 `CurrentTaskId` 必须为 null、未完成时必须指向第一项未完成任务。
+- 新手任务审阅修复已覆盖两轮防御性缺口：先补齐前缀任务集/null entry 拒绝，再把校验测试改为完整七项数组以精确命中错误顺序、重复 ID、错误计数和错误 current 状态分支。
+- Desktop 表现层仅把稳定任务 ID 映射为中文标题、引导文案和 `ManagementSection` 导航；`GoToOnboardingTaskCommand` 只切换管理页，不推进经营分钟。WPF 面板只绑定 ViewModel 属性，并通过 `AutomationProperties.Name="前往当前新手任务"` 暴露可访问按钮。
 
 ## 0.2 Demand Formula
 

@@ -311,7 +311,22 @@
   - 进一步确认教程的七项完成条件均可从现有 Business/Simulation/Procurement 快照派生，因此不新增教程可变状态、不升级 schema；旧存档会按真实经营事实自然恢复教程进度。
   - 保存 `docs/superpowers/plans/2026-08-04-v0.1.9-onboarding.md`，将 Application 投影、Desktop 映射、WPF 无障碍面板和子阶段门禁拆为四个 TDD 任务。
   - 计划自检发现 `AutoRestockPolicy` 的实际属性名是 `IsEnabled` 而不是草案中的 `Enabled`，已在执行前校正；其余类型和测试入口与现有代码一致。
+  - 首个 Task 1 执行者运行数分钟后仍未创建文件、提交或响应进度询问，已中断且确认工作树无其残留；按阻塞处理规则将任务缩小后重新派发，不重复同一失败方式。
+  - 缩小后的 Task 1 执行完成：先以缺少 Onboarding 类型得到预期编译 RED，再交付七项无状态投影、严格快照验证和 18 项 focused 测试；提交 `331e3c7`。
+  - 主代理复核实际 diff，并重新运行 focused Release 测试 18/18；完整 Application 由执行者报告 114/114，仍等待规格与代码质量两阶段独立审阅。
+  - Task 1 规格审阅通过；质量审阅发现快照可接受任务前缀和 null entry 两项防御缺口，均先用失败测试复现后在 `f3eb713` 修复。
+  - 后续复审发现旧校验测试会先撞完整数量门禁、没有命中命名对应分支；`65d0f47` 改用完整七项数组构造错误顺序/重复/计数/current 状态，focused 22/22、Application 118/118。
+  - Task 1 最终复审 Critical 0、Important 0、Minor 0，ready to merge；进入 Desktop 教程映射和导航 Task 2。
+  - Task 2 先以缺少 `OnboardingViewModel`、`MarketViewModel.Onboarding` 和导航命令得到预期编译 RED，再由 `dc172c9` 完成七项中文引导映射与无时间推进导航。
+  - 主代理重新运行 Task 2 focused Release 测试 11/11；执行者与独立规格审阅均验证 Desktop 54/54、全方案 293/293。
+  - Task 2 规格审阅通过，代码质量审阅 Critical 0、Important 0、Minor 0，ready to merge；进入 WPF 无障碍面板 Task 3。
+  - Task 3 先以 `OnboardingPanel` 不存在得到预期 RED，`4f21359` 在 250 像素右栏加入绑定进度、标题、引导和导航命令的紧凑像素卡片；主代理 focused 复验 1/1。
+  - Task 3 规格审阅通过；质量审阅仅建议 WPF 测试用 `finally` 关闭窗口，`fc09e33` 完成后 ManagementWindow 2/2、Desktop 55/55，最终复审 Critical 0、Important 0、Minor 0。
+  - 新手任务最终文件/提交：Application 无状态投影与测试 `331e3c7`、快照防御修复 `f3eb713`、精确不变量测试 `65d0f47`、Desktop 映射和导航 `dc172c9`、WPF 面板 `4f21359`、窗口测试清理 `fc09e33`；本次 closeout 仅更新 `docs/superpowers/plans/2026-08-04-v0.1.9-onboarding.md`、`task_plan.md`、`findings.md`、`progress.md`。
+  - RED/GREEN 证据：Task 1 先因缺少 `Application.Business.Onboarding` 编译 RED，最终 focused 22/22、Application 118/118；Task 2 先因缺少 `OnboardingViewModel`、`MarketViewModel.Onboarding` 和导航命令编译 RED，最终 focused 11/11、Desktop 54/54、全方案 293/293；Task 3 先因 `OnboardingPanel` 缺失 RED，最终 ManagementWindow 2/2、Desktop 55/55。
+  - 审阅证据：Task 1 规格审阅通过，质量审阅缺口已由 `f3eb713` 与 `65d0f47` 修复，最终 Critical 0、Important 0、Minor 0；Task 2 规格与质量审阅均 Critical 0、Important 0、Minor 0；Task 3 规格通过，质量建议已在 `fc09e33` 修复，最终 Critical 0、Important 0、Minor 0。
+  - 新手任务子阶段门禁：`dotnet test HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，Domain 90、Application 118、Infrastructure 17、Rendering 14、Desktop 55，总计 294/294；`dotnet build HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，0 警告、0 错误；`dotnet format HajimaoDesktopShop.slnx --verify-no-changes --no-restore --include $changedCs` 退出 0 且无输出；`git diff --check` 退出 0，仅提示 `progress.md` 工作副本下次 Git 接触会从 LF 转为 CRLF。
+  - 已知缺口仍保留在后续 0.1.9 范围：正式日志边界、平衡场景、长时/兼容回归、多显示器矩阵、Windows 安装/便携发布物、校验值、独立 Release 审阅、GitHub PR/标签和工作区清理均未在新手任务子阶段完成。
   - 将 0.1.9 拆为教程/回归与日志、安装发布、多显示器验收三个可独立验证的子计划。
 - Next actions:
-  - 在隔离工作树复验基线，映射现有命令、快照、存档和组合根边界。
-  - 保存并审阅第一个 0.1.9 实施计划，然后按 RED → GREEN → REFACTOR 执行。
+  - 保存并执行 `v0.1.9 logging-and-stability` 计划，先覆盖正式日志边界、平衡场景与长时/兼容回归，不发布、不打标签、不标记 0.1.9 完成。
