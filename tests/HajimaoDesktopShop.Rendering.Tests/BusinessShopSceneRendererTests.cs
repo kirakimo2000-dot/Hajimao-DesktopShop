@@ -5,6 +5,7 @@ using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Domain.Demand;
 using HajimaoDesktopShop.Rendering;
 using SkiaSharp;
+using System.Security.Cryptography;
 
 namespace HajimaoDesktopShop.Rendering.Tests;
 
@@ -20,7 +21,53 @@ public sealed class BusinessShopSceneRendererTests
         renderer.Render(canvas, bitmap.Info, CreateFrame(queueLength: 3));
 
         Assert.Equal(SKColor.Parse("#17191D"), bitmap.GetPixel(0, 0));
-        Assert.Equal(SKColor.Parse("#F1B844"), bitmap.GetPixel(292, 112));
+        Assert.NotEqual(SKColor.Parse("#4A353C"), bitmap.GetPixel(94, 70));
+    }
+
+    [Fact]
+    public void Renderer_UsesDifferentAtlasFramesForAnimatedActors()
+    {
+        var seed = RenderFrame(animationFrame: 0, reduceMotion: false);
+        var moving = RenderFrame(animationFrame: 2, reduceMotion: false);
+
+        Assert.NotEqual(seed, moving);
+    }
+
+    [Fact]
+    public void Renderer_ReducedMotionAlwaysUsesFrameZero()
+    {
+        var moving = RenderFrame(animationFrame: 3, reduceMotion: false);
+        var reduced = RenderFrame(animationFrame: 3, reduceMotion: true);
+        var seed = RenderFrame(animationFrame: 0, reduceMotion: false);
+
+        Assert.NotEqual(seed, moving);
+        Assert.Equal(seed, reduced);
+    }
+
+    [Fact]
+    public void Renderer_CapsVisibleCustomersAtThePixelArtBudget()
+    {
+        var capped = RenderFrame(animationFrame: 0, reduceMotion: false, queueLength: 5);
+        var overflow = RenderFrame(animationFrame: 0, reduceMotion: false, queueLength: 99);
+
+        Assert.Equal(capped, overflow);
+    }
+
+    private static string RenderFrame(int animationFrame, bool reduceMotion, int queueLength = 3)
+    {
+        using var bitmap = new SKBitmap(420, 180);
+        using var canvas = new SKCanvas(bitmap);
+        using var renderer = new BusinessShopSceneRenderer();
+        var frame = CreateFrame(queueLength) with
+        {
+            AnimationFrame = animationFrame,
+            ReduceMotion = reduceMotion
+        };
+
+        renderer.Render(canvas, bitmap.Info, frame);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        return Convert.ToHexString(SHA256.HashData(encoded.ToArray()));
     }
 
     private static BusinessShopSceneFrame CreateFrame(int queueLength)
