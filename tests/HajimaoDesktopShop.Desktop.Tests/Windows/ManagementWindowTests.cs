@@ -2,6 +2,7 @@ using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
@@ -11,6 +12,51 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
 public sealed class ManagementWindowTests
 {
+    [Fact]
+    public void ManagementWindow_ContainsAccessibleOnboardingPanel()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
+            window.ApplyTemplate();
+            window.Measure(new Size(1180, 720));
+            window.Arrange(new Rect(0, 0, 1180, 720));
+            window.UpdateLayout();
+
+            Assert.False(window.ShowInTaskbar);
+
+            var panel = Assert.IsType<Border>(window.FindName("OnboardingPanel"));
+            Assert.Equal(Visibility.Visible, panel.Visibility);
+            var visibilityBinding = BindingOperations.GetBindingExpression(panel, UIElement.VisibilityProperty);
+            Assert.NotNull(visibilityBinding);
+            Assert.Equal(
+                $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.IsVisible)}",
+                visibilityBinding.ParentBinding.Path.Path);
+
+            var action = Assert.IsType<Button>(window.FindName("OnboardingAction"));
+            Assert.Equal("前往当前新手任务", AutomationProperties.GetName(action));
+            Assert.Equal("前往", action.Content);
+            Assert.Same(viewModel.GoToOnboardingTaskCommand, action.Command);
+
+            Assert.Contains(
+                FindLogicalChildren<TextBlock>(panel),
+                textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
+                    == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.ProgressText)}");
+            Assert.Contains(
+                FindLogicalChildren<TextBlock>(panel),
+                textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
+                    == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.Title)}");
+            Assert.Contains(
+                FindLogicalChildren<TextBlock>(panel),
+                textBlock => textBlock.TextWrapping == TextWrapping.Wrap
+                    && BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
+                        == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.Guidance)}");
+
+            window.Close();
+        });
+    }
+
     [Fact]
     public void ManagementWindow_HasSevenNavigationTargetsPersistentSceneAndNoSpeedControls()
     {

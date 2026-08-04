@@ -1,4 +1,5 @@
 <Window x:Class="HajimaoDesktopShop.Desktop.Windows.ManagementWindow"
+        x:Name="ManagementRoot"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:HajimaoDesktopShop.Desktop.Controls"
@@ -214,6 +215,33 @@
                 <StackPanel>
                     <TextBlock Text="当前店铺" FontSize="17" FontWeight="Bold" />
                     <TextBlock Text="{Binding SelectedStoreName}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6,0,12" />
+                    <Border x:Name="OnboardingPanel"
+                            Visibility="{Binding DataContext.Onboarding.IsVisible, ElementName=ManagementRoot, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Background="{DynamicResource Brush.SurfaceElevated}"
+                            BorderBrush="{DynamicResource Brush.Primary}"
+                            BorderThickness="2"
+                            Padding="10"
+                            Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding DataContext.Onboarding.ProgressText, ElementName=ManagementRoot}"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       FontSize="12" />
+                            <TextBlock Text="{Binding DataContext.Onboarding.Title, ElementName=ManagementRoot}"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource Brush.Primary}"
+                                       Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding DataContext.Onboarding.Guidance, ElementName=ManagementRoot}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       FontSize="12"
+                                       Margin="0,5,0,8" />
+                            <Button x:Name="OnboardingAction"
+                                    Content="前往"
+                                    Style="{DynamicResource PrimaryPixelButton}"
+                                    Command="{Binding DataContext.GoToOnboardingTaskCommand, ElementName=ManagementRoot}"
+                                    AutomationProperties.Name="前往当前新手任务" />
+                        </StackPanel>
+                    </Border>
                     <TextBlock Text="运营警告" FontSize="17" FontWeight="Bold" />
                     <Border Background="#3A292C" BorderBrush="{DynamicResource Brush.Warning}" BorderThickness="2" Padding="10" Margin="0,8,0,12">
                         <StackPanel><TextBlock Text="{Binding StockWarningText}" Foreground="{DynamicResource Brush.Warning}" FontWeight="Bold"/><TextBlock Text="缺货会造成顾客流失；补货按现实时间到达。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,5,0,0"/></StackPanel>
