@@ -28,12 +28,15 @@ public sealed class MarketViewModel : ObservableObject
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
+        ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
         Refresh();
     }
 
     public ObservableCollection<StoreNavigationItemViewModel> Stores { get; } = [];
 
     public MarketOverviewViewModel Overview { get; }
+
+    public ProductManagementViewModel ProductManagement { get; }
 
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
 
@@ -154,6 +157,7 @@ public sealed class MarketViewModel : ObservableObject
             IsLocked: false,
             IsClickThrough: false);
         Overview.Synchronize(Stores);
+        ProductManagement.Refresh();
     }
 
     private void Navigate(ManagementSection section) => SelectedSection = section;
