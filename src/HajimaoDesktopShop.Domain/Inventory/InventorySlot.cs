@@ -5,10 +5,24 @@ namespace HajimaoDesktopShop.Domain.Inventory;
 public sealed class InventorySlot
 {
     public InventorySlot(Product product, int capacity, int initialQuantity = 0)
+        : this(product, capacity, capacity, initialQuantity)
+    {
+    }
+
+    internal InventorySlot(
+        Product product,
+        int baseCapacity,
+        int capacity,
+        int initialQuantity = 0)
     {
         ArgumentNullException.ThrowIfNull(product);
 
-        if (capacity <= 0)
+        if (baseCapacity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(baseCapacity));
+        }
+
+        if (capacity < baseCapacity)
         {
             throw new ArgumentOutOfRangeException(nameof(capacity));
         }
@@ -19,6 +33,7 @@ public sealed class InventorySlot
         }
 
         Product = product;
+        BaseCapacity = baseCapacity;
         Capacity = capacity;
         Quantity = initialQuantity;
     }
@@ -27,7 +42,20 @@ public sealed class InventorySlot
 
     public int Quantity { get; private set; }
 
-    public int Capacity { get; }
+    public int BaseCapacity { get; }
+
+    public int Capacity { get; private set; }
+
+    internal void ApplyCapacityPermille(int capacityPermille)
+    {
+        if (capacityPermille < 1_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(capacityPermille));
+        }
+
+        var capacity = checked((long)BaseCapacity * capacityPermille / 1_000);
+        Capacity = checked((int)capacity);
+    }
 
     public StockChangeStatus Restock(int quantity)
     {

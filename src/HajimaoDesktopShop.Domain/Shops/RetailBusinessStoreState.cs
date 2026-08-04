@@ -2,4 +2,5 @@ namespace HajimaoDesktopShop.Domain.Shops;
 
 public sealed record RetailBusinessStoreState(
     ShopDefinition Definition,
-    ShopFinancialState FinancialState);
+    ShopFinancialState FinancialState,
+    StoreDevelopmentState? DevelopmentState = null);

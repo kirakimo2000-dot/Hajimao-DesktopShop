@@ -66,7 +66,10 @@ public sealed class RetailBusiness
             ArgumentNullException.ThrowIfNull(state.FinancialState);
             business._stores.Add(
                 state.Definition.Id,
-                Shop.RestoreWithWallet(business._wallet, state.FinancialState));
+                Shop.RestoreWithWallet(
+                    business._wallet,
+                    state.FinancialState,
+                    state.DevelopmentState));
         }
 
         return business;
@@ -106,6 +109,28 @@ public sealed class RetailBusiness
     }
 
     public bool TryPayOperatingExpense(Money amount) => _wallet.TryDebit(amount);
+
+    public StoreUpgradeResult TryUpgradeStore(ShopId shopId, StoreUpgradeKind kind)
+    {
+        if (!_stores.TryGetValue(shopId, out var shop))
+        {
+            return new StoreUpgradeResult(StoreUpgradeStatus.UnknownStore, Money.Zero);
+        }
+
+        var preview = shop.Development.PreviewUpgrade(kind);
+        if (preview.Status != StoreUpgradeStatus.Success)
+        {
+            return preview;
+        }
+
+        if (!_wallet.TryDebit(preview.Cost))
+        {
+            return preview with { Status = StoreUpgradeStatus.InsufficientFunds };
+        }
+
+        shop.RecordDevelopmentUpgrade(kind, preview.Cost);
+        return preview;
+    }
 
     public WagePaymentResult TryPayEmployeeMinute(ShopId shopId, Employee employee)
     {

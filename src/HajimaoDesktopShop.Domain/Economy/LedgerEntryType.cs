@@ -5,5 +5,6 @@ public enum LedgerEntryType
     OpeningBalance,
     StockPurchase,
     Sale,
-    WagePayment
+    WagePayment,
+    StoreDevelopment
 }

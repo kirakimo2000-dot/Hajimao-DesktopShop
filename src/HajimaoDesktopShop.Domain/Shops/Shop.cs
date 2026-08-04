@@ -14,14 +14,20 @@ public sealed class Shop
         : this(
             new BusinessWallet(openingCash),
             new ShopFinancialState(openingCash, Money.Zero, Money.Zero, Money.Zero),
+            StoreDevelopment.CreateNew(),
             addOpeningBalance: true)
     {
     }
 
-    private Shop(BusinessWallet wallet, ShopFinancialState state, bool addOpeningBalance)
+    private Shop(
+        BusinessWallet wallet,
+        ShopFinancialState state,
+        StoreDevelopment development,
+        bool addOpeningBalance)
     {
         ArgumentNullException.ThrowIfNull(wallet);
         ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(development);
 
         if (state.Cash.Cents < 0)
         {
@@ -43,6 +49,13 @@ public sealed class Shop
         }
 
         TotalWageCost = state.TotalWageCost;
+        if (state.TotalOperatingCost.Cents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(state));
+        }
+
+        TotalOperatingCost = state.TotalOperatingCost;
+        Development = development;
 
         if (addOpeningBalance)
         {
@@ -50,17 +63,35 @@ public sealed class Shop
         }
     }
 
-    public static Shop Restore(ShopFinancialState state) =>
-        new(new BusinessWallet(state.Cash), state, addOpeningBalance: false);
+    public static Shop Restore(
+        ShopFinancialState state,
+        StoreDevelopmentState? developmentState = null) =>
+        new(
+            new BusinessWallet(state.Cash),
+            state,
+            developmentState is null
+                ? StoreDevelopment.CreateNew()
+                : StoreDevelopment.Restore(developmentState),
+            addOpeningBalance: false);
 
     internal static Shop CreateWithWallet(BusinessWallet wallet) =>
         new(
             wallet,
             new ShopFinancialState(wallet.Balance, Money.Zero, Money.Zero, Money.Zero),
+            StoreDevelopment.CreateNew(),
             addOpeningBalance: false);
 
-    internal static Shop RestoreWithWallet(BusinessWallet wallet, ShopFinancialState state) =>
-        new(wallet, state with { Cash = wallet.Balance }, addOpeningBalance: false);
+    internal static Shop RestoreWithWallet(
+        BusinessWallet wallet,
+        ShopFinancialState state,
+        StoreDevelopmentState? developmentState = null) =>
+        new(
+            wallet,
+            state with { Cash = wallet.Balance },
+            developmentState is null
+                ? StoreDevelopment.CreateNew()
+                : StoreDevelopment.Restore(developmentState),
+            addOpeningBalance: false);
 
     public Money Cash => _wallet.Balance;
 
@@ -72,7 +103,11 @@ public sealed class Shop
 
     public Money TotalWageCost { get; private set; }
 
-    public Money TotalNetProfit => TotalGrossProfit - TotalWageCost;
+    public Money TotalOperatingCost { get; private set; }
+
+    public Money TotalNetProfit => TotalGrossProfit - TotalWageCost - TotalOperatingCost;
+
+    public StoreDevelopment Development { get; }
 
     public IReadOnlyList<LedgerEntry> Ledger => _ledger;
 
@@ -81,7 +116,10 @@ public sealed class Shop
     public void RegisterProduct(Product product, int capacity, int initialQuantity = 0)
     {
         ArgumentNullException.ThrowIfNull(product);
-        _inventory.Add(product.Id, new InventorySlot(product, capacity, initialQuantity));
+        var scaledCapacity = ScaleCapacity(capacity, Development.InventoryCapacityPermille);
+        _inventory.Add(
+            product.Id,
+            new InventorySlot(product, capacity, scaledCapacity, initialQuantity));
     }
 
     public InventorySlot GetInventory(ProductId productId) => _inventory[productId];
@@ -223,6 +261,37 @@ public sealed class Shop
 
         TotalWageCost += amount;
         AddLedger(LedgerEntryType.WagePayment, null, 1, new Money(-amount.Cents));
+    }
+
+    internal void RecordDevelopmentUpgrade(StoreUpgradeKind kind, Money amount)
+    {
+        if (amount.Cents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        }
+
+        Development.ApplyUpgrade(kind);
+        if (kind == StoreUpgradeKind.Shelf)
+        {
+            foreach (var slot in _inventory.Values)
+            {
+                slot.ApplyCapacityPermille(Development.InventoryCapacityPermille);
+            }
+        }
+
+        TotalOperatingCost += amount;
+        AddLedger(LedgerEntryType.StoreDevelopment, null, 1, new Money(-amount.Cents));
+    }
+
+    private static int ScaleCapacity(int baseCapacity, int capacityPermille)
+    {
+        if (baseCapacity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(baseCapacity));
+        }
+
+        var scaled = checked((long)baseCapacity * capacityPermille / 1_000);
+        return checked((int)scaled);
     }
 
     private void AddLedger(
