@@ -53,7 +53,20 @@ public sealed record BusinessSimulationSaveData(
     ulong RandomState,
     IReadOnlyList<EmployeeAssignmentSaveData> Employees,
     IReadOnlyList<StoreRuntimeSaveData> Stores,
-    BusinessDayReport? LastCompletedDay);
+    BusinessDayReport? LastCompletedDay,
+    EmployeeOperationsSaveData? EmployeeOperations = null);
+
+public sealed record EmployeeOperationsSaveData(
+    ulong CandidateRandomState,
+    long NextCandidateId,
+    IReadOnlyList<EmployeeCandidateSaveData> Candidates);
+
+public sealed record EmployeeCandidateSaveData(
+    string CandidateId,
+    string Name,
+    EmployeeRole Role,
+    int EfficiencyPermille,
+    long HourlyWageCents);
 
 public sealed record EmployeeAssignmentSaveData(
     string StoreId,

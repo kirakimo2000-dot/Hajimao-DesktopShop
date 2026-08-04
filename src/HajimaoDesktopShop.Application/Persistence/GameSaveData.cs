@@ -5,7 +5,7 @@ namespace HajimaoDesktopShop.Application.Persistence;
 
 public static class GameSaveSchema
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 }
 
 public sealed record GameSaveData(

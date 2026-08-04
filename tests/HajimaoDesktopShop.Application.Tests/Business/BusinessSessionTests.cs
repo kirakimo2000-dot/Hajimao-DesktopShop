@@ -17,7 +17,7 @@ public sealed class BusinessSessionTests
         new(2026, 8, 3, 15, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void CaptureAndRestore_RoundTripsCompleteV4SessionAndCompatibilityProjection()
+    public void CaptureAndRestore_RoundTripsCompleteV5SessionAndCompatibilityProjection()
     {
         var session = CreateSession();
         session.Game.PurchaseStock("corner-store", "water", 20);
@@ -40,7 +40,7 @@ public sealed class BusinessSessionTests
         var save = session.CaptureSaveData(SavedAt);
         var restored = RestoreSession(save);
 
-        Assert.Equal(4, save.SchemaVersion);
+        Assert.Equal(GameSaveSchema.CurrentVersion, save.SchemaVersion);
         Assert.NotNull(save.Business);
         Assert.NotNull(save.Business.Procurement);
         Assert.NotNull(save.BusinessSimulation);
@@ -55,10 +55,10 @@ public sealed class BusinessSessionTests
     }
 
     [Fact]
-    public void RestoreOrUpgrade_LegacyOnlyV4StatePreservesStarterStoreAndClock()
+    public void RestoreOrUpgrade_CompatibilityOnlyV5StatePreservesStarterStoreAndClock()
     {
         var legacy = new GameSaveData(
-            4,
+            GameSaveSchema.CurrentVersion,
             SavedAt,
             new ShopSaveData(
                 12_345,

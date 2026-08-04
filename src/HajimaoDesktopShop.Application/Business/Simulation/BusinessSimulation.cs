@@ -61,7 +61,11 @@ public sealed class BusinessSimulation
         _statefulRandom = random;
         _options = options ?? new BusinessSimulationOptions();
         _clock = new SimulationClock(restoredState.GameMinute);
-        _employeeOperations = RestoreEmployeeOperations(game, employeeSaves, nameof(restoredState));
+        _employeeOperations = RestoreEmployeeOperations(
+            game,
+            employeeSaves,
+            restoredState.EmployeeOperations,
+            nameof(restoredState));
         _statefulRandom.RestoreState(restoredState.RandomState);
         _lastCompletedDay = restoredState.LastCompletedDay;
         RestoreStores(restoredState.Stores);
@@ -149,12 +153,25 @@ public sealed class BusinessSimulation
                 .OrderBy(store => store.StoreId, StringComparer.Ordinal)
                 .Select(store => store.CaptureSaveData())
                 .ToArray();
+            var employeeOperations = _employeeOperations.GetSnapshot();
+            var candidates = employeeOperations.Candidates
+                .Select(candidate => new EmployeeCandidateSaveData(
+                    candidate.CandidateId,
+                    candidate.Name,
+                    candidate.Role,
+                    candidate.EfficiencyPermille,
+                    candidate.HourlyWage.Cents))
+                .ToArray();
             return new BusinessSimulationSaveData(
                 _clock.GameMinute,
                 _statefulRandom.State,
                 Array.AsReadOnly(employees),
                 Array.AsReadOnly(stores),
-                _lastCompletedDay);
+                _lastCompletedDay,
+                new EmployeeOperationsSaveData(
+                    employeeOperations.CandidateRandomState,
+                    employeeOperations.NextCandidateId,
+                    Array.AsReadOnly(candidates)));
         }
     }
 
@@ -209,6 +226,7 @@ public sealed class BusinessSimulation
     private static EmployeeOperationsService RestoreEmployeeOperations(
         BusinessGameService game,
         IEnumerable<EmployeeAssignmentSaveData> savedEmployees,
+        EmployeeOperationsSaveData? savedOperations,
         string parameterName)
     {
         var saves = savedEmployees.ToArray();
@@ -227,7 +245,32 @@ public sealed class BusinessSimulation
                 parameterName);
         }
 
-        var operations = new EmployeeOperationsService(game);
+        EmployeeOperationsService operations;
+        if (savedOperations is null)
+        {
+            operations = new EmployeeOperationsService(game);
+        }
+        else
+        {
+            var savedCandidates = savedOperations.Candidates?.ToArray()
+                ?? throw new ArgumentException("Restored employee candidates are required.", parameterName);
+            if (savedCandidates.Any(candidate => candidate is null))
+            {
+                throw new ArgumentException("Restored employee candidates cannot contain null.", parameterName);
+            }
+
+            operations = new EmployeeOperationsService(
+                game,
+                savedOperations.CandidateRandomState,
+                savedOperations.NextCandidateId,
+                savedCandidates.Select(candidate => new EmployeeCandidate(
+                    candidate.CandidateId,
+                    candidate.Name,
+                    candidate.Role,
+                    candidate.EfficiencyPermille,
+                    new Money(candidate.HourlyWageCents))));
+        }
+
         foreach (var saved in saves.OrderBy(saved => saved.EmployeeId, StringComparer.Ordinal))
         {
             var employee = Employee.Restore(

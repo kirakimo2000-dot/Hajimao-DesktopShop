@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Application.Simulation.Employees;
 using HajimaoDesktopShop.Application.Tests.Simulation;
@@ -37,7 +38,7 @@ public sealed class GameSaveDataTests
             customerSpawnChance: 0.5d,
             maxCustomers: 2);
 
-        Assert.Equal(4, save.SchemaVersion);
+        Assert.Equal(GameSaveSchema.CurrentVersion, save.SchemaVersion);
         Assert.Equivalent(simulation.GetSnapshot(), restored.GetSnapshot(), strict: true);
         Assert.Equal(
             EmployeeState.Working,

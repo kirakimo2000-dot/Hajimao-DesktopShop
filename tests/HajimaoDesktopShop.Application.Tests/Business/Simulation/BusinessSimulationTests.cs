@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Tests.Simulation;
@@ -218,6 +219,37 @@ public sealed class BusinessSimulationTests
         Assert.Equivalent(original.GetSnapshot(), restored.GetSnapshot(), strict: true);
         Assert.Equivalent(original.CaptureSaveData(), restored.CaptureSaveData(), strict: true);
         Assert.NotNull(restored.GetSnapshot().LastCompletedDay);
+    }
+
+    [Fact]
+    public void CaptureAndRestore_RoundTripsCandidatesHiredStaffTrainingConditionAndShift()
+    {
+        var service = CreateService(openingCashCents: 1_000_000);
+        var original = new BusinessSimulation(
+            service,
+            [],
+            new StatefulTestRandomSource(42),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+        original.Employees.RefreshCandidates();
+        var candidate = original.Employees.GetSnapshot().Candidates[1];
+        var hired = original.Employees.Hire(candidate.CandidateId, "zeta-store");
+        Assert.Equal(EmployeeCommandStatus.Success, hired.Status);
+        original.Employees.Train(hired.EmployeeId!);
+        original.Employees.SetShift(hired.EmployeeId!, 0, 480);
+        original.AdvanceRealSeconds(17);
+
+        var restoredService = CreateService(service.CaptureSaveData());
+        var restored = new BusinessSimulation(
+            restoredService,
+            original.CaptureSaveData(),
+            new StatefulTestRandomSource(1),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        Assert.Equivalent(
+            original.Employees.GetSnapshot(),
+            restored.Employees.GetSnapshot(),
+            strict: true);
+        Assert.Equivalent(original.CaptureSaveData(), restored.CaptureSaveData(), strict: true);
     }
 
     [Fact]

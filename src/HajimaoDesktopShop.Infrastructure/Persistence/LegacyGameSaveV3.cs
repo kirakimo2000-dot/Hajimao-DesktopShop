@@ -19,7 +19,7 @@ internal sealed record LegacyGameSaveV3(
                 Procurement = Business.Procurement ?? new BusinessProcurementSaveData(1, [], [])
             };
         return new GameSaveData(
-            GameSaveSchema.CurrentVersion,
+            4,
             SavedAtUtc,
             Shop,
             Simulation,
