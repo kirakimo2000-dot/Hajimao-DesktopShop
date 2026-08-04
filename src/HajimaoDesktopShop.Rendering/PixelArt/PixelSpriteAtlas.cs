@@ -43,11 +43,32 @@ public sealed class PixelSpriteAtlas : IDisposable
         using var stream = assembly.GetManifestResourceStream(DefaultResourceName)
             ?? throw new InvalidOperationException(
                 $"Embedded pixel atlas '{DefaultResourceName}' was not found in {assembly.GetName().Name}.");
+        return Load(stream);
+    }
+
+    public static PixelSpriteAtlas Load(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
+        if (buffer.Length > PixelArtBudget.MaximumAtlasBytes)
+        {
+            throw new InvalidDataException(
+                $"Pixel atlas exceeds the {PixelArtBudget.MaximumAtlasBytes}-byte budget.");
+        }
+
         var encodedBytes = buffer.ToArray();
         var bitmap = SKBitmap.Decode(encodedBytes)
-            ?? throw new InvalidOperationException("The embedded pixel atlas could not be decoded.");
+            ?? throw new InvalidDataException("The pixel atlas could not be decoded.");
+        if (bitmap.Width != PixelArtBudget.AtlasWidth || bitmap.Height != PixelArtBudget.AtlasHeight)
+        {
+            var actualDimensions = $"{bitmap.Width}x{bitmap.Height}";
+            bitmap.Dispose();
+            throw new InvalidDataException(
+                $"Pixel atlas must be {PixelArtBudget.AtlasWidth}x{PixelArtBudget.AtlasHeight}; "
+                + $"received {actualDimensions}.");
+        }
+
         return new PixelSpriteAtlas(bitmap, encodedBytes.Length);
     }
 
