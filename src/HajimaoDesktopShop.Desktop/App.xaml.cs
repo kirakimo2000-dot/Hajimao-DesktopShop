@@ -34,10 +34,8 @@ public partial class App : System.Windows.Application
         {
             var catalogPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
             var products = await new JsonProductCatalog(catalogPath).LoadAsync();
-            var savePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "HajimaoDesktopShop",
-                "hajimao.db");
+            var savePath = ApplicationDataPathPolicy.ResolveSavePath(
+                Environment.GetEnvironmentVariable(ApplicationDataPathPolicy.OverrideEnvironmentVariable));
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
             var savedPlacement = await saveStore.LoadDesktopWindowPlacementAsync();
