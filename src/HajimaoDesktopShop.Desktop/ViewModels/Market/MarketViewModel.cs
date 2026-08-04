@@ -6,12 +6,14 @@ using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.PixelArt;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
 public sealed class MarketViewModel : ObservableObject
 {
     private readonly BusinessSession _session;
+    private readonly Func<bool> _reduceMotion;
     private ManagementSection _selectedSection = ManagementSection.Store;
     private string _selectedStoreId = string.Empty;
     private string _selectedStoreName = string.Empty;
@@ -25,13 +27,15 @@ public sealed class MarketViewModel : ObservableObject
     private bool _isClickThrough;
     private bool _isMuted;
     private int _lastCompletedSales;
+    private int _animationFrame;
     private BusinessShopSceneFrame? _sceneFrame;
     private BusinessShopFrame? _desktopFrame;
 
-    public MarketViewModel(BusinessSession session)
+    public MarketViewModel(BusinessSession session, Func<bool>? reduceMotion = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
+        _reduceMotion = reduceMotion ?? (() => false);
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
         ToggleLockCommand = new RelayCommand(ToggleLock);
@@ -220,7 +224,16 @@ public sealed class MarketViewModel : ObservableObject
             product.Quantity == 0 || product.Quantity * 4 < product.Capacity) ?? 0;
         StockWarningText = $"缺货/低库存 {warningCount}";
         CustomerCountText = $"顾客/队列 {operations?.CheckoutQueueLength ?? 0}";
-        SceneFrame = new BusinessShopSceneFrame(snapshot, SelectedStoreId);
+        var reduceMotion = _reduceMotion();
+        SceneFrame = new BusinessShopSceneFrame(
+            snapshot,
+            SelectedStoreId,
+            reduceMotion ? 0 : _animationFrame,
+            reduceMotion);
+        if (!reduceMotion)
+        {
+            _animationFrame = (_animationFrame + 1) % PixelArtBudget.CharacterFrameCount;
+        }
         DesktopFrame = new BusinessShopFrame(
             SceneFrame,
             CashText,

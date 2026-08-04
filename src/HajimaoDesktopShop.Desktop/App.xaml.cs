@@ -58,7 +58,9 @@ public partial class App : System.Windows.Application
                 }
             }
 
-            _viewModel = new MarketViewModel(_session);
+            _viewModel = new MarketViewModel(
+                _session,
+                reduceMotion: () => !SystemParameters.ClientAreaAnimation);
             _soundService = new GameSoundService(_viewModel, new SystemGameSoundOutput());
             if (savedPlacement is not null)
             {

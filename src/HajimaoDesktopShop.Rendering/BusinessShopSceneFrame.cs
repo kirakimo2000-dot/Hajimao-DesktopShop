@@ -4,4 +4,6 @@ namespace HajimaoDesktopShop.Rendering;
 
 public sealed record BusinessShopSceneFrame(
     BusinessSimulationSnapshot Snapshot,
-    string StoreId);
+    string StoreId,
+    int AnimationFrame = 0,
+    bool ReduceMotion = false);
