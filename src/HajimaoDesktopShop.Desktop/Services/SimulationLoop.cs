@@ -5,16 +5,23 @@ namespace HajimaoDesktopShop.Desktop.Services;
 public sealed class SimulationLoop : IAsyncDisposable
 {
     private readonly object _gate = new();
-    private readonly ShopSimulation _simulation;
+    private readonly Action _advanceRealSecond;
     private readonly TimeSpan _interval;
     private CancellationTokenSource? _cancellation;
     private Task? _loopTask;
 
     public SimulationLoop(ShopSimulation simulation, TimeSpan? interval = null)
+        : this(
+            (simulation ?? throw new ArgumentNullException(nameof(simulation))).AdvanceRealSecond,
+            interval)
     {
-        ArgumentNullException.ThrowIfNull(simulation);
+    }
 
-        _simulation = simulation;
+    public SimulationLoop(Action advanceRealSecond, TimeSpan? interval = null)
+    {
+        ArgumentNullException.ThrowIfNull(advanceRealSecond);
+
+        _advanceRealSecond = advanceRealSecond;
         _interval = interval ?? TimeSpan.FromSeconds(1);
         if (_interval <= TimeSpan.Zero)
         {
@@ -64,7 +71,7 @@ public sealed class SimulationLoop : IAsyncDisposable
         {
             while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
             {
-                _simulation.AdvanceRealSecond();
+                _advanceRealSecond();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
