@@ -4,11 +4,13 @@
 
 原型记录见 `docs/archive/prototype-1.0.0-history.md`。
 
+正式版本采用 `0.1.x` 连续补丁迭代：原正式标签 `0.2.0`、`0.3.0`、`0.4.0` 分别校正为 `0.1.1`、`0.1.2`、`0.1.3`；这次只校正发布编号，不改变玩法、存档 schema 或历史提交内容。原型历史编号不参与本次校正，映射记录见 `docs/progress/2026-08-04-version-normalization.md`。
+
 ## [Unreleased]
 
-- 下一阶段为 0.5.0 员工经营：招聘、排班、培训、体力和满意度。
+- 下一阶段为 0.1.4 员工经营：招聘、排班、培训、体力和满意度。
 
-## [0.4.0] - 2026-08-03
+## [0.1.3] - 2026-08-03
 
 ### Added
 
@@ -22,16 +24,16 @@
 - 正式产品名称确认为 `Hajimao Market`；内部 `HajimaoDesktopShop.*` 技术标识保持兼容。
 - `BusinessSimulation` 每个固定现实分钟在销售结算后推进一次采购，在线与离线挂机复用同一管线。
 - SQLite `PRAGMA user_version` 从 3 事务化迁移到 4；v1/v2 存档继续逐级迁移。
-- 活跃版本提升至 `0.4.0`。
+- 活跃版本提升至 `0.1.3`。
 
 ### Verification
 
 - Release 测试 130/130 通过；Release 构建 0 警告、0 错误。
 - 10 个项目的直接与传递依赖无已知 NuGet 漏洞。
 - Domain 未引用 UI/SQLite，WPF 未提前接入正式采购页面，也未重新引入倍速。
-- 详细证据见 `docs/progress/v0.4.0-procurement-automation.md`。
+- 详细证据见 `docs/progress/v0.1.3-procurement-automation.md`。
 
-## [0.3.0] - 2026-08-03
+## [0.1.2] - 2026-08-03
 
 ### Added
 
@@ -44,7 +46,7 @@
 ### Changed
 
 - SQLite `PRAGMA user_version` 从 2 事务化迁移到 3；v1 存档先迁移 v2 再迁移 v3。
-- 活跃版本提升至 `0.3.0`。
+- 活跃版本提升至 `0.1.2`。
 - 已为尚未开业的新店分配的员工也会进入完整存档，动态扩店后继续生效。
 
 ### Fixed
@@ -57,9 +59,9 @@
 - Release 测试 117/117 通过；Release 构建 0 警告、0 错误。
 - 10 个项目的直接与传递依赖无已知 NuGet 漏洞。
 - Domain/Application 未重新引入倍速或 UI/SQLite/Skia/Serilog 依赖。
-- 详细证据见 `docs/progress/v0.3.0-offline-persistence.md`。
+- 详细证据见 `docs/progress/v0.1.2-offline-persistence.md`。
 
-## [0.2.0] - 2026-08-03
+## [0.1.1] - 2026-08-03
 
 ### Added
 
@@ -73,7 +75,7 @@
 
 ### Changed
 
-- 活跃版本提升至 `0.2.0`。
+- 活跃版本提升至 `0.1.1`。
 - 商品快照保留目录参考售价，便于价格需求比较。
 - 业务快照增加工资成本和净利润；旧单店 WPF/SQLite 适配器保持兼容。
 
@@ -81,7 +83,7 @@
 
 - Release 测试 102/102 通过；Release 构建 0 警告、0 错误。
 - 10 个项目的直接与传递依赖无已知 NuGet 漏洞。
-- 详细证据见 `docs/progress/v0.2.0-multi-store-economy.md`。
+- 详细证据见 `docs/progress/v0.1.1-multi-store-economy.md`。
 
 ## [0.1.0] - 2026-08-03
 
