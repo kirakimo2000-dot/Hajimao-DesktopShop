@@ -5,14 +5,23 @@ using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.StoreGrowth;
 using HajimaoDesktopShop.Application.Business.Street;
+using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Game;
+using HajimaoDesktopShop.Application.Persistence;
+using HajimaoDesktopShop.Application.Tests.Simulation;
+using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
+using HajimaoDesktopShop.Domain.Players;
+using HajimaoDesktopShop.Domain.Shops;
 using HajimaoDesktopShop.Domain.Streets;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Onboarding;
 
 public sealed class OnboardingProgressServiceTests
 {
+    private static readonly DateTimeOffset SavedAt =
+        new(2026, 8, 3, 15, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void TaskIds_AreStableAndOrdered()
     {
@@ -118,6 +127,85 @@ public sealed class OnboardingProgressServiceTests
         Assert.Null(snapshot.CurrentTaskId);
         Assert.True(snapshot.IsComplete);
         Assert.All(snapshot.Tasks, task => Assert.True(task.IsCompleted));
+    }
+
+    [Fact]
+    public void CreateSnapshot_FromNewBusinessSession_StartsAtRestockProduct()
+    {
+        var session = CreateSession();
+
+        var snapshot = CreateSnapshot(session);
+
+        Assert.Equal(OnboardingTaskId.RestockProduct, snapshot.CurrentTaskId);
+        Assert.Equal(0, snapshot.CompletedTasks);
+        Assert.False(snapshot.IsComplete);
+    }
+
+    [Fact]
+    public void CreateSnapshot_FromBusinessSessionCommands_CompletesStockPriceAndAutoRestock()
+    {
+        var session = CreateSession();
+
+        Assert.Equal(
+            StockPurchaseStatus.Success,
+            session.Game.PurchaseStock("corner-store", "water", 1).Status);
+        Assert.Equal(
+            PriceChangeStatus.Success,
+            session.Game.ChangePrice("corner-store", "water", 225).Status);
+        session.Game.ConfigureAutoRestock(EnabledAutoRestockPolicy());
+
+        var snapshot = CreateSnapshot(session);
+
+        AssertCompleted(
+            snapshot,
+            OnboardingTaskId.RestockProduct,
+            OnboardingTaskId.AdjustPrice,
+            OnboardingTaskId.EnableAutoRestock);
+        Assert.Equal(3, snapshot.CompletedTasks);
+        Assert.Equal(OnboardingTaskId.CompleteFirstSale, snapshot.CurrentTaskId);
+    }
+
+    [Fact]
+    public void CreateSnapshot_FromRestoredCompletedBusinessSession_CompletesEveryTask()
+    {
+        var session = CreateSession(openingCashCents: 1_000_000);
+
+        Assert.Equal(
+            StockPurchaseStatus.Success,
+            session.Game.PurchaseStock("corner-store", "water", 1).Status);
+        Assert.Equal(
+            PriceChangeStatus.Success,
+            session.Game.ChangePrice("corner-store", "water", 225).Status);
+        session.Game.ConfigureAutoRestock(EnabledAutoRestockPolicy());
+        Assert.Equal(
+            SaleStatus.Success,
+            session.Game.Sell("corner-store", "water", 1).Sale.Status);
+        Assert.Equal(
+            EmployeeCommandStatus.Success,
+            session.Simulation.Employees.Train("cashier").Status);
+        Assert.Equal(
+            StoreGrowthCommandStatus.Success,
+            session.Game.UpgradeStore("corner-store", StoreUpgradeKind.Shelf).Status);
+        Assert.Equal(
+            OpenShopStatus.Success,
+            session.Game.OpenStore("station-store").Status);
+        session.Simulation.AdvanceRealSecond();
+
+        var restored = RestoreSession(session.CaptureSaveData(SavedAt));
+        var snapshot = CreateSnapshot(restored);
+
+        Assert.Equal(7, snapshot.CompletedTasks);
+        Assert.Null(snapshot.CurrentTaskId);
+        Assert.True(snapshot.IsComplete);
+        AssertCompleted(
+            snapshot,
+            OnboardingTaskId.RestockProduct,
+            OnboardingTaskId.AdjustPrice,
+            OnboardingTaskId.EnableAutoRestock,
+            OnboardingTaskId.CompleteFirstSale,
+            OnboardingTaskId.TrainEmployee,
+            OnboardingTaskId.UpgradeStore,
+            OnboardingTaskId.OpenSecondStore);
     }
 
     [Fact]
@@ -259,6 +347,64 @@ public sealed class OnboardingProgressServiceTests
 
         Assert.Equal(expectedCompleted.Order(), completed.Order());
     }
+
+    private static OnboardingSnapshot CreateSnapshot(BusinessSession session) =>
+        OnboardingProgressService.CreateSnapshot(
+            session.Simulation.GetSnapshot(),
+            session.Game.GetProcurementSnapshot());
+
+    private static BusinessSession CreateSession(long openingCashCents = 100_000) =>
+        BusinessSession.Create(
+            SessionProducts(),
+            SessionStores(),
+            new LevelCurve([0, 1]),
+            "corner-store",
+            openingCashCents,
+            [CashierAssignment()],
+            new StatefulTestRandomSource(123),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 4_000));
+
+    private static BusinessSession RestoreSession(GameSaveData save) =>
+        BusinessSession.RestoreOrUpgrade(
+            SessionProducts(),
+            SessionStores(),
+            new LevelCurve([0, 1]),
+            "corner-store",
+            save,
+            [CashierAssignment()],
+            new StatefulTestRandomSource(456),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 4_000));
+
+    private static ProductDefinition[] SessionProducts() =>
+    [
+        new("water", "Water", 100, 200, 100, "ambient")
+    ];
+
+    private static ShopDefinition[] SessionStores() =>
+    [
+        new(new ShopId("corner-store"), "Corner Store", 1, Money.Zero),
+        new(new ShopId("station-store"), "Station Store", 2, new Money(30_000))
+    ];
+
+    private static StoreEmployeeAssignment CashierAssignment() =>
+        new(
+            "corner-store",
+            new Employee(
+                new EmployeeId("cashier"),
+                "Cashier",
+                EmployeeRole.Cashier,
+                1_000,
+                new Money(1_001)));
+
+    private static AutoRestockPolicy EnabledAutoRestockPolicy() =>
+        new(
+            "corner-store",
+            "water",
+            IsEnabled: true,
+            ReorderPoint: 2,
+            TargetQuantity: 5,
+            PreferredChannelId: "regional-distributor",
+            UseEmergencySupplierWhenOutOfStock: false);
 
     private static OnboardingTaskState[] FullTaskStates(bool isCompleted = false) =>
     [
