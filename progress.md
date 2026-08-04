@@ -323,9 +323,10 @@
   - Task 3 先以 `OnboardingPanel` 不存在得到预期 RED，`4f21359` 在 250 像素右栏加入绑定进度、标题、引导和导航命令的紧凑像素卡片；主代理 focused 复验 1/1。
   - Task 3 规格审阅通过；质量审阅仅建议 WPF 测试用 `finally` 关闭窗口，`fc09e33` 完成后 ManagementWindow 2/2、Desktop 55/55，最终复审 Critical 0、Important 0、Minor 0。
   - 新手任务最终文件/提交：Application 无状态投影与测试 `331e3c7`、快照防御修复 `f3eb713`、精确不变量测试 `65d0f47`、Desktop 映射和导航 `dc172c9`、WPF 面板 `4f21359`、窗口测试清理 `fc09e33`；本次 closeout 仅更新 `docs/superpowers/plans/2026-08-04-v0.1.9-onboarding.md`、`task_plan.md`、`findings.md`、`progress.md`。
-  - RED/GREEN 证据：Task 1 先因缺少 `Application.Business.Onboarding` 编译 RED，最终 focused 22/22、Application 118/118；Task 2 先因缺少 `OnboardingViewModel`、`MarketViewModel.Onboarding` 和导航命令编译 RED，最终 focused 11/11、Desktop 54/54、全方案 293/293；Task 3 先因 `OnboardingPanel` 缺失 RED，最终 ManagementWindow 2/2、Desktop 55/55。
+  - RED/GREEN 证据：Task 1 先因缺少 `Application.Business.Onboarding` 编译 RED，快照不变量 focused 22/22、Application 118/118；Task 2 先因缺少 `OnboardingViewModel`、`MarketViewModel.Onboarding` 和导航命令编译 RED，最终 focused 11/11、Desktop 54/54、全方案 293/293；Task 3 先因 `OnboardingPanel` 缺失 RED，最终 ManagementWindow 2/2、Desktop 55/55。
   - 审阅证据：Task 1 规格审阅通过，质量审阅缺口已由 `f3eb713` 与 `65d0f47` 修复，最终 Critical 0、Important 0、Minor 0；Task 2 规格与质量审阅均 Critical 0、Important 0、Minor 0；Task 3 规格通过，质量建议已在 `fc09e33` 修复，最终 Critical 0、Important 0、Minor 0。
-  - 新手任务子阶段门禁：`dotnet test HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，Domain 90、Application 118、Infrastructure 17、Rendering 14、Desktop 55，总计 294/294；`dotnet build HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，0 警告、0 错误；`dotnet format HajimaoDesktopShop.slnx --verify-no-changes --no-restore --include $changedCs` 退出 0 且无输出；`git diff --check` 退出 0，仅提示 `progress.md` 工作副本下次 Git 接触会从 LF 转为 CRLF。
+  - 整体审阅发现计划要求的真实 `BusinessSession` 集成测试缺失；`36007c2` 增加新局、真实前三命令和完整七项命令→保存→恢复三项集成测试，focused 25/25、Application 121/121，确保投影不只对手工快照成立。
+  - 新手任务子阶段最终门禁：`dotnet test HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 55，总计 297/297；`dotnet build HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，0 警告、0 错误；`dotnet format HajimaoDesktopShop.slnx --verify-no-changes --no-restore --include $changedCs` 退出 0 且无输出；`git diff --check` 退出 0。
   - 已知缺口仍保留在后续 0.1.9 范围：正式日志边界、平衡场景、长时/兼容回归、多显示器矩阵、Windows 安装/便携发布物、校验值、独立 Release 审阅、GitHub PR/标签和工作区清理均未在新手任务子阶段完成。
   - 将 0.1.9 拆为教程/回归与日志、安装发布、多显示器验收三个可独立验证的子计划。
 - Next actions:
