@@ -8,11 +8,133 @@ public sealed class EmployeeTests
     [Fact]
     public void Efficiency_ChangesRequiredTaskMinutesWithIntegerCeiling()
     {
-        var slower = CreateEmployee("slow", efficiencyPermille: 800, hourlyWageCents: 1_800);
-        var faster = CreateEmployee("fast", efficiencyPermille: 1_500, hourlyWageCents: 2_600);
+        var slower = RestoreEmployee("slow", efficiencyPermille: 800, hourlyWageCents: 1_800, energy: 1_000, satisfaction: 1_000);
+        var faster = RestoreEmployee("fast", efficiencyPermille: 1_500, hourlyWageCents: 2_600, energy: 1_000, satisfaction: 1_000);
 
-        Assert.Equal(13, slower.CalculateTaskMinutes(baseTaskMinutes: 10));
+        Assert.Equal(12, slower.CalculateTaskMinutes(baseTaskMinutes: 10));
         Assert.Equal(7, faster.CalculateTaskMinutes(baseTaskMinutes: 10));
+    }
+
+    [Fact]
+    public void NewEmployee_StartsWithDefaultCondition()
+    {
+        var employee = CreateEmployee("cashier", efficiencyPermille: 1_000, hourlyWageCents: 1_800);
+
+        Assert.Equal(0, employee.TrainingLevel);
+        Assert.Equal(1_000, employee.EnergyPermille);
+        Assert.Equal(700, employee.SatisfactionPermille);
+        Assert.Equal(960, employee.EffectiveEfficiencyPermille);
+        Assert.True(employee.CanWork);
+    }
+
+    [Fact]
+    public void TrainingEnergyAndSatisfaction_ComposeEffectiveEfficiency()
+    {
+        var employee = RestoreEmployee(
+            "cashier",
+            efficiencyPermille: 1_000,
+            hourlyWageCents: 1_800,
+            energy: 800,
+            satisfaction: 900);
+
+        employee.CompleteTraining();
+
+        Assert.Equal(1, employee.TrainingLevel);
+        Assert.Equal(963, employee.EffectiveEfficiencyPermille);
+        Assert.Equal(11, employee.CalculateTaskMinutes(baseTaskMinutes: 10));
+    }
+
+    [Fact]
+    public void WorkedConditionMinutes_DrainEnergyAndEventuallyReduceSatisfaction()
+    {
+        var employee = CreateEmployee("cashier", efficiencyPermille: 1_000, hourlyWageCents: 1_800);
+
+        for (var minute = 0; minute < 60; minute++)
+        {
+            employee.RecordWorkedConditionMinute();
+        }
+
+        Assert.Equal(880, employee.EnergyPermille);
+        Assert.Equal(699, employee.SatisfactionPermille);
+        Assert.Equal(0, employee.CaptureConditionState().WorkMinutesTowardSatisfactionLoss);
+    }
+
+    [Fact]
+    public void ExhaustedEmployee_CannotWorkAndRecoversOffShift()
+    {
+        var employee = RestoreEmployee(
+            "cashier",
+            efficiencyPermille: 1_000,
+            hourlyWageCents: 1_800,
+            energy: 0,
+            satisfaction: 700);
+
+        Assert.False(employee.CanWork);
+        Assert.Throws<InvalidOperationException>(() => employee.RecordWorkedConditionMinute());
+
+        employee.RecordRestMinute();
+
+        Assert.Equal(4, employee.EnergyPermille);
+        Assert.True(employee.CanWork);
+    }
+
+    [Fact]
+    public void RestMinutes_RecoverEnergyAndEventuallyIncreaseSatisfaction()
+    {
+        var employee = RestoreEmployee(
+            "cashier",
+            efficiencyPermille: 1_000,
+            hourlyWageCents: 1_800,
+            energy: 600,
+            satisfaction: 700);
+
+        for (var minute = 0; minute < 120; minute++)
+        {
+            employee.RecordRestMinute();
+        }
+
+        Assert.Equal(1_000, employee.EnergyPermille);
+        Assert.Equal(701, employee.SatisfactionPermille);
+        Assert.Equal(0, employee.CaptureConditionState().RestMinutesTowardSatisfactionGain);
+    }
+
+    [Fact]
+    public void ConditionCaptureAndRestore_PreservesProgress()
+    {
+        var employee = CreateEmployee("cashier", efficiencyPermille: 1_000, hourlyWageCents: 1_800);
+        employee.CompleteTraining();
+        employee.RecordWorkedConditionMinute();
+
+        var restored = Employee.Restore(
+            employee.Id,
+            employee.Name,
+            employee.Role,
+            employee.EfficiencyPermille,
+            employee.HourlyWage,
+            employee.CaptureWorkState(),
+            employee.CaptureConditionState());
+
+        Assert.Equal(employee.CaptureConditionState(), restored.CaptureConditionState());
+        Assert.Equal(employee.EffectiveEfficiencyPermille, restored.EffectiveEfficiencyPermille);
+    }
+
+    [Fact]
+    public void TrainingAndConditionRestore_RejectInvalidValues()
+    {
+        var employee = CreateEmployee("cashier", efficiencyPermille: 1_000, hourlyWageCents: 1_800);
+        for (var level = 0; level < 5; level++)
+        {
+            employee.CompleteTraining();
+        }
+
+        Assert.Equal(5, employee.TrainingLevel);
+        Assert.Throws<InvalidOperationException>(() => employee.CompleteTraining());
+        Assert.Throws<ArgumentOutOfRangeException>(() => RestoreEmployee(
+            "invalid",
+            efficiencyPermille: 1_000,
+            hourlyWageCents: 1_800,
+            energy: 1_001,
+            satisfaction: 700));
     }
 
     [Fact]
@@ -99,4 +221,19 @@ public sealed class EmployeeTests
             EmployeeRole.Cashier,
             efficiencyPermille,
             new Money(hourlyWageCents));
+
+    private static Employee RestoreEmployee(
+        string id,
+        int efficiencyPermille,
+        long hourlyWageCents,
+        int energy,
+        int satisfaction) =>
+        Employee.Restore(
+            new EmployeeId(id),
+            id,
+            EmployeeRole.Cashier,
+            efficiencyPermille,
+            new Money(hourlyWageCents),
+            new EmployeeWorkState(0, Money.Zero, 0),
+            new EmployeeConditionState(0, energy, satisfaction, 0, 0));
 }
