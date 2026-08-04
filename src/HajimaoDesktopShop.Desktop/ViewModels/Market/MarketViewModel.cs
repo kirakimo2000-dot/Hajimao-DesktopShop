@@ -29,6 +29,9 @@ public sealed class MarketViewModel : ObservableObject
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
+        EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
+        StoreGrowth = new StoreGrowthManagementViewModel(session, () => SelectedStoreId);
+        Finance = new FinanceViewModel(session, () => SelectedStoreId);
         Refresh();
     }
 
@@ -37,6 +40,12 @@ public sealed class MarketViewModel : ObservableObject
     public MarketOverviewViewModel Overview { get; }
 
     public ProductManagementViewModel ProductManagement { get; }
+
+    public EmployeeManagementViewModel EmployeeManagement { get; }
+
+    public StoreGrowthManagementViewModel StoreGrowth { get; }
+
+    public FinanceViewModel Finance { get; }
 
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
 
@@ -158,6 +167,9 @@ public sealed class MarketViewModel : ObservableObject
             IsClickThrough: false);
         Overview.Synchronize(Stores);
         ProductManagement.Refresh();
+        EmployeeManagement.Refresh();
+        StoreGrowth.Refresh();
+        Finance.Refresh();
     }
 
     private void Navigate(ManagementSection section) => SelectedSection = section;
