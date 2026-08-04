@@ -6,5 +6,6 @@ public enum LedgerEntryType
     StockPurchase,
     Sale,
     WagePayment,
-    StoreDevelopment
+    StoreDevelopment,
+    Promotion
 }

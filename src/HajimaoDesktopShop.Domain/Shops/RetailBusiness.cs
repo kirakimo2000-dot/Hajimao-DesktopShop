@@ -110,6 +110,17 @@ public sealed class RetailBusiness
 
     public bool TryPayOperatingExpense(Money amount) => _wallet.TryDebit(amount);
 
+    public bool TryPayStorePromotion(ShopId shopId, Money amount)
+    {
+        if (!_stores.TryGetValue(shopId, out var shop) || !_wallet.TryDebit(amount))
+        {
+            return false;
+        }
+
+        shop.RecordPromotionExpense(amount);
+        return true;
+    }
+
     public StoreUpgradeResult TryUpgradeStore(ShopId shopId, StoreUpgradeKind kind)
     {
         if (!_stores.TryGetValue(shopId, out var shop))

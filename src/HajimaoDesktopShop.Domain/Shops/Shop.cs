@@ -283,6 +283,17 @@ public sealed class Shop
         AddLedger(LedgerEntryType.StoreDevelopment, null, 1, new Money(-amount.Cents));
     }
 
+    internal void RecordPromotionExpense(Money amount)
+    {
+        if (amount.Cents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        }
+
+        TotalOperatingCost += amount;
+        AddLedger(LedgerEntryType.Promotion, null, 1, new Money(-amount.Cents));
+    }
+
     private static int ScaleCapacity(int baseCapacity, int capacityPermille)
     {
         if (baseCapacity <= 0)
