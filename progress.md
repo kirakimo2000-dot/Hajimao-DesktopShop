@@ -297,3 +297,21 @@
   - 独立复审为 Critical 0、Important 0、Minor 0；PR #4 合并至 `main`，最终版本由 `v0.1.8` 标签固定。
 - Next actions:
   - 0.1.9 集中教程、平衡、长时稳定、安装包、多显示器矩阵和正式日志。
+
+### Phase 16: 正式版 0.1.9 发布候选
+
+- **Status:** planning
+- Actions taken:
+  - 恢复原始需求、路线图与 0.1.8 发布记录，确认继续使用 .NET 10/WPF 分层、固定现实 1x 和 schema v6 兼容边界。
+  - 创建 `agent/v0.1.9-release-candidate` 隔离工作树。
+  - 首次组合命令在创建工作树后没有切换工作目录，因而在主工作树完成了 260/260 基线；已记录该路径错误，下一步在隔离工作树重新执行恢复和测试。
+  - 隔离工作树完成独立 restore 与 Release 基线，Domain 90、Application 96、Infrastructure 17、Rendering 14、Desktop 43，共 260/260。
+  - 文件扫描命令把 Unix 风格 `Directory.*`/`*.slnx` glob 直接交给 Windows `rg`，触发路径语法错误；后续改用明确路径或 PowerShell 枚举，不重复该命令。
+  - 初步映射确认 `BusinessSession`/`BusinessGameService` 是教程命令与存档的正确 Application 边界，SQLite 当前为 schema v6，窗口放置逻辑需要纯几何策略才能覆盖多显示器矩阵。
+  - 进一步确认教程的七项完成条件均可从现有 Business/Simulation/Procurement 快照派生，因此不新增教程可变状态、不升级 schema；旧存档会按真实经营事实自然恢复教程进度。
+  - 保存 `docs/superpowers/plans/2026-08-04-v0.1.9-onboarding.md`，将 Application 投影、Desktop 映射、WPF 无障碍面板和子阶段门禁拆为四个 TDD 任务。
+  - 计划自检发现 `AutoRestockPolicy` 的实际属性名是 `IsEnabled` 而不是草案中的 `Enabled`，已在执行前校正；其余类型和测试入口与现有代码一致。
+  - 将 0.1.9 拆为教程/回归与日志、安装发布、多显示器验收三个可独立验证的子计划。
+- Next actions:
+  - 在隔离工作树复验基线，映射现有命令、快照、存档和组合根边界。
+  - 保存并审阅第一个 0.1.9 实施计划，然后按 RED → GREEN → REFACTOR 执行。

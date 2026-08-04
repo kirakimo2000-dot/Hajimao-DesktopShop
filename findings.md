@@ -80,6 +80,22 @@
 | 店铺定义负责开店权限，商业街负责完整呈现 | `ShopDefinition`/`RetailBusiness` 保持唯一解锁权威；Application 将街区阶段提升到能容纳所有已开店铺的最低阶段，renderer 拒绝快照声明容量不足的损坏状态 |
 | 正式等级曲线延伸至 Lv.10 | 原曲线最高 Lv.6 会让完整街区永远不可达；保留 Lv.1～Lv.6 阈值并追加 2,000/3,200/5,000/7,500 经验目标 |
 
+## 0.1.9 发布候选范围发现
+
+- 原始需求仍缺完整顾客分段动作、正式教程、Serilog 日志、多显示器发布矩阵和安装/便携发布物；0.1.9 路线已明确承接这些发布候选能力，但不扩张为开放城市或其他商店内部模拟。
+- 教程必须通过真实 Application 命令与只读进度快照观察玩家行为，不能靠 UI 私有布尔值、暂停或倍速推进。
+- 平衡与长时稳定应固化为确定性场景测试和报告生成边界，优先验证新局、中期多店与八小时离线，而不是为测试添加生产捷径。
+- 正式日志属于 Infrastructure 适配器与 Desktop 组合根职责；Domain/Application 只发布结构化事件或调用抽象端口，不引用 Serilog。
+- 安装包、多显示器和签名验证与玩法/日志相互独立，按同一 0.1.9 版本下的后续子计划交付。
+- `BusinessSession` 已是创建、恢复和完整存档捕获的唯一组合边界；若教程需要顺序进度，最稳妥的持久化位置是与 Business/Simulation 并列的 Application save record，并由 session 组合教程服务。
+- `BusinessGameService` 已集中所有玩家主动经营命令，适合由薄命令观察器在成功结果后通知教程，而不是让教程反查按钮或修改 Domain 经济规则。
+- SQLite 目前逐级迁移到 schema v6；0.1.9 若保存教程状态，应增加 v6→v7 迁移，同时保留 v1～v6 的逐级兼容测试。
+- `WindowInteractionService` 直接依赖静态 `SystemParameters` 与 Win32 monitor API，现有恢复校验只检查虚拟桌面矩形；多显示器矩阵需要先抽出可测试的纯几何放置策略，再由 WPF 适配器提供显示器工作区。
+- 当前没有 Serilog 或通用日志端口；正式日志应避免污染 Domain，并通过 Desktop 组合根把 Infrastructure logger 传给 session/autosave/simulation loop 等应用边界。
+- 教程进度无需升级 schema：采购成本、当前/参考售价、自动补货策略、营业收入、员工培训级别、店铺成长和已开店数都已存在于正式快照及 v6 存档中。教程可做成无可变状态的 Application 投影，恢复旧存档时自然重建进度。
+- 教程任务只返回稳定 `OnboardingTaskId` 与完成状态；中文标题、引导文字和管理页导航映射留在 Desktop ViewModel，Application 不引用 WPF 或界面枚举。
+- 第一条任务应为真实进货而不是“查看页面”；完整任务链依次覆盖进货、调价、自动补货、首笔销售、培训、成长和开设第二家店，持续强化挂机经营而非速度控制。
+
 ## 0.2 Demand Formula
 
 - 进店基础概率默认 3,000 基点，购买基础概率默认 9,000 基点。
