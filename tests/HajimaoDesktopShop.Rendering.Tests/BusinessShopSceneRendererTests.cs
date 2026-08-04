@@ -1,8 +1,10 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Street;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Domain.Demand;
+using HajimaoDesktopShop.Domain.Streets;
 using HajimaoDesktopShop.Rendering;
 using SkiaSharp;
 using System.Security.Cryptography;
@@ -100,7 +102,14 @@ public sealed class BusinessShopSceneRendererTests
             0,
             business,
             [operations],
-            new EmployeeOperationsSnapshot(1, 1, [], []));
+            new EmployeeOperationsSnapshot(1, 1, [], []),
+            new CommercialStreetSnapshot(
+                CommercialStreetTier.Corner,
+                StreetWeather.Clear,
+                10_000,
+                5,
+                0,
+                [new CommercialStreetStoreSnapshot("corner-store", "街角便利店", 10_000, 10_000)]));
         return new BusinessShopSceneFrame(snapshot, "corner-store");
     }
 }
