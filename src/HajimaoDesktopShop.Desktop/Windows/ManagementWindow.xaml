@@ -3,8 +3,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:HajimaoDesktopShop.Desktop.Controls"
+        xmlns:desktop="clr-namespace:HajimaoDesktopShop.Desktop"
         xmlns:market="clr-namespace:HajimaoDesktopShop.Desktop.ViewModels.Market"
-        Title="Hajimao Market · 经营管理"
+        Title="{x:Static desktop:ProductIdentity.ManagementWindowTitle}"
         Width="1180" Height="720" MinWidth="960" MinHeight="640"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Background}"
@@ -28,7 +29,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="HAJIMAO MARKET" FontFamily="Consolas" FontSize="18"
+                    <TextBlock Text="{x:Static desktop:ProductIdentity.BrandHeader}" FontFamily="Consolas" FontSize="18"
                                FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" />
                     <TextBlock Text="传统桌面放置经营" FontSize="12"
                                Foreground="{DynamicResource Brush.TextMuted}" />

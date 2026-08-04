@@ -141,6 +141,7 @@
 | 每店独立成长、共享资金支付 | 保留多店配置差异，同时让玩家继续管理一套业务现金流 |
 | 扩建、货架与装修采用平方费用 | 形成长期增量目标；容量和需求提升经营上限而非直接发钱 |
 | 促销在 Tick 末扣除持续时间 | 当前分钟在线/离线效果一致，且不会因批量结算产生少算一 Tick |
+| 正式显示名恢复为 `Hajimao DesktopShop` | 用户于 2026-08-04 覆盖此前 `Hajimao Market` 决定；程序集/命名空间/存档与数据库兼容标识保持 `HajimaoDesktopShop.*`，不因品牌调整破坏旧存档 |
 
 ## Errors Encountered
 
@@ -156,6 +157,8 @@
 | 底层审计猜测了不存在的 `TransactionEntry.cs` 与 `ShopFinancials.cs` | 1 | 实际文件为 `Economy/LedgerEntry.cs` 与 `Shops/ShopFinancialState.cs`；已通过 `rg --files` 定位 |
 | 启用 WinForms 后 WPF 类型出现 `UserControl`/`MessageBox` 歧义 | 1 | Desktop 禁用隐式 using，并用显式全局 using 保持 WPF/WinForms 边界清晰 |
 | 极高合法效率在清洁恢复计算中触发 `OverflowException` | 1 | 回归测试复现后改用 `long` 乘法，并在转换前把单 Tick 恢复量夹到整洁度上限 |
+| 品牌字符串双向 `rg` 检查返回退出码 1 | 1 | 旧名称匹配正常；第二次搜索新名称无匹配导致组合命令非零，后续把“无匹配”视为迁移前的预期状态并分开检查 |
+| 全方案 `dotnet format --verify-no-changes` 命中未改动的 `Desktop/AssemblyInfo.cs` 既有空白格式 | 1 | 测试 299/299 与构建 0 警告/0 错误已通过；先确认该文件是否为用户/历史内容，再只格式化本次变更的 C# 文件，避免扩张品牌改名范围 |
 
 ## Notes
 

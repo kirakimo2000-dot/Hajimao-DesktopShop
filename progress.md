@@ -302,6 +302,17 @@
 
 - **Status:** planning
 - Actions taken:
+  - 用户将正式项目显示名恢复为 `Hajimao DesktopShop`；已盘点旧名称分布并固定兼容边界：只修改用户可见品牌、现行文档与远端仓库名，不改程序集命名空间、存档目录或数据库标识。
+  - 品牌迁移测试盘点确认现有覆盖未锁定窗口标题、管理页品牌头或托盘文字；下一步按 TDD 先增加失败契约测试，再统一生产显示名。
+  - 品牌契约 RED 已确认：focused Desktop 测试因 `ProductIdentity` 尚不存在而以 CS0103/CS0246 失败；随后新增单一产品标识契约，并让窗口、品牌头、托盘、启动错误、新手完成文案和程序集元数据引用正式名称。focused 5/5 GREEN。
+  - 文档迁移策略已固定：README、当前资产说明使用新名称；CHANGELOG 在 Unreleased 记录恢复决定；0.1.3～0.1.8 阶段报告/计划与真实历史 PR 标题保留当时名称，不改写历史。
+  - Codex 任务标题已改为 `Hajimao DesktopShop`；GitHub 所有者认证、私有仓库身份和默认分支已确认，准备同步远端仓库名与 origin。
+  - GitHub 私有仓库已从 `kirakimo2000-dot/Hajimao-Market` 改名为 `kirakimo2000-dot/Hajimao-DesktopShop`，默认分支继续为 `main`；本地共享 origin 与历史 PR 链接已同步。
+  - 全仓品牌扫描完成；旧名仅存在于当时采用旧名称的阶段报告/计划、明确标注的迁移历史与真实旧 PR 标题。`git diff --check` 退出 0；Git 仅提示仓库既有 Windows 换行转换策略。
+  - 首轮完整门禁：全方案测试 Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 57，总计 299/299；Release 构建 0 警告/0 错误。全方案格式校验因未改动的 `Desktop/AssemblyInfo.cs` 既有空白格式失败，按范围保护先审计该文件，不直接机械改写。
+  - 已确认 `AssemblyInfo.cs` 自 0.1.0 起未改动；仅针对本次全部 C# 变更执行 `dotnet format --verify-no-changes` 后退出 0。手工 diff 复核确认品牌改名未触碰版本、存档 schema、业务玩法或数据路径。
+  - 独立审阅首轮 Critical 0、Important 1、Minor 0；Important 指出旧阶段报告/计划不应改写为新名称。已撤回 0.1.3～0.1.8 的历史名称改动，保留 0.1.9 覆盖决定、当前 README/资产资料与新 GitHub URL；复审只剩 1 项记录措辞 Minor，已同步最终历史保留策略。
+  - 修正审阅意见后的完整门禁再次通过：Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 57，总计 299/299；Release 构建 0 警告/0 错误；本次 C# 格式校验与 `git diff --check` 均退出 0；新 origin 的 `main` 可读取并指向 `d06568d`。
   - 恢复原始需求、路线图与 0.1.8 发布记录，确认继续使用 .NET 10/WPF 分层、固定现实 1x 和 schema v6 兼容边界。
   - 创建 `agent/v0.1.9-release-candidate` 隔离工作树。
   - 首次组合命令在创建工作树后没有切换工作目录，因而在主工作树完成了 260/260 基线；已记录该路径错误，下一步在隔离工作树重新执行恢复和测试。

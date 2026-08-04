@@ -107,8 +107,8 @@ public partial class App : System.Windows.Application
         catch (Exception exception)
         {
             MessageBox.Show(
-                $"Hajimao Market 启动失败。\n\n{exception.Message}\n\n请确认 Assets/Config/products.json 完整可读。",
-                "Hajimao Market 启动错误",
+                $"{ProductIdentity.DisplayName} 启动失败。\n\n{exception.Message}\n\n请确认 Assets/Config/products.json 完整可读。",
+                ProductIdentity.StartupErrorTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(-1);

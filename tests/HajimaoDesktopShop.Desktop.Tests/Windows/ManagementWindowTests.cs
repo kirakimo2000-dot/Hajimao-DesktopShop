@@ -27,6 +27,10 @@ public sealed class ManagementWindowTests
                 window.UpdateLayout();
 
                 Assert.False(window.ShowInTaskbar);
+                Assert.Equal(ProductIdentity.ManagementWindowTitle, window.Title);
+                Assert.Contains(
+                    FindLogicalChildren<TextBlock>(window),
+                    textBlock => textBlock.Text == ProductIdentity.BrandHeader);
 
                 var panel = Assert.IsType<Border>(window.FindName("OnboardingPanel"));
                 Assert.Equal(Visibility.Visible, panel.Visibility);

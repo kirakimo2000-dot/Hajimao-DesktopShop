@@ -49,7 +49,7 @@ public sealed class OnboardingViewModel : ObservableObject
         {
             ProgressText = "新手任务已完成";
             Title = "新手任务已完成";
-            Guidance = "你已经掌握 Hajimao Market 的核心经营循环。";
+            Guidance = ProductIdentity.OnboardingCompletionGuidance;
             SuggestedSection = ManagementSection.Store;
             IsVisible = false;
             return;

@@ -8,8 +8,8 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyTitle>Hajimao Market</AssemblyTitle>
-    <Product>Hajimao Market</Product>
+    <AssemblyTitle>Hajimao DesktopShop</AssemblyTitle>
+    <Product>Hajimao DesktopShop</Product>
     <Description>Pixel-style Windows desktop idle market management game.</Description>
   </PropertyGroup>
 

@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 正式产品显示名恢复为 `Hajimao DesktopShop`；窗口、通知区域、教程文案、程序集产品信息和现行文档统一使用该名称。
+- 内部 `HajimaoDesktopShop.*` 程序集/命名空间、存档目录和数据库兼容标识保持不变，不触发存档迁移。
 - 下一阶段为 0.1.9 发布候选：教程、平衡、长时稳定、安装包和多显示器验收。
 
 ## [0.1.8] - 2026-08-04
@@ -139,7 +143,7 @@
 
 ### Changed
 
-- 正式产品名称确认为 `Hajimao Market`；内部 `HajimaoDesktopShop.*` 技术标识保持兼容。
+- 当时采用 `Hajimao Market` 作为产品显示名；内部 `HajimaoDesktopShop.*` 技术标识保持兼容。该显示名已在 0.1.9 开发期恢复为 `Hajimao DesktopShop`。
 - `BusinessSimulation` 每个固定现实分钟在销售结算后推进一次采购，在线与离线挂机复用同一管线。
 - SQLite `PRAGMA user_version` 从 3 事务化迁移到 4；v1/v2 存档继续逐级迁移。
 - 活跃版本提升至 `0.1.3`。

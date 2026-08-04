@@ -34,7 +34,7 @@ public sealed class OnboardingViewModelTests
 
         Assert.Equal("新手任务已完成", viewModel.ProgressText);
         Assert.Equal("新手任务已完成", viewModel.Title);
-        Assert.Equal("你已经掌握 Hajimao Market 的核心经营循环。", viewModel.Guidance);
+        Assert.Equal(ProductIdentity.OnboardingCompletionGuidance, viewModel.Guidance);
         Assert.Equal(ManagementSection.Store, viewModel.SuggestedSection);
         Assert.False(viewModel.IsVisible);
     }

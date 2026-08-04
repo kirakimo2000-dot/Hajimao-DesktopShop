@@ -1,6 +1,6 @@
-# Hajimao Market
+# Hajimao DesktopShop
 
-Hajimao Market 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家可展开管理窗口进货、调价、查看员工与财务。
+Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家可展开管理窗口进货、调价、查看员工与财务。
 
 ## 当前版本：0.1.8 商业街 Beta
 

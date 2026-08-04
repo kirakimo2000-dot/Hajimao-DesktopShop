@@ -18,6 +18,7 @@ public sealed class DesktopShopWindowRenderingTests
             try
             {
                 var window = new DesktopShopWindow(new MarketViewModel(MarketTestSession.Create()));
+                Assert.Equal(ProductIdentity.DesktopWindowTitle, window.Title);
                 var root = Assert.IsType<Grid>(window.Content);
                 Assert.Equal(4, root.ContextMenu?.Items.Count);
 
