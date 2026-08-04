@@ -302,6 +302,8 @@
 
 - **Status:** planning
 - Actions taken:
+  - 应用户要求开始生成桌面纯文本项目报告；已核对版本分支、产品/路线文档和 Domain/Application/Infrastructure/Rendering/Desktop 实际模块，并提取等级、店铺、商品、员工、需求、采购、成长、商业街、离线与 schema v6 的源码参数。
+  - 已生成 `C:\Users\86427\Desktop\Hajimao DesktopShop项目进度与底层逻辑报告.txt`：644 行、22 个章节，完整覆盖当前进度、版本历史、模块边界、经营 Tick、经济/需求、员工、采购、成长、商业街、挂机、存档、渲染、已知差距和后续计划；严格 UTF-8 与关键章节检查通过。
   - 用户将正式项目显示名恢复为 `Hajimao DesktopShop`；已盘点旧名称分布并固定兼容边界：只修改用户可见品牌、现行文档与远端仓库名，不改程序集命名空间、存档目录或数据库标识。
   - 品牌迁移测试盘点确认现有覆盖未锁定窗口标题、管理页品牌头或托盘文字；下一步按 TDD 先增加失败契约测试，再统一生产显示名。
   - 品牌契约 RED 已确认：focused Desktop 测试因 `ProductIdentity` 尚不存在而以 CS0103/CS0246 失败；随后新增单一产品标识契约，并让窗口、品牌头、托盘、启动错误、新手完成文案和程序集元数据引用正式名称。focused 5/5 GREEN。

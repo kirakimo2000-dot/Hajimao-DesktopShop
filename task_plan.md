@@ -159,6 +159,7 @@
 | 极高合法效率在清洁恢复计算中触发 `OverflowException` | 1 | 回归测试复现后改用 `long` 乘法，并在转换前把单 Tick 恢复量夹到整洁度上限 |
 | 品牌字符串双向 `rg` 检查返回退出码 1 | 1 | 旧名称匹配正常；第二次搜索新名称无匹配导致组合命令非零，后续把“无匹配”视为迁移前的预期状态并分开检查 |
 | 全方案 `dotnet format --verify-no-changes` 命中未改动的 `Desktop/AssemblyInfo.cs` 既有空白格式 | 1 | 测试 299/299 与构建 0 警告/0 错误已通过；先确认该文件是否为用户/历史内容，再只格式化本次变更的 C# 文件，避免扩张品牌改名范围 |
+| 报告取证命令将 `Application/Persistence/*.cs` glob 直接交给 Windows `rg` | 1 | 前序文件内容与其他匹配已成功返回；后续使用明确目录参数或 PowerShell 枚举，不重复 Windows 路径 glob |
 
 ## Notes
 
