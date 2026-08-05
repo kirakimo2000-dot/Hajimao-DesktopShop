@@ -20,6 +20,20 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
+    public void Refresh_PreservesAContinuousPresentationTickAcrossAnimationCycles()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create(), reduceMotion: () => false);
+
+        for (var index = 0; index < 8; index++)
+        {
+            viewModel.Refresh();
+        }
+
+        Assert.Equal(8, viewModel.SceneFrame!.AnimationFrame);
+        Assert.Equal(8, viewModel.CommercialStreet.SceneFrame!.AnimationFrame);
+    }
+
+    [Fact]
     public void Refresh_ReducedMotionLocksTheSeedFrame()
     {
         var viewModel = new MarketViewModel(

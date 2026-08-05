@@ -7,7 +7,6 @@ using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Rendering;
-using HajimaoDesktopShop.Rendering.PixelArt;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
@@ -270,7 +269,7 @@ public sealed class MarketViewModel : ObservableObject
         CommercialStreet.Refresh(snapshot.Street, SceneFrame.AnimationFrame, reduceMotion);
         if (!reduceMotion)
         {
-            _animationFrame = (_animationFrame + 1) % PixelArtBudget.CharacterFrameCount;
+            _animationFrame = _animationFrame == int.MaxValue ? 0 : _animationFrame + 1;
         }
         DesktopFrame = new BusinessShopFrame(
             SceneFrame,

@@ -39,6 +39,15 @@ public sealed class CommercialStreetSceneRendererTests
     }
 
     [Fact]
+    public void Renderer_MovesPedestriansAfterACompleteEightFrameAnimationCycle()
+    {
+        var origin = RenderHash(animationFrame: 0, reduceMotion: false);
+        var advanced = RenderHash(animationFrame: 8, reduceMotion: false);
+
+        Assert.NotEqual(origin, advanced);
+    }
+
+    [Fact]
     public void Renderer_CapsVisibleStreetActorsToSceneBudget()
     {
         var capped = RenderHash(0, false, pedestrians: 6, vehicles: 2);

@@ -69,8 +69,8 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
 
         DrawStorefronts(canvas, street);
         DrawPedestrians(canvas, frame);
-        DrawVehicles(canvas, street.VisibleVehicles);
-        DrawWeather(canvas, street.Weather);
+        DrawVehicles(canvas, street.VisibleVehicles, contentWidth, frame);
+        DrawWeather(canvas, street.Weather, contentWidth);
     }
 
     public void Dispose()
@@ -104,13 +104,21 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
             Math.Max(0, frame.Snapshot.VisiblePedestrians),
             PixelArtBudget.MaximumVisibleStreetPedestrians);
         var frames = _atlas.GetFrames(PixelSpriteId.Customer);
-        var frameIndex = frame.ReduceMotion
-            ? 0
-            : (frame.AnimationFrame % frames.Count + frames.Count) % frames.Count;
+        var frameIndex = CharacterMotion.FrameIndex(
+            frame.AnimationFrame,
+            frames.Count,
+            frame.ReduceMotion);
         var sprite = frames[frameIndex];
+        var contentWidth = CommercialStreetLayout.GetContentWidth(frame.Snapshot.Stores.Count);
         for (var index = 0; index < count; index++)
         {
-            var anchorX = 34 + index * 62;
+            var anchorX = CharacterMotion.HorizontalLoop(
+                frame.AnimationFrame,
+                index * 17,
+                24,
+                contentWidth - 24,
+                4,
+                frame.ReduceMotion);
             var destination = new SKRect(
                 anchorX - sprite.AnchorX,
                 150 - sprite.AnchorY,
@@ -125,12 +133,22 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         }
     }
 
-    private void DrawVehicles(SKCanvas canvas, int requestedCount)
+    private void DrawVehicles(
+        SKCanvas canvas,
+        int requestedCount,
+        int contentWidth,
+        CommercialStreetSceneFrame frame)
     {
         var count = Math.Min(Math.Max(0, requestedCount), PixelArtBudget.MaximumVisibleStreetVehicles);
         for (var index = 0; index < count; index++)
         {
-            var x = 40 + index * 210;
+            var x = CharacterMotion.HorizontalLoop(
+                frame.AnimationFrame,
+                10 + index * 53,
+                0,
+                contentWidth - 56,
+                4,
+                frame.ReduceMotion);
             Fill(canvas, x, 158, 54, 15, index == 0 ? "#E15A5A" : "#65B8C8");
             Fill(canvas, x + 10, 154, 30, 7, "#A6ABB4");
             Fill(canvas, x + 7, 171, 9, 5, "#17191D");
@@ -138,20 +156,20 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         }
     }
 
-    private void DrawWeather(SKCanvas canvas, StreetWeather weather)
+    private void DrawWeather(SKCanvas canvas, StreetWeather weather, int contentWidth)
     {
         if (weather == StreetWeather.Rain)
         {
-            for (var index = 0; index < 18; index++)
+            for (var x = 8; x < contentWidth; x += 24)
             {
-                Fill(canvas, 8 + index * 24, 4 + index % 3 * 10, 2, 7, "#65B8C8");
+                Fill(canvas, x, 4 + (x / 24) % 3 * 10, 2, 7, "#65B8C8");
             }
         }
         else if (weather == StreetWeather.Wind)
         {
-            for (var index = 0; index < 5; index++)
+            for (var x = 28; x < contentWidth; x += 78)
             {
-                Fill(canvas, 28 + index * 78, 14 + index % 2 * 9, 28, 2, "#A6ABB4");
+                Fill(canvas, x, 14 + (x / 78) % 2 * 9, 28, 2, "#A6ABB4");
             }
         }
     }
