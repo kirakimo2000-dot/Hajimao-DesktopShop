@@ -145,6 +145,11 @@
 
 ## Errors Encountered
 
+- `test-release.ps1` 的 MSI `ProductCode` 读取函数把 COM `Execute()` 的返回值一并写入了 PowerShell 管道，导致产品预检参数收到对象数组；已将该调用显式丢弃，首次验收在任何安装动作前安全终止。
+- `Start-Process -ArgumentList` 会在带空格的 MSI 路径上重新拼接参数，首次修复尝试得到 `msiexec 1639`；改用 `ProcessStartInfo.ArgumentList` 逐参数传递，并保留 Windows PowerShell 的显式引用回退。
+- Windows Installer `ProductsEx` 返回的安装对象可调用 `InstallProperty()`，但在当前 PowerShell COM 包装中不公开 `ProductCode/Context/UserSid` 属性；移除无关属性读取，保留已知 ProductCode 与注册安装目录证据。
+- 当前 Codex 会话不是管理员，按机器 MSI 以正确的 `ALLUSERS=1` 静默安装返回 1603；本地门禁改走不注册产品的 MSI administrative image 并运行解包程序，GitHub Windows 管理员 runner 强制 `-RequireFullMsiInstall` 完成真正安装/卸载。
+
 | Error | Attempt | Resolution |
 | --- | --- | --- |
 | `git status` 报告不是 Git 仓库 | 1 | 记录约束，不执行分支/worktree 操作 |
@@ -177,6 +182,8 @@
 | Windows PowerShell 5 的 `Add-Type` 不支持 C# 字符串插值 | 1 | 将窗口样式诊断消息改为 `string.Format`，保持脚本声明的 Windows PowerShell 兼容性 |
 | Windows PowerShell 5 的 `Add-Type` 同样不支持 C# `out var` | 2 | 改为预先声明 `int ownerProcessId`，并移除可能依赖新编译器的 lambda discard |
 | 日志等待条件中的换行让 PowerShell 把 `-and` 绑定为 `Test-Path` 参数 | 1 | 对 `Test-Path` 与文件枚举两侧显式加括号，固定布尔表达式解析边界 |
+| MSI 冒烟的自定义 `INSTALLFOLDER` 掩盖默认 per-user 仍指向 Program Files | 1 | 查询最终 MSI 的 Directory/Property 表确认后，先加失败契约，再把默认二进制目录改为 `LocalAppDataFolder\Programs`；用户数据目录仍不归 MSI 所有 |
+| 用户配置目录的 500+ 自包含文件触发 ICE38/ICE64 | 2 | 不压制 Windows Installer 验证、不生成数百个 HKCU KeyPath；正式 MSI 改为 per-machine Program Files，便携 ZIP 承担免管理员场景 |
 
 ## Notes
 

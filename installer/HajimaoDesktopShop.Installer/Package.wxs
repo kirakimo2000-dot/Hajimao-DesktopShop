@@ -5,11 +5,16 @@
     Manufacturer="Hajimao"
     Version="$(ProductVersion)"
     UpgradeCode="{769C1156-51A9-4D4A-B7A3-3BC5C226B3F2}"
-    Scope="perUserOrMachine"
+    Scope="perMachine"
     Compressed="yes">
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of Hajimao DesktopShop is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <SetProperty
+      Id="ARPINSTALLLOCATION"
+      Value="[INSTALLFOLDER]"
+      After="CostFinalize"
+      Sequence="execute" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="Hajimao DesktopShop" />

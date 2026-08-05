@@ -23,6 +23,7 @@ public sealed class ReleasePackagingContractTests
     {
         Assert.True(File.Exists(_root.File("scripts", "build-release.ps1")));
         Assert.True(File.Exists(_root.File("scripts", "test-release.ps1")));
+        Assert.True(File.Exists(_root.File(".github", "workflows", "release-gate.yml")));
         Assert.True(File.Exists(_root.File(
             "installer",
             "HajimaoDesktopShop.Installer",
@@ -70,7 +71,7 @@ public sealed class ReleasePackagingContractTests
 
         Assert.Equal("Hajimao DesktopShop", package.Attribute("Name")?.Value);
         Assert.Equal(UpgradeCode, package.Attribute("UpgradeCode")?.Value);
-        Assert.Equal("perUserOrMachine", package.Attribute("Scope")?.Value);
+        Assert.Equal("perMachine", package.Attribute("Scope")?.Value);
         Assert.Equal("yes", package.Attribute("Compressed")?.Value);
         Assert.Single(package.Elements(), element => element.Name.LocalName == "MajorUpgrade");
         Assert.Equal(
@@ -78,6 +79,22 @@ public sealed class ReleasePackagingContractTests
             Assert.Single(
                 package.Elements(),
                 element => element.Name.LocalName == "MediaTemplate").Attribute("EmbedCab")?.Value);
+
+        var installFolder = Assert.Single(
+            packageDocument.Descendants(),
+            element => element.Name.LocalName == "Directory"
+                && string.Equals(element.Attribute("Id")?.Value, "INSTALLFOLDER", StringComparison.Ordinal));
+        Assert.Equal("ProgramFiles6432Folder", installFolder.Parent?.Attribute("Id")?.Value);
+
+        var installLocationProperty = Assert.Single(
+            packageDocument.Descendants(),
+            element => element.Name.LocalName == "SetProperty"
+                && string.Equals(
+                    element.Attribute("Id")?.Value,
+                    "ARPINSTALLLOCATION",
+                    StringComparison.Ordinal));
+        Assert.Equal("[INSTALLFOLDER]", installLocationProperty.Attribute("Value")?.Value);
+        Assert.Equal("CostFinalize", installLocationProperty.Attribute("After")?.Value);
 
         var mainExecutable = Assert.Single(
             packageDocument.Descendants(),
@@ -113,9 +130,9 @@ public sealed class ReleasePackagingContractTests
         Assert.Contains(excludes, exclude => exclude.EndsWith("e_sqlite3.dll", StringComparison.Ordinal));
         Assert.Contains(excludes, exclude => exclude.Contains("*.pdb", StringComparison.Ordinal));
 
-        Assert.DoesNotContain("LocalAppDataFolder", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("hajimao.db", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("logs", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("LocalAppDataFolder", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -126,6 +143,10 @@ public sealed class ReleasePackagingContractTests
         Assert.Contains("dotnet test", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("dotnet publish", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("--self-contained true", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "IncludeSourceRevisionInInformationalVersion=false",
+            script,
+            StringComparison.OrdinalIgnoreCase);
         Assert.Contains("-r win-x64", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("HajimaoDesktopShop.Installer.wixproj", script, StringComparison.Ordinal);
         Assert.Contains("Compress-Archive", script, StringComparison.OrdinalIgnoreCase);
@@ -152,7 +173,48 @@ public sealed class ReleasePackagingContractTests
         Assert.Contains("WaitForExit", script, StringComparison.Ordinal);
         Assert.Contains("WS_EX_APPWINDOW", script, StringComparison.Ordinal);
         Assert.Contains("finally", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Get-MsiProperty", script, StringComparison.Ordinal);
+        Assert.Contains("ProductsEx", script, StringComparison.Ordinal);
+        Assert.Contains("InstallProperty('InstallLocation')", script, StringComparison.Ordinal);
+        Assert.Contains("$ownedProductCode", script, StringComparison.Ordinal);
+        Assert.Contains("ProcessStartInfo", script, StringComparison.Ordinal);
+        Assert.Contains("ArgumentList.Add", script, StringComparison.Ordinal);
+        Assert.Contains("Invoke-CleanupStep", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Get-Process -Name", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Stop-Process -Name", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("$msiInstalled", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("ALLUSERS=2", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("MSIINSTALLPERUSER", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ALLUSERS=1", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("'/a'", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("RequireFullMsiInstall", script, StringComparison.Ordinal);
+        Assert.Contains("WindowsBuiltInRole", script, StringComparison.Ordinal);
+
+        var installCompleted = script.IndexOf(
+            "Invoke-MsiExec -Operation 'MSI install'",
+            StringComparison.Ordinal);
+        var ownershipRecorded = script.IndexOf(
+            "$ownedProductCode = $productCode",
+            installCompleted,
+            StringComparison.Ordinal);
+        var registrationValidation = script.IndexOf(
+            "$installedProducts =",
+            installCompleted,
+            StringComparison.Ordinal);
+        Assert.True(installCompleted >= 0);
+        Assert.True(ownershipRecorded > installCompleted);
+        Assert.True(registrationValidation > ownershipRecorded);
+    }
+
+    [Fact]
+    public void ReleaseWorkflow_RequiresFullPerMachineMsiSmoke()
+    {
+        var workflow = File.ReadAllText(
+            _root.File(".github", "workflows", "release-gate.yml"));
+
+        Assert.Contains("windows-latest", workflow, StringComparison.Ordinal);
+        Assert.Contains("dotnet-version: 10.0.x", workflow, StringComparison.Ordinal);
+        Assert.Contains("build-release.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("-RequireFullMsiInstall", workflow, StringComparison.Ordinal);
     }
 }

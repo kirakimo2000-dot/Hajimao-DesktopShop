@@ -54,7 +54,7 @@ dotnet test HajimaoDesktopShop.slnx
 dotnet run --project src/HajimaoDesktopShop.Desktop
 ```
 
-发布包生成后，可解压便携 ZIP 直接运行 `HajimaoDesktopShop.Desktop.exe`，或使用 MSI 安装。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
+发布包生成后，可解压便携 ZIP 直接运行 `HajimaoDesktopShop.Desktop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.9

@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version
+    [string]$Version,
+    [switch]$RequireFullMsiInstall
 )
 
 Set-StrictMode -Version Latest
@@ -162,6 +163,69 @@ function Stop-OwnedApplication {
     }
 }
 
+function Get-MsiProperty {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePath,
+        [Parameter(Mandatory = $true)][ValidatePattern('^[A-Za-z][A-Za-z0-9_]*$')][string]$PropertyName
+    )
+
+    $installer = $null
+    $database = $null
+    $view = $null
+    $record = $null
+    try {
+        $installer = New-Object -ComObject WindowsInstaller.Installer
+        $database = $installer.OpenDatabase($PackagePath, 0)
+        $view = $database.OpenView(
+            "SELECT ``Value`` FROM ``Property`` WHERE ``Property``='$PropertyName'")
+        [void]$view.Execute()
+        $record = $view.Fetch()
+        if ($null -eq $record) {
+            throw "MSI property is missing: $PropertyName"
+        }
+
+        return [string]$record.StringData(1)
+    }
+    finally {
+        foreach ($comObject in @($record, $view, $database, $installer)) {
+            if ($null -ne $comObject -and [System.Runtime.InteropServices.Marshal]::IsComObject($comObject)) {
+                [void][System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($comObject)
+            }
+        }
+    }
+}
+
+function Get-InstalledMsiProducts {
+    param([Parameter(Mandatory = $true)][string]$ProductCode)
+
+    $installer = $null
+    try {
+        $installer = New-Object -ComObject WindowsInstaller.Installer
+        $products = @($installer.ProductsEx($ProductCode, '', 7))
+        return @($products | ForEach-Object {
+            [pscustomobject]@{
+                ProductCode = $ProductCode
+                InstallLocation = [string]$_.InstallProperty('InstallLocation')
+            }
+        })
+    }
+    finally {
+        if ($null -ne $installer -and [System.Runtime.InteropServices.Marshal]::IsComObject($installer)) {
+            [void][System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($installer)
+        }
+    }
+}
+
+function Quote-NativeArgument {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    if ($Value.Contains('"')) {
+        throw 'Native arguments containing quote characters are not supported.'
+    }
+
+    return '"' + $Value + '"'
+}
+
 function Invoke-MsiExec {
     param(
         [Parameter(Mandatory = $true)][string[]]$Arguments,
@@ -170,7 +234,21 @@ function Invoke-MsiExec {
     )
 
     $msiExecutable = Join-Path $env:SystemRoot 'System32\msiexec.exe'
-    $process = Start-Process -FilePath $msiExecutable -ArgumentList $Arguments -PassThru
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $msiExecutable
+    $startInfo.UseShellExecute = $false
+    if ($startInfo.PSObject.Properties.Name -contains 'ArgumentList') {
+        foreach ($argument in $Arguments) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+    }
+    else {
+        $startInfo.Arguments = ($Arguments | ForEach-Object {
+            Quote-NativeArgument -Value $_
+        }) -join ' '
+    }
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
     if (-not $process.WaitForExit(120000)) {
         $process.Kill()
         $process.WaitForExit(10000) | Out-Null
@@ -180,6 +258,27 @@ function Invoke-MsiExec {
     if ($process.ExitCode -notin $AllowedExitCodes) {
         throw "$Operation failed with exit code $($process.ExitCode)."
     }
+}
+
+function Invoke-CleanupStep {
+    param(
+        [Parameter(Mandatory = $true)][string]$Description,
+        [Parameter(Mandatory = $true)][scriptblock]$Action
+    )
+
+    try {
+        & $Action
+    }
+    catch {
+        Write-Warning "$Description failed: $($_.Exception.Message)"
+    }
+}
+
+function Test-IsAdministrator {
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole(
+        [System.Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
 function Test-ApplicationRuntime {
@@ -242,6 +341,17 @@ foreach ($entry in $manifest.files) {
     }
 }
 
+$productCode = Get-MsiProperty -PackagePath $installerPackage -PropertyName 'ProductCode'
+$parsedProductCode = [guid]::Empty
+if (-not [guid]::TryParse($productCode, [ref]$parsedProductCode)) {
+    throw "MSI ProductCode is invalid: $productCode"
+}
+
+$preExistingProducts = @(Get-InstalledMsiProducts -ProductCode $productCode)
+if ($preExistingProducts.Count -ne 0) {
+    throw "Refusing to smoke-test ProductCode $productCode because it is already installed."
+}
+
 $systemTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $testRoot = Assert-ChildPath `
     -Parent $systemTemp `
@@ -250,6 +360,7 @@ $portableExtract = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRo
 $portableData = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRoot 'portable-data')
 $installedData = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRoot 'installed-data')
 $installDirectory = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRoot 'installed-app')
+$administrativeImage = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRoot 'msi-image')
 $installLog = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRoot 'install.log')
 $uninstallLog = Assert-ChildPath -Parent $testRoot -Target (Join-Path $testRoot 'uninstall.log')
 
@@ -257,7 +368,12 @@ $portableProcess = $null
 $installedProcess = $null
 $portableExecutable = $null
 $installedExecutable = Join-Path $installDirectory 'HajimaoDesktopShop.Desktop.exe'
-$msiInstalled = $false
+$ownedProductCode = $null
+$isAdministrator = Test-IsAdministrator
+
+if ($RequireFullMsiInstall -and -not $isAdministrator) {
+    throw 'Full per-machine MSI smoke requires an elevated administrator session.'
+}
 
 New-Item -ItemType Directory -Path $testRoot, $portableExtract, $portableData, $installedData -Force |
     Out-Null
@@ -274,69 +390,144 @@ try {
     Stop-OwnedApplication -Process $portableProcess -ExpectedPath $portableExecutable
     $portableProcess = $null
 
-    Invoke-MsiExec -Operation 'MSI install' -Arguments @(
-        '/i',
-        $installerPackage,
-        '/qn',
-        '/norestart',
-        'ALLUSERS=2',
-        'MSIINSTALLPERUSER=1',
-        "INSTALLFOLDER=$installDirectory",
-        '/L*v',
-        $installLog)
-    $msiInstalled = $true
-    if (-not (Test-Path -LiteralPath $installedExecutable -PathType Leaf)) {
-        throw "Installed executable is missing: $installedExecutable"
+    if ($isAdministrator) {
+        $installArguments = @(
+            '/i',
+            $installerPackage,
+            '/qn',
+            '/norestart',
+            'ALLUSERS=1',
+            "INSTALLFOLDER=$installDirectory",
+            '/L*v',
+            $installLog)
+        Invoke-MsiExec -Operation 'MSI install' -Arguments $installArguments
+        $ownedProductCode = $productCode
+
+        $installedProducts = @(Get-InstalledMsiProducts -ProductCode $productCode)
+        if ($installedProducts.Count -ne 1) {
+            throw "MSI registration count is not one after install: $($installedProducts.Count)."
+        }
+
+        $registeredInstallLocation = [System.IO.Path]::GetFullPath(
+            $installedProducts[0].InstallLocation).TrimEnd(
+                [System.IO.Path]::DirectorySeparatorChar,
+                [System.IO.Path]::AltDirectorySeparatorChar)
+        $expectedInstallLocation = [System.IO.Path]::GetFullPath($installDirectory).TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar)
+        if (-not [string]::Equals(
+                $registeredInstallLocation,
+                $expectedInstallLocation,
+                [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "MSI registered unexpected install location: $registeredInstallLocation"
+        }
+
+        [void](Assert-ChildPath -Parent $testRoot -Target $registeredInstallLocation)
+        if (-not (Test-Path -LiteralPath $installedExecutable -PathType Leaf)) {
+            throw "Installed executable is missing: $installedExecutable"
+        }
+
+        $installedProcess = Start-IsolatedApplication `
+            -ExecutablePath $installedExecutable `
+            -DataDirectory $installedData
+        Test-ApplicationRuntime `
+            -Process $installedProcess `
+            -DataDirectory $installedData `
+            -Label 'Installed'
+        Stop-OwnedApplication -Process $installedProcess -ExpectedPath $installedExecutable
+        $installedProcess = $null
+
+        $uninstallArguments = @(
+            '/x',
+            $ownedProductCode,
+            '/qn',
+            '/norestart',
+            '/L*v',
+            $uninstallLog)
+        Invoke-MsiExec -Operation 'MSI uninstall' -Arguments $uninstallArguments
+        if (Test-Path -LiteralPath $installedExecutable) {
+            throw 'MSI uninstall left the application executable behind.'
+        }
+
+        $remainingProducts = @(Get-InstalledMsiProducts -ProductCode $productCode)
+        if ($remainingProducts.Count -ne 0) {
+            throw 'MSI registration remains after uninstall.'
+        }
+
+        if (-not (Test-Path -LiteralPath $installedData -PathType Container)) {
+            throw 'MSI uninstall removed the isolated application data directory.'
+        }
+
+        $ownedProductCode = $null
+        Write-Output "Release smoke passed for Hajimao DesktopShop $Version (full per-machine MSI)."
     }
+    else {
+        $administrativeArguments = @(
+            '/a',
+            $installerPackage,
+            '/qn',
+            '/norestart',
+            "TARGETDIR=$administrativeImage",
+            '/L*v',
+            $installLog)
+        Invoke-MsiExec -Operation 'MSI administrative-image extraction' `
+            -Arguments $administrativeArguments
 
-    $installedProcess = Start-IsolatedApplication `
-        -ExecutablePath $installedExecutable `
-        -DataDirectory $installedData
-    Test-ApplicationRuntime `
-        -Process $installedProcess `
-        -DataDirectory $installedData `
-        -Label 'Installed'
-    Stop-OwnedApplication -Process $installedProcess -ExpectedPath $installedExecutable
-    $installedProcess = $null
+        $extractedExecutables = @(Get-ChildItem `
+            -LiteralPath $administrativeImage `
+            -Filter 'HajimaoDesktopShop.Desktop.exe' `
+            -File `
+            -Recurse)
+        if ($extractedExecutables.Count -ne 1) {
+            throw "MSI administrative image contains $($extractedExecutables.Count) main executables."
+        }
 
-    Invoke-MsiExec -Operation 'MSI uninstall' -Arguments @(
-        '/x',
-        $installerPackage,
-        '/qn',
-        '/norestart',
-        '/L*v',
-        $uninstallLog)
-    $msiInstalled = $false
-    if (Test-Path -LiteralPath $installedExecutable) {
-        throw 'MSI uninstall left the application executable behind.'
+        $installedExecutable = $extractedExecutables[0].FullName
+        [void](Assert-ChildPath -Parent $administrativeImage -Target $installedExecutable)
+        $installedProcess = Start-IsolatedApplication `
+            -ExecutablePath $installedExecutable `
+            -DataDirectory $installedData
+        Test-ApplicationRuntime `
+            -Process $installedProcess `
+            -DataDirectory $installedData `
+            -Label 'MSI administrative image'
+        Stop-OwnedApplication -Process $installedProcess -ExpectedPath $installedExecutable
+        $installedProcess = $null
+
+        $administrativeProducts = @(Get-InstalledMsiProducts -ProductCode $productCode)
+        if ($administrativeProducts.Count -ne 0) {
+            throw 'MSI administrative-image extraction unexpectedly registered the product.'
+        }
+
+        Write-Output (
+            "Release smoke passed for Hajimao DesktopShop $Version " +
+                '(non-admin MSI administrative image; full install gate requires elevation).')
     }
-
-    if (-not (Test-Path -LiteralPath $installedData -PathType Container)) {
-        throw 'MSI uninstall removed the isolated application data directory.'
-    }
-
-    Write-Output "Release smoke passed for Hajimao DesktopShop $Version."
 }
 finally {
-    Stop-OwnedApplication -Process $portableProcess -ExpectedPath $portableExecutable
-    Stop-OwnedApplication -Process $installedProcess -ExpectedPath $installedExecutable
-    if ($msiInstalled) {
-        try {
-            Invoke-MsiExec -Operation 'MSI cleanup uninstall' -Arguments @(
+    Invoke-CleanupStep -Description 'Portable process cleanup' -Action {
+        Stop-OwnedApplication -Process $portableProcess -ExpectedPath $portableExecutable
+    }
+    Invoke-CleanupStep -Description 'Installed process cleanup' -Action {
+        Stop-OwnedApplication -Process $installedProcess -ExpectedPath $installedExecutable
+    }
+    if ($null -ne $ownedProductCode) {
+        Invoke-CleanupStep -Description 'MSI cleanup uninstall' -Action {
+            $cleanupArguments = @(
                 '/x',
-                $installerPackage,
+                $ownedProductCode,
                 '/qn',
                 '/norestart',
                 '/L*v',
                 $uninstallLog)
-        }
-        catch {
-            Write-Warning "Cleanup uninstall failed: $($_.Exception.Message)"
+            Invoke-MsiExec -Operation 'MSI cleanup uninstall' -Arguments $cleanupArguments
         }
     }
 
-    $ownedTestRoot = Assert-ChildPath -Parent $systemTemp -Target $testRoot
-    if (Test-Path -LiteralPath $ownedTestRoot) {
-        Remove-Item -LiteralPath $ownedTestRoot -Recurse -Force
+    Invoke-CleanupStep -Description 'Temporary directory cleanup' -Action {
+        $ownedTestRoot = Assert-ChildPath -Parent $systemTemp -Target $testRoot
+        if (Test-Path -LiteralPath $ownedTestRoot) {
+            Remove-Item -LiteralPath $ownedTestRoot -Recurse -Force
+        }
     }
 }

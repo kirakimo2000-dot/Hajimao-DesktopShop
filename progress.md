@@ -364,3 +364,6 @@
 - 2026-08-05：保存并自检 `docs/superpowers/plans/2026-08-05-v0.1.9-multidisplay.md` 与 `docs/superpowers/plans/2026-08-05-v0.1.9-windows-release.md`；明确纯几何/Win32 适配器边界、PerMonitorV2 契约、便携包/WiX MSI、真实进程验收、版本晋升和 GitHub 发布顺序，且保持 schema v6、现实 1x 与 UI 范围不变。
 - 2026-08-05：多显示器子计划完成：纯几何策略覆盖负坐标、显示器空隙、拔除显示器、纵向布局、最小可见范围、最近工作区、四角与超大窗口；Win32 适配器覆盖 96/120/144/192 DPI；WPF/WinForms 混合宿主以 WPF manifest 声明 PerMonitorV2。聚焦几何/DPI 33/33、平台契约 2/2、Desktop 99/99、全方案 355/355，Release 构建 0 警告/0 错误；schema 仍为 v6。
 - 2026-08-05：Windows 发布管线完成 RED/GREEN：Release 契约 6/6，WiX 6.0.2 对正式 win-x64 payload 构建 0 警告/0 错误；0.1.8 排练与 0.1.9 最终便携/MSI 真实验收均通过，验证响应、SQLite、日志、无任务栏 AppWindow 样式、卸载移除应用和保留数据。最终 ZIP/MSI/JSON/SHA 已生成并明确 `signed=false`。
+- 2026-08-05：发布脚本首轮独立审阅发现既有 MSI 产品归属、带空格参数和 finally 清理隔离风险；均先补契约门禁再修复。最终实机验收在所有安装上下文预检后完成便携/MSI 启动，核对注册目录属于随机临时根，再按 ProductCode 卸载且注册项清零。
+- 2026-08-05：复审要求安装上下文与 MSI `perMachine` 声明完全一致；删除 per-user 覆盖。非管理员本机通过 MSI administrative image 解包/运行门禁，新增 GitHub `windows-latest` Release gate，在管理员 runner 强制完整 per-machine 安装/卸载，避免以本地权限限制冒充正式安装证据。
+- 2026-08-05：发布安全最终复审 Critical 0、Important 0、Minor 0；本地全量 362/362、Release 构建 0 警告/0 错误、11 项目漏洞审计、变更格式和补丁检查全部通过，等待 GitHub 管理员 runner 与合并发布。

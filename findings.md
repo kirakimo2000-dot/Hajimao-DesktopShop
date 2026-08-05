@@ -27,7 +27,7 @@
 - 需求已包含价格接受度、服务、队列、整洁度、时段、成长和促销整数分项；0.1.8 增加共享路过判定、店铺吸引力加权、开店协同、天气、车辆和路人。尚未加入节庆/事故等长期街道事件。
 - 多显示器基础并非完全缺失：`WindowInteractionService` 按最近显示器工作区吸附并校验虚拟桌面边界；仍缺不同排列、负坐标和混合 DPI 的系统化实机矩阵验收。
 - Serilog 当前仍只有包引用，源码没有正式异常/模拟日志管线；这是原始文件尚未兑现的基础设施缺口。
-- 仍未实现的主要完整愿景集中在 0.1.9 平衡、长时稳定、安装包、多显示器发布验收、正式日志，以及更深的场景对象交互和角色路径。
+- 0.1.9 已完成平衡、长时稳定、安装/便携发布、多显示器矩阵与正式日志；当前原始愿景差距主要集中在更深的场景对象交互、顾客分段动作/路径与后续经营内容。
 
 ## Research Findings
 
@@ -112,7 +112,7 @@
 - 品牌全仓扫描后，活跃源码、测试期望、README、程序集元数据、当前资产说明和新 GitHub URL 均使用 `Hajimao DesktopShop`。旧名保留在当时采用该名称的 0.1.3～0.1.8 阶段报告/计划、真实历史 PR 标题与迁移审计记录中，属于有意保留的历史事实。
 - 全方案格式失败源为 `AssemblyInfo.cs` 自 0.1.0 (`209d1a0`) 起的既有注释对齐，当前工作树对该文件无 diff；限定到本次全部已跟踪和未跟踪 C# 变更后，格式校验退出 0。品牌 diff 自检未发现版本号、schema、存档路径或业务规则改动。
 - 独立品牌审阅结果为 Critical 0、Important 1、Minor 0：实现与兼容边界无缺口，唯一问题是旧阶段文档被重写成新显示名。已恢复 0.1.3～0.1.8 的当时名称，只在 0.1.9 覆盖说明和当前资料使用 `Hajimao DesktopShop`。
-- 原始需求仍缺完整顾客分段动作、正式教程、Serilog 日志、多显示器发布矩阵和安装/便携发布物；0.1.9 路线已明确承接这些发布候选能力，但不扩张为开放城市或其他商店内部模拟。
+- 原始需求中的七步正式教程、Serilog 日志、多显示器矩阵和安装/便携发布物已在 0.1.9 完成；仍缺完整顾客分段动作与更深场景交互，后续继续限定在玩家店铺和共享商业街，不扩张为开放城市或其他商店内部模拟。
 - 教程必须通过真实 Application 命令与只读进度快照观察玩家行为，不能靠 UI 私有布尔值、暂停或倍速推进。
 - 平衡与长时稳定应固化为确定性场景测试和报告生成边界，优先验证新局、中期多店与八小时离线，而不是为测试添加生产捷径。
 - 正式日志属于 Infrastructure 适配器与 Desktop 组合根职责；Domain/Application 只发布结构化事件或调用抽象端口，不引用 Serilog。
@@ -195,6 +195,12 @@
 - 2026-08-05：Desktop 当前没有 app manifest 或 DPI 声明；Microsoft 文档说明 WPF 默认仅系统 DPI aware，而 `dpiAwareness=PerMonitorV2` 可在 Windows 10 1703+ 获得逐显示器 DPI 上下文。项目目标最低 Windows 10 2004，因此应新增 manifest 并同时声明 Windows 10 支持。
 - 2026-08-05：.NET 10 的 WFO0003 对任何启用 WinForms 且 manifest 含 DPI 节点的项目告警；`ApplicationHighDpiMode` 生成 WinForms `ApplicationConfiguration`，但本项目由 WPF 启动且只借用 WinForms 托盘。保留 WPF 在 HWND 创建前生效的 manifest，并按 Microsoft 官方规则只抑制 WFO0003，避免重复且不会执行的 DPI 初始化来源。
 - 2026-08-05：WiX v6 `Files` 的排除规则不是 `Exclude` 属性，而是子 `<Exclude Files="..." />` 元素；已在写入安装器前修正规划与契约测试，避免为错误 schema 编写实现。
+- 2026-08-05：MSI 表取证确认 `Scope=perUserOrMachine` 默认设置 `ALLUSERS=2`、`MSIINSTALLPERUSER=1`，但首版 `INSTALLFOLDER` 仍指向 Program Files；自定义临时目录的冒烟会掩盖普通用户默认写入权限问题。默认二进制目录应改为 `%LocalAppData%\Programs\Hajimao DesktopShop`，与 `%LocalAppData%\HajimaoDesktopShop` 存档目录明确隔离。
+- 2026-08-05：将自包含 payload 改到用户配置目录后，WiX 完整 ICE 验证按预期产生 500+ 个 ICE38/ICE64：每个用户配置文件组件都需要 HKCU KeyPath，所有递归目录也需 RemoveFile 表项。为避免压制验证或生成数百个用户注册表项，正式 MSI 采用标准 per-machine Program Files 安装；无管理员场景使用便携 ZIP，存档仍留在用户 LocalAppData 且不归 MSI 所有。
+- 2026-08-05：发布构建若保留 SDK 默认 SourceRevision 信息，文档收尾提交会让同一 0.1.9 二进制的产品信息随 HEAD 改变；发布脚本显式关闭 `IncludeSourceRevisionInInformationalVersion`，版本/哈希只由发布输入决定，提交溯源由 Git 标签和 Release 负责。
 - 2026-08-05：当前机器只有 `msiexec` 与 GitHub CLI；没有全局 `wix`、Inno Setup、MakeAppx 或 SignTool，亦未发现 Windows Kits bin。发布方案必须可由 NuGet 恢复的项目级 WiX SDK构建；本机无法执行 Authenticode 签名，只能生成明确标注 unsigned 的 MSI/ZIP 与 SHA-256。
 - 2026-08-05：混合 DPI 不只需要几何矩阵，进程还必须在创建 UI 前声明 PerMonitorV2；manifest 属于 Desktop 组合/平台边界，不改变 Rendering 的逻辑像素、固定 420×280 DIP 或经营 Tick。
 - 2026-08-05：WiX MSBuild 官方契约支持 `<BindPath Include="$(PublishDir)" BindName="PublishDir" />`，WXS 可用 `!(bindpath.PublishDir)\**` 递归收集并精确排除显式主 EXE；`ProductVersion` 等 MSBuild 属性需加入 `DefineConstants` 后才能在 WXS 中以 `$(ProductVersion)` 使用。
+- 2026-08-05：发布脚本独立审阅发现 MSI 冒烟可能触碰机器上同 ProductCode 的既有安装。最终门禁改为安装前枚举所有安装上下文、安装后核对 Windows Installer 注册目录精确属于随机临时根，只有核对成功才记录卸载所有权；MSI 参数改为逐参数传递，finally 的进程、MSI、临时目录清理互不阻断。
+- 2026-08-05：当前 Codex 进程不在管理员令牌中，正式 per-machine MSI 的静默安装会以 1603 拒绝。验收脚本因此区分两条诚实路径：非管理员用标准 `/a` administrative image 验证 MSI 解包内容并真实启动其中程序；GitHub Windows runner 通过 `-RequireFullMsiInstall` 强制执行 `ALLUSERS=1` 注册、目录归属核对、运行和按 ProductCode 卸载，不能退化成 per-user 安装。
+- 2026-08-05：发布安全最终复审为 Critical 0、Important 0、Minor 0；确认 ProductCode 所有权在安装成功后、注册断言前建立，per-user 参数完全移除，非管理员分支不注册产品，管理员 workflow 不能退化为 `/a`。

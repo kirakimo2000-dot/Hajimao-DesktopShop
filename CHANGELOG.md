@@ -33,7 +33,7 @@
 
 ### Verification
 
-- 全量测试 361/361：Domain 90、Application 133、Infrastructure 19、Rendering 14、Desktop 99、Release 6；Release 构建与 WiX 验证均为 0 警告/0 错误。
+- 全量测试 362/362：Domain 90、Application 133、Infrastructure 19、Rendering 14、Desktop 99、Release 7；Release 构建与 WiX 验证均为 0 警告/0 错误。
 - 0.1.8 排练和 0.1.9 最终真实验收均覆盖便携版与 MSI 安装版启动、响应、SQLite、日志、任务栏样式、卸载和数据保留。
 - 0.1.9 ZIP/MSI 明确标记为未签名并附 SHA-256；详细记录见 `docs/progress/v0.1.9-release-candidate.md`。
 

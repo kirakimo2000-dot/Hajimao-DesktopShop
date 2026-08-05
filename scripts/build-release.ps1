@@ -98,7 +98,9 @@ try {
 
     & dotnet publish src/HajimaoDesktopShop.Desktop/HajimaoDesktopShop.Desktop.csproj `
         -c Release -r win-x64 --self-contained true `
-        -p:DebugType=None -p:DebugSymbols=false -o $portableDir --nologo
+        -p:DebugType=None -p:DebugSymbols=false `
+        -p:IncludeSourceRevisionInInformationalVersion=false `
+        -o $portableDir --nologo
     Assert-LastExitCode 'dotnet publish'
 
     Get-ChildItem -LiteralPath $portableDir -Recurse -File -Filter '*.pdb' | ForEach-Object {
