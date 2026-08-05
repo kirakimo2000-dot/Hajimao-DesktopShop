@@ -7,8 +7,7 @@ namespace HajimaoDesktopShop.Rendering;
 
 public sealed class CommercialStreetSceneRenderer : IDisposable
 {
-    public const int LogicalWidth = 420;
-    public const int LogicalHeight = 160;
+    public const int LogicalHeight = CommercialStreetLayout.LogicalHeight;
 
     private static readonly SKSamplingOptions PixelSampling =
         new(SKFilterMode.Nearest, SKMipmapMode.None);
@@ -37,13 +36,20 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
             return;
         }
 
-        var scale = Math.Max(1, Math.Min(target.Width / LogicalWidth, target.Height / LogicalHeight));
+        var contentWidth = CommercialStreetLayout.GetContentWidth(frame.Snapshot.Stores.Count);
+        var scale = Math.Max(1, target.Height / LogicalHeight);
+        var viewportWidth = Math.Min(contentWidth, Math.Max(1, target.Width / scale));
+        var cameraOffset = CommercialStreetLayout.ClampCameraOffset(
+            contentWidth,
+            viewportWidth,
+            frame.CameraOffset);
         canvas.Save();
         canvas.Translate(
-            (target.Width - LogicalWidth * scale) / 2,
+            (target.Width - viewportWidth * scale) / 2,
             (target.Height - LogicalHeight * scale) / 2);
         canvas.Scale(scale);
-        canvas.ClipRect(new SKRect(0, 0, LogicalWidth, LogicalHeight));
+        canvas.ClipRect(new SKRect(0, 0, viewportWidth, LogicalHeight));
+        canvas.Translate(-cameraOffset, 0);
         DrawLogicalScene(canvas, frame);
         canvas.Restore();
     }
@@ -53,17 +59,18 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(canvas);
         ArgumentNullException.ThrowIfNull(frame);
         var street = frame.Snapshot;
-        Fill(canvas, 0, 0, LogicalWidth, 34, SkyColor(street.Weather));
-        Fill(canvas, 0, 34, LogicalWidth, 62, "#31262A");
-        Fill(canvas, 0, 96, LogicalWidth, 28, "#B87349");
-        Fill(canvas, 0, 124, LogicalWidth, 36, "#34383F");
-        Fill(canvas, 0, 126, LogicalWidth, 3, "#F1B844");
-        Fill(canvas, 0, 151, LogicalWidth, 3, "#D9D2C3");
+        var contentWidth = CommercialStreetLayout.GetContentWidth(street.Stores.Count);
+        Fill(canvas, 0, 0, contentWidth, 28, SkyColor(street.Weather));
+        Fill(canvas, 0, 28, contentWidth, 102, "#31262A");
+        Fill(canvas, 0, 130, contentWidth, 20, "#B87349");
+        Fill(canvas, 0, 150, contentWidth, 30, "#34383F");
+        Fill(canvas, 0, 152, contentWidth, 3, "#F1B844");
+        Fill(canvas, 0, 174, contentWidth, 3, "#D9D2C3");
 
         DrawStorefronts(canvas, street);
         DrawPedestrians(canvas, frame);
-        DrawVehicles(canvas, street.VisibleVehicles);
-        DrawWeather(canvas, street.Weather);
+        DrawVehicles(canvas, street.VisibleVehicles, contentWidth, frame);
+        DrawWeather(canvas, street.Weather, contentWidth);
     }
 
     public void Dispose()
@@ -75,27 +82,19 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
 
     private void DrawStorefronts(SKCanvas canvas, CommercialStreetSnapshot street)
     {
-        var unlockedSlots = CommercialStreetTrafficModel.GetUnlockedStorefrontCount(street.Tier);
-        if (street.Stores.Count > unlockedSlots)
+        var storefronts = CommercialStreetLayout.CreateStorefronts(street.Stores);
+        for (var index = 0; index < storefronts.Count; index++)
         {
-            throw new InvalidOperationException(
-                $"Commercial street tier '{street.Tier}' cannot render {street.Stores.Count} opened stores.");
-        }
-
-        for (var index = 0; index < 5; index++)
-        {
-            var x = 10 + index * 82;
-            var isOpen = index < street.Stores.Count;
-            var isUnlocked = index < unlockedSlots;
-            Fill(canvas, x, 38, 72, 58, isOpen ? "#6B4634" : isUnlocked ? "#3D4650" : "#23262C");
-            Fill(canvas, x + 6, 44, 60, 10, isOpen ? "#F1B844" : "#525A63");
-            Fill(canvas, x + 8, 62, 22, 34, isOpen ? "#65B8C8" : "#2D323A");
-            Fill(canvas, x + 42, 64, 18, 32, isOpen ? "#4A353C" : "#2D323A");
-            if (isOpen)
-            {
-                var shareWidth = Math.Clamp(street.Stores[index].TrafficShareBasisPoints * 56 / 10_000, 1, 56);
-                Fill(canvas, x + 8, 57, shareWidth, 3, "#72C986");
-            }
+            var bounds = storefronts[index].Bounds;
+            Fill(canvas, bounds.X, bounds.Y, bounds.Width, bounds.Height, "#6B4634");
+            Fill(canvas, bounds.X + 8, bounds.Y + 7, bounds.Width - 16, 16, "#F1B844");
+            Fill(canvas, bounds.X + 12, bounds.Y + 37, 72, bounds.Height - 37, "#65B8C8");
+            Fill(canvas, bounds.X + 96, bounds.Y + 37, bounds.Width - 108, bounds.Height - 37, "#4A353C");
+            var shareWidth = Math.Clamp(
+                street.Stores[index].TrafficShareBasisPoints * (bounds.Width - 24) / 10_000,
+                1,
+                bounds.Width - 24);
+            Fill(canvas, bounds.X + 12, bounds.Y + 27, shareWidth, 4, "#72C986");
         }
     }
 
@@ -105,18 +104,26 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
             Math.Max(0, frame.Snapshot.VisiblePedestrians),
             PixelArtBudget.MaximumVisibleStreetPedestrians);
         var frames = _atlas.GetFrames(PixelSpriteId.Customer);
-        var frameIndex = frame.ReduceMotion
-            ? 0
-            : (frame.AnimationFrame % frames.Count + frames.Count) % frames.Count;
+        var frameIndex = CharacterMotion.FrameIndex(
+            frame.AnimationFrame,
+            frames.Count,
+            frame.ReduceMotion);
         var sprite = frames[frameIndex];
+        var contentWidth = CommercialStreetLayout.GetContentWidth(frame.Snapshot.Stores.Count);
         for (var index = 0; index < count; index++)
         {
-            var anchorX = 34 + index * 62;
+            var anchorX = CharacterMotion.HorizontalLoop(
+                frame.AnimationFrame,
+                index * 17,
+                24,
+                contentWidth - 24,
+                4,
+                frame.ReduceMotion);
             var destination = new SKRect(
                 anchorX - sprite.AnchorX,
-                124 - sprite.AnchorY,
+                150 - sprite.AnchorY,
                 anchorX - sprite.AnchorX + sprite.Width,
-                124 - sprite.AnchorY + sprite.Height);
+                150 - sprite.AnchorY + sprite.Height);
             var source = new SKRect(
                 sprite.X,
                 sprite.Y,
@@ -126,33 +133,43 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         }
     }
 
-    private void DrawVehicles(SKCanvas canvas, int requestedCount)
+    private void DrawVehicles(
+        SKCanvas canvas,
+        int requestedCount,
+        int contentWidth,
+        CommercialStreetSceneFrame frame)
     {
         var count = Math.Min(Math.Max(0, requestedCount), PixelArtBudget.MaximumVisibleStreetVehicles);
         for (var index = 0; index < count; index++)
         {
-            var x = 40 + index * 210;
-            Fill(canvas, x, 132, 54, 15, index == 0 ? "#E15A5A" : "#65B8C8");
-            Fill(canvas, x + 10, 128, 30, 7, "#A6ABB4");
-            Fill(canvas, x + 7, 145, 9, 5, "#17191D");
-            Fill(canvas, x + 39, 145, 9, 5, "#17191D");
+            var x = CharacterMotion.HorizontalLoop(
+                frame.AnimationFrame,
+                10 + index * 53,
+                0,
+                contentWidth - 56,
+                4,
+                frame.ReduceMotion);
+            Fill(canvas, x, 158, 54, 15, index == 0 ? "#E15A5A" : "#65B8C8");
+            Fill(canvas, x + 10, 154, 30, 7, "#A6ABB4");
+            Fill(canvas, x + 7, 171, 9, 5, "#17191D");
+            Fill(canvas, x + 39, 171, 9, 5, "#17191D");
         }
     }
 
-    private void DrawWeather(SKCanvas canvas, StreetWeather weather)
+    private void DrawWeather(SKCanvas canvas, StreetWeather weather, int contentWidth)
     {
         if (weather == StreetWeather.Rain)
         {
-            for (var index = 0; index < 18; index++)
+            for (var x = 8; x < contentWidth; x += 24)
             {
-                Fill(canvas, 8 + index * 24, 4 + index % 3 * 10, 2, 7, "#65B8C8");
+                Fill(canvas, x, 4 + (x / 24) % 3 * 10, 2, 7, "#65B8C8");
             }
         }
         else if (weather == StreetWeather.Wind)
         {
-            for (var index = 0; index < 5; index++)
+            for (var x = 28; x < contentWidth; x += 78)
             {
-                Fill(canvas, 28 + index * 78, 14 + index % 2 * 9, 28, 2, "#A6ABB4");
+                Fill(canvas, x, 14 + (x / 78) % 2 * 9, 28, 2, "#A6ABB4");
             }
         }
     }

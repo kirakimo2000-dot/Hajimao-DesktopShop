@@ -283,6 +283,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        _viewModel?.DesktopNavigation.ShowStreet();
         _desktopWindow.Show();
         _desktopWindow.Activate();
     }

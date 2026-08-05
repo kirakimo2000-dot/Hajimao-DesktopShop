@@ -74,9 +74,9 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         Fill(canvas, 0, 8, LogicalWidth, 116, "#4A353C");
         Fill(canvas, 0, 124, LogicalWidth, 56, "#B87349");
         Fill(canvas, 0, 120, LogicalWidth, 4, "#31262A");
-        DrawSprite(canvas, PixelSpriteId.ShelfAmbient, 0, 94, 108, frame);
-        DrawSprite(canvas, PixelSpriteId.ShelfChilled, 0, 198, 108, frame);
-        DrawSprite(canvas, PixelSpriteId.ShelfFrozen, 0, 302, 108, frame);
+        DrawSprite(canvas, PixelSpriteId.ShelfAmbient, 94, 108, frame);
+        DrawSprite(canvas, PixelSpriteId.ShelfChilled, 198, 108, frame);
+        DrawSprite(canvas, PixelSpriteId.ShelfFrozen, 302, 108, frame);
 
         var products = store?.Products ?? [];
         DrawProducts(canvas, products);
@@ -86,13 +86,27 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         var cashier = employees.FirstOrDefault(employee => employee.Role == EmployeeRole.Cashier);
         if (cashier is not null)
         {
-            DrawSprite(canvas, PixelSpriteId.Cashier, frame.AnimationFrame, 356, 142, frame);
+            var cashierX = CharacterMotion.PingPong(
+                frame.AnimationFrame,
+                0,
+                350,
+                362,
+                2,
+                frame.ReduceMotion);
+            DrawSprite(canvas, PixelSpriteId.Cashier, cashierX, 142, frame);
         }
 
         var restocker = employees.FirstOrDefault(employee => employee.Role == EmployeeRole.Restocker);
         if (restocker is not null)
         {
-            DrawSprite(canvas, PixelSpriteId.Restocker, frame.AnimationFrame, 30, 142, frame);
+            var restockerX = CharacterMotion.PingPong(
+                frame.AnimationFrame,
+                9,
+                30,
+                230,
+                4,
+                frame.ReduceMotion);
+            DrawSprite(canvas, PixelSpriteId.Restocker, restockerX, 142, frame);
         }
 
         DrawSupportingEmployees(canvas, employees, frame);
@@ -103,8 +117,15 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         for (var index = 0; index < queueLength; index++)
         {
             var anchorX = 302 - index * 28;
-            DrawSprite(canvas, PixelSpriteId.Customer, frame.AnimationFrame, anchorX, 148, frame);
-            Fill(canvas, anchorX - 4, 151, 8, 3, "#F1B844");
+            var customerX = CharacterMotion.PingPong(
+                frame.AnimationFrame,
+                index * 3,
+                anchorX - 12,
+                anchorX,
+                2,
+                frame.ReduceMotion);
+            DrawSprite(canvas, PixelSpriteId.Customer, customerX, 148, frame);
+            Fill(canvas, customerX - 4, 151, 8, 3, "#F1B844");
         }
     }
 
@@ -156,8 +177,14 @@ public sealed class BusinessShopSceneRenderer : IDisposable
             .ToArray();
         for (var index = 0; index < supporting.Length; index++)
         {
-            var anchorX = 132 + index * 32;
-            DrawSprite(canvas, PixelSpriteId.Customer, frame.AnimationFrame, anchorX, 142, frame);
+            var anchorX = CharacterMotion.PingPong(
+                frame.AnimationFrame,
+                index * 11,
+                112 + index * 40,
+                176 + index * 40,
+                4,
+                frame.ReduceMotion);
+            DrawSprite(canvas, PixelSpriteId.Customer, anchorX, 142, frame);
             Fill(canvas, anchorX - 5, 145, 10, 3, "#65B8C8");
         }
     }
@@ -165,15 +192,15 @@ public sealed class BusinessShopSceneRenderer : IDisposable
     private void DrawSprite(
         SKCanvas canvas,
         PixelSpriteId spriteId,
-        int requestedFrame,
         int anchorX,
         int anchorY,
         BusinessShopSceneFrame scene)
     {
         var frames = _atlas.GetFrames(spriteId);
-        var normalizedFrame = scene.ReduceMotion
-            ? 0
-            : (requestedFrame % frames.Count + frames.Count) % frames.Count;
+        var normalizedFrame = CharacterMotion.FrameIndex(
+            scene.AnimationFrame,
+            frames.Count,
+            scene.ReduceMotion);
         var frame = frames[normalizedFrame];
         DrawAtlasFrame(
             canvas,

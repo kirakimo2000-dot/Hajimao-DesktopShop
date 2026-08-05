@@ -223,6 +223,15 @@ function Quote-NativeArgument {
         throw 'Native arguments containing quote characters are not supported.'
     }
 
+    if ($Value -notmatch '\s') {
+        return $Value
+    }
+
+    $trailingBackslashes = [regex]::Match($Value, '\\+$').Value
+    if ($trailingBackslashes.Length -gt 0) {
+        $Value += $trailingBackslashes
+    }
+
     return '"' + $Value + '"'
 }
 

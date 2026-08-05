@@ -8,14 +8,14 @@ public sealed class ReleasePackagingContractTests
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_1_9()
+    public void ActiveVersion_Is_0_1_10()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.1.9", version.Value.Trim());
+        Assert.Equal("0.1.10", version.Value.Trim());
     }
 
     [Fact]
@@ -204,6 +204,20 @@ public sealed class ReleasePackagingContractTests
         Assert.True(installCompleted >= 0);
         Assert.True(ownershipRecorded > installCompleted);
         Assert.True(registrationValidation > ownershipRecorded);
+    }
+
+    [Fact]
+    public void SmokeScript_WindowsPowerShellFallbackDoesNotQuoteNativeSwitches()
+    {
+        var script = File.ReadAllText(_root.File("scripts", "test-release.ps1"));
+        var functionStart = script.IndexOf("function Quote-NativeArgument", StringComparison.Ordinal);
+        var functionEnd = script.IndexOf("function Invoke-MsiExec", functionStart, StringComparison.Ordinal);
+        Assert.True(functionStart >= 0);
+        Assert.True(functionEnd > functionStart);
+        var quoteFunction = script[functionStart..functionEnd];
+
+        Assert.Contains("if ($Value -notmatch '\\s')", quoteFunction, StringComparison.Ordinal);
+        Assert.Contains("return $Value", quoteFunction, StringComparison.Ordinal);
     }
 
     [Fact]

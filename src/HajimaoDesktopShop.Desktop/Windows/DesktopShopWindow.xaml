@@ -4,12 +4,13 @@
         xmlns:controls="clr-namespace:HajimaoDesktopShop.Desktop.Controls"
         xmlns:desktop="clr-namespace:HajimaoDesktopShop.Desktop"
         Title="{x:Static desktop:ProductIdentity.DesktopWindowTitle}"
-        Width="420" Height="280"
+        Width="248" Height="180"
         WindowStyle="None" ResizeMode="NoResize"
         AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <Style x:Key="SurfaceHitTarget" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -37,7 +38,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Grid Background="#17191D" MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown">
+    <Grid x:Name="SurfaceRoot" Background="#17191D" MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown">
         <Grid.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="打开经营管理" Click="OnOpenManagementClick" />
@@ -49,23 +50,42 @@
                           Command="{Binding PlacementTarget.DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
             </ContextMenu>
         </Grid.ContextMenu>
-        <controls:BusinessDesktopShopSurfaceControl Frame="{Binding DesktopFrame}" />
-        <Canvas>
-            <Button Canvas.Left="307" Canvas.Top="5" Width="48" Height="34"
-                    Style="{StaticResource SurfaceHitTarget}"
-                    Command="{Binding ToggleLockCommand}"
-                    ToolTip="锁定或解锁窗口位置"
-                    AutomationProperties.Name="锁定或解锁窗口位置" />
-            <Button Canvas.Left="361" Canvas.Top="5" Width="49" Height="34"
-                    Style="{StaticResource SurfaceHitTarget}"
-                    Click="OnOpenManagementClick"
-                    ToolTip="打开经营管理窗口"
-                    AutomationProperties.Name="打开经营管理窗口" />
-            <Button Canvas.Left="364" Canvas.Top="243" Width="48" Height="32"
-                    Style="{StaticResource SurfaceHitTarget}"
-                    Click="OnClickThroughClick"
-                    ToolTip="开启前先打开管理窗口，便于恢复鼠标交互"
-                    AutomationProperties.Name="切换鼠标穿透" />
-        </Canvas>
+
+        <Grid x:Name="StreetPage"
+              Visibility="{Binding DesktopNavigation.IsStreet, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <controls:CommercialStreetSceneControl x:Name="StreetScene"
+                                                   Frame="{Binding CommercialStreet.SceneFrame}"
+                                                   StorefrontClicked="OnStorefrontClicked" />
+        </Grid>
+
+        <Grid x:Name="StorePage"
+              Visibility="{Binding DesktopNavigation.IsStore, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <controls:BusinessDesktopShopSurfaceControl x:Name="StoreSurface" Frame="{Binding DesktopFrame}" />
+            <Canvas>
+                <Button Canvas.Left="6" Canvas.Top="5" Width="68" Height="30"
+                        Background="#D931262A" Foreground="#F4EBDD"
+                        BorderBrush="#88F4EBDD" BorderThickness="1"
+                        FontSize="12" FontWeight="SemiBold"
+                        Content="← 街区"
+                        Command="{Binding DesktopNavigation.BackToStreetCommand}"
+                        ToolTip="返回街区"
+                        AutomationProperties.Name="返回街区" />
+                <Button Canvas.Left="307" Canvas.Top="5" Width="48" Height="34"
+                        Style="{StaticResource SurfaceHitTarget}"
+                        Command="{Binding ToggleLockCommand}"
+                        ToolTip="锁定或解锁窗口位置"
+                        AutomationProperties.Name="锁定或解锁窗口位置" />
+                <Button Canvas.Left="361" Canvas.Top="5" Width="49" Height="34"
+                        Style="{StaticResource SurfaceHitTarget}"
+                        Click="OnOpenManagementClick"
+                        ToolTip="打开经营管理窗口"
+                        AutomationProperties.Name="打开经营管理窗口" />
+                <Button Canvas.Left="364" Canvas.Top="243" Width="48" Height="32"
+                        Style="{StaticResource SurfaceHitTarget}"
+                        Click="OnClickThroughClick"
+                        ToolTip="开启前先打开管理窗口，便于恢复鼠标交互"
+                        AutomationProperties.Name="切换鼠标穿透" />
+            </Canvas>
+        </Grid>
     </Grid>
 </Window>

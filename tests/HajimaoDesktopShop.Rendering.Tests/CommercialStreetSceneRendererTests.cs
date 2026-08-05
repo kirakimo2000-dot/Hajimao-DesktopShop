@@ -12,7 +12,9 @@ public sealed class CommercialStreetSceneRendererTests
     public void Renderer_DrawsOpenedStorefrontVehicleAndRainWithoutMutatingSnapshot()
     {
         var snapshot = CreateSnapshot(StreetWeather.Rain, pedestrians: 3, vehicles: 1);
-        using var bitmap = new SKBitmap(420, 160);
+        using var bitmap = new SKBitmap(
+            CommercialStreetLayout.GetContentWidth(snapshot.Stores.Count),
+            CommercialStreetLayout.LogicalHeight);
         using var canvas = new SKCanvas(bitmap);
         using var renderer = new CommercialStreetSceneRenderer();
 
@@ -20,7 +22,7 @@ public sealed class CommercialStreetSceneRendererTests
 
         Assert.Equal(SKColor.Parse("#65B8C8"), bitmap.GetPixel(8, 8));
         Assert.Equal(SKColor.Parse("#6B4634"), bitmap.GetPixel(15, 50));
-        Assert.Equal(SKColor.Parse("#E15A5A"), bitmap.GetPixel(50, 140));
+        Assert.Equal(SKColor.Parse("#E15A5A"), bitmap.GetPixel(50, 165));
         Assert.Equal(3, snapshot.VisiblePedestrians);
         Assert.Equal(1, snapshot.VisibleVehicles);
     }
@@ -37,6 +39,15 @@ public sealed class CommercialStreetSceneRendererTests
     }
 
     [Fact]
+    public void Renderer_MovesPedestriansAfterACompleteEightFrameAnimationCycle()
+    {
+        var origin = RenderHash(animationFrame: 0, reduceMotion: false);
+        var advanced = RenderHash(animationFrame: 8, reduceMotion: false);
+
+        Assert.NotEqual(origin, advanced);
+    }
+
+    [Fact]
     public void Renderer_CapsVisibleStreetActorsToSceneBudget()
     {
         var capped = RenderHash(0, false, pedestrians: 6, vehicles: 2);
@@ -46,18 +57,48 @@ public sealed class CommercialStreetSceneRendererTests
     }
 
     [Fact]
-    public void Renderer_RejectsMoreOpenedStoresThanTheSnapshotTierCanDisplay()
+    public void Renderer_AcceptsOpenedStoresBeyondTheOldTierSlotCap()
     {
-        var snapshot = CreateSnapshot(StreetWeather.Clear, pedestrians: 0, vehicles: 0) with
-        {
-            Tier = CommercialStreetTier.Corner
-        };
-        using var bitmap = new SKBitmap(420, 160);
+        var stores = Enumerable.Range(0, 12)
+            .Select(index => new CommercialStreetStoreSnapshot(
+                $"store-{index}",
+                $"店铺 {index}",
+                8_000,
+                10_000 / 12))
+            .ToArray();
+        var snapshot = new CommercialStreetSnapshot(
+            CommercialStreetTier.Corner,
+            StreetWeather.Clear,
+            8_000,
+            0,
+            0,
+            stores);
+        using var bitmap = new SKBitmap(
+            CommercialStreetLayout.GetContentWidth(stores.Length),
+            CommercialStreetLayout.LogicalHeight);
         using var canvas = new SKCanvas(bitmap);
         using var renderer = new CommercialStreetSceneRenderer();
 
-        Assert.Throws<InvalidOperationException>(() =>
-            renderer.Render(canvas, bitmap.Info, new CommercialStreetSceneFrame(snapshot)));
+        renderer.Render(canvas, bitmap.Info, new CommercialStreetSceneFrame(snapshot));
+
+        var last = CommercialStreetLayout.CreateStorefronts(stores)[^1].Bounds;
+        Assert.Equal(SKColor.Parse("#6B4634"), bitmap.GetPixel(last.X + 4, last.Y + 4));
+    }
+
+    [Fact]
+    public void Renderer_CameraOffsetMovesContentInsideAClampedViewport()
+    {
+        var snapshot = CreateSnapshot(StreetWeather.Clear, pedestrians: 0, vehicles: 0);
+        using var bitmap = new SKBitmap(248, CommercialStreetLayout.LogicalHeight);
+        using var canvas = new SKCanvas(bitmap);
+        using var renderer = new CommercialStreetSceneRenderer();
+
+        renderer.Render(
+            canvas,
+            bitmap.Info,
+            new CommercialStreetSceneFrame(snapshot, CameraOffset: 232));
+
+        Assert.Equal(SKColor.Parse("#6B4634"), bitmap.GetPixel(16, 32));
     }
 
     private static string RenderHash(
@@ -66,7 +107,9 @@ public sealed class CommercialStreetSceneRendererTests
         int pedestrians = 3,
         int vehicles = 1)
     {
-        using var bitmap = new SKBitmap(420, 160);
+        using var bitmap = new SKBitmap(
+            CommercialStreetLayout.GetContentWidth(2),
+            CommercialStreetLayout.LogicalHeight);
         using var canvas = new SKCanvas(bitmap);
         using var renderer = new CommercialStreetSceneRenderer();
         renderer.Render(

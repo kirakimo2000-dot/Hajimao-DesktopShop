@@ -22,11 +22,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cashier", required=True)
     parser.add_argument("--restocker", required=True)
     parser.add_argument("--customer", required=True)
-    parser.add_argument("--shelves", required=True)
-    parser.add_argument("--products", required=True)
+    parser.add_argument("--shelves")
+    parser.add_argument("--products")
+    parser.add_argument(
+        "--base-atlas",
+        help="Preserve the existing fixtures and first character frames from this atlas.",
+    )
+    parser.add_argument(
+        "--normalized-characters",
+        action="store_true",
+        help="Read each character input as an eight-frame transparent 64x64 strip.",
+    )
     parser.add_argument("--out", required=True)
     parser.add_argument("--preview")
     return parser.parse_args()
+
+
+def validate_args(args: argparse.Namespace) -> None:
+    if args.normalized_characters and not args.base_atlas:
+        raise SystemExit("--normalized-characters requires --base-atlas")
+    if not args.base_atlas and (not args.shelves or not args.products):
+        raise SystemExit("--shelves and --products are required without --base-atlas")
 
 
 def remove_magenta_key(image: Image.Image) -> Image.Image:
@@ -152,6 +168,66 @@ def paste_strip(atlas: Image.Image, sprites: list[Image.Image], y: int, size: tu
         atlas.alpha_composite(fit_sprite(sprite, size), (index * size[0], y))
 
 
+def remove_tiny_components(image: Image.Image, maximum_size: int = 50) -> Image.Image:
+    result = image.copy().convert("RGBA")
+    alpha = result.getchannel("A")
+    visible = alpha.load()
+    width, height = result.size
+    visited = bytearray(width * height)
+
+    for start_y in range(height):
+        for start_x in range(width):
+            index = start_y * width + start_x
+            if visited[index] or visible[start_x, start_y] == 0:
+                continue
+            queue = deque([(start_x, start_y)])
+            visited[index] = 1
+            component: list[tuple[int, int]] = []
+            while queue:
+                x, y = queue.popleft()
+                component.append((x, y))
+                for next_x, next_y in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if not (0 <= next_x < width and 0 <= next_y < height):
+                        continue
+                    next_index = next_y * width + next_x
+                    if visited[next_index] or visible[next_x, next_y] == 0:
+                        continue
+                    visited[next_index] = 1
+                    queue.append((next_x, next_y))
+            if len(component) <= maximum_size:
+                for x, y in component:
+                    result.putpixel((x, y), (0, 0, 0, 0))
+    return result
+
+
+def normalized_character_cells(image_path: str) -> list[Image.Image]:
+    strip = Image.open(image_path).convert("RGBA")
+    if strip.width % 8 != 0:
+        raise ValueError("Normalized character strip width must contain eight equal frames.")
+    frame_width = strip.width // 8
+    cells: list[Image.Image] = []
+    for index in range(8):
+        source = strip.crop((index * frame_width, 0, (index + 1) * frame_width, strip.height))
+        source = remove_tiny_components(source)
+        scaled = source.resize((38, 38), NEAREST)
+        frame = Image.new("RGBA", CHARACTER_SIZE, (0, 0, 0, 0))
+        frame.alpha_composite(scaled.crop((3, 0, 35, 38)), (0, 1))
+        cells.append(frame)
+    return cells
+
+
+def paste_normalized_character_strip(
+    atlas: Image.Image,
+    base_atlas: Image.Image,
+    image_path: str,
+    y: int,
+) -> None:
+    cells = normalized_character_cells(image_path)
+    atlas.alpha_composite(base_atlas.crop((0, y, 32, y + 40)), (0, y))
+    for index, cell in enumerate(cells[1:], start=1):
+        atlas.alpha_composite(cell, (index * CHARACTER_SIZE[0], y))
+
+
 def save_preview(atlas: Image.Image, path: Path) -> None:
     checker = Image.new("RGBA", atlas.size, (238, 229, 206, 255))
     checker_pixels = checker.load()
@@ -166,13 +242,24 @@ def save_preview(atlas: Image.Image, path: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    atlas = Image.new("RGBA", ATLAS_SIZE, (0, 0, 0, 0))
+    validate_args(args)
+    base_atlas = Image.open(args.base_atlas).convert("RGBA") if args.base_atlas else None
+    atlas = base_atlas.copy() if base_atlas else Image.new("RGBA", ATLAS_SIZE, (0, 0, 0, 0))
 
-    paste_strip(atlas, extract_cells(args.cashier, 4, 1), 0, CHARACTER_SIZE)
-    paste_strip(atlas, extract_cells(args.restocker, 4, 1), 40, CHARACTER_SIZE)
-    paste_strip(atlas, extract_cells(args.customer, 4, 1), 80, CHARACTER_SIZE)
-    paste_strip(atlas, extract_cells(args.shelves, 3, 1), 120, SHELF_SIZE)
-    paste_strip(atlas, extract_cells(args.products, 5, 2), 176, PRODUCT_SIZE)
+    if args.normalized_characters:
+        assert base_atlas is not None
+        paste_normalized_character_strip(atlas, base_atlas, args.cashier, 0)
+        paste_normalized_character_strip(atlas, base_atlas, args.restocker, 40)
+        paste_normalized_character_strip(atlas, base_atlas, args.customer, 80)
+    else:
+        paste_strip(atlas, extract_cells(args.cashier, 8, 1), 0, CHARACTER_SIZE)
+        paste_strip(atlas, extract_cells(args.restocker, 8, 1), 40, CHARACTER_SIZE)
+        paste_strip(atlas, extract_cells(args.customer, 8, 1), 80, CHARACTER_SIZE)
+
+    if args.shelves:
+        paste_strip(atlas, extract_cells(args.shelves, 3, 1), 120, SHELF_SIZE)
+    if args.products:
+        paste_strip(atlas, extract_cells(args.products, 5, 2), 176, PRODUCT_SIZE)
 
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

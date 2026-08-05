@@ -7,7 +7,6 @@ using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Rendering;
-using HajimaoDesktopShop.Rendering.PixelArt;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
@@ -45,6 +44,7 @@ public sealed class MarketViewModel : ObservableObject
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
         ToggleMuteCommand = new RelayCommand(ToggleMute);
         ToggleStatusBarCommand = new RelayCommand(ToggleStatusBar);
+        DesktopNavigation = new DesktopNavigationViewModel(SelectStoreById);
         Onboarding = new OnboardingViewModel();
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
@@ -73,6 +73,8 @@ public sealed class MarketViewModel : ObservableObject
     public CommercialStreetViewModel CommercialStreet { get; }
 
     public OnboardingViewModel Onboarding { get; }
+
+    public DesktopNavigationViewModel DesktopNavigation { get; }
 
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
 
@@ -246,6 +248,8 @@ public sealed class MarketViewModel : ObservableObject
             SelectedStoreName = Stores.Single(store => store.Id == SelectedStoreId).Name;
         }
 
+        DesktopNavigation.Synchronize(Stores, SelectedStoreId);
+
         CashText = FormatMoney(snapshot.Business.CashCents);
         PlayerLevelText = $"Lv.{snapshot.Business.PlayerLevel}";
         GameTimeText = FormatGameTime(snapshot.GameMinute);
@@ -265,7 +269,7 @@ public sealed class MarketViewModel : ObservableObject
         CommercialStreet.Refresh(snapshot.Street, SceneFrame.AnimationFrame, reduceMotion);
         if (!reduceMotion)
         {
-            _animationFrame = (_animationFrame + 1) % PixelArtBudget.CharacterFrameCount;
+            _animationFrame = _animationFrame == int.MaxValue ? 0 : _animationFrame + 1;
         }
         DesktopFrame = new BusinessShopFrame(
             SceneFrame,
@@ -338,6 +342,9 @@ public sealed class MarketViewModel : ObservableObject
         SelectedStoreName = store.Name;
         Refresh();
     }
+
+    private void SelectStoreById(string storeId) =>
+        SelectStore(Stores.Single(store => store.Id == storeId));
 
     private void SynchronizeStores(IReadOnlyList<StoreCatalogItemSnapshot> snapshots)
     {

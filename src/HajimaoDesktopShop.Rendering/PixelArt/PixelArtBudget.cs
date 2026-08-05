@@ -4,7 +4,7 @@ public static class PixelArtBudget
 {
     public const int AtlasWidth = 256;
     public const int AtlasHeight = 256;
-    public const int CharacterFrameCount = 4;
+    public const int CharacterFrameCount = 8;
     public const int MaximumVisibleCustomers = 5;
     public const int MaximumVisibleStreetPedestrians = 6;
     public const int MaximumVisibleStreetVehicles = 2;

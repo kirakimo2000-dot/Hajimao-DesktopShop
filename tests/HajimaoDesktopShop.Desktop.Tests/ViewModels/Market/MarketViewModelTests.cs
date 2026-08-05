@@ -20,6 +20,20 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
+    public void Refresh_PreservesAContinuousPresentationTickAcrossAnimationCycles()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create(), reduceMotion: () => false);
+
+        for (var index = 0; index < 8; index++)
+        {
+            viewModel.Refresh();
+        }
+
+        Assert.Equal(8, viewModel.SceneFrame!.AnimationFrame);
+        Assert.Equal(8, viewModel.CommercialStreet.SceneFrame!.AnimationFrame);
+    }
+
+    [Fact]
     public void Refresh_ReducedMotionLocksTheSeedFrame()
     {
         var viewModel = new MarketViewModel(
@@ -84,6 +98,20 @@ public sealed class MarketViewModelTests
         Assert.Equal("station-store", viewModel.SelectedStoreId);
         Assert.Equal("车站便利店", viewModel.SelectedStoreName);
         Assert.False(station.IsOpen);
+    }
+
+    [Fact]
+    public void DesktopNavigation_DoesNotAdvanceSimulationOrChangeCash()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        var gameMinute = viewModel.SceneFrame!.Snapshot.GameMinute;
+        var cash = viewModel.CashText;
+
+        viewModel.DesktopNavigation.OpenStoreCommand.Execute("corner-store");
+        viewModel.DesktopNavigation.BackToStreetCommand.Execute(null);
+
+        Assert.Equal(gameMinute, viewModel.SceneFrame.Snapshot.GameMinute);
+        Assert.Equal(cash, viewModel.CashText);
     }
 
     [Fact]
