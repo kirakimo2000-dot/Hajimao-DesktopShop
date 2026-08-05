@@ -1,4 +1,7 @@
+using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Domain.Employees;
+using HajimaoDesktopShop.Rendering.Customers;
 using HajimaoDesktopShop.Rendering.PixelArt;
 using SkiaSharp;
 
@@ -110,10 +113,11 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         }
 
         DrawSupportingEmployees(canvas, employees, frame);
+        var journeyDrawn = DrawCustomerJourney(canvas, store, operations, frame);
 
         var queueLength = Math.Min(
             operations?.CheckoutQueueLength ?? 0,
-            PixelArtBudget.MaximumVisibleCustomers);
+            PixelArtBudget.MaximumVisibleCustomers - (journeyDrawn ? 1 : 0));
         for (var index = 0; index < queueLength; index++)
         {
             var anchorX = 302 - index * 28;
@@ -127,6 +131,42 @@ public sealed class BusinessShopSceneRenderer : IDisposable
             DrawSprite(canvas, PixelSpriteId.Customer, customerX, 148, frame);
             Fill(canvas, customerX - 4, 151, 8, 3, "#F1B844");
         }
+    }
+
+    private bool DrawCustomerJourney(
+        SKCanvas canvas,
+        BusinessStoreSnapshot? store,
+        StoreOperationsSnapshot? operations,
+        BusinessShopSceneFrame frame)
+    {
+        if (store is null
+            || operations is null
+            || operations.Visitors <= 0
+            || store.Products.Count == 0)
+        {
+            return false;
+        }
+
+        var products = store.Products
+            .OrderBy(product => product.Id, StringComparer.Ordinal)
+            .ToArray();
+        var productIndex = (int)(((long)operations.AcceptedPurchases
+            + operations.Visitors
+            - 1L) % products.Length);
+        var product = products[productIndex];
+        var pose = BusinessShopCustomerChoreography.CreatePose(
+            product.ShelfKind,
+            frame.AnimationFrame,
+            operations.Visitors,
+            frame.ReduceMotion);
+
+        DrawSprite(canvas, PixelSpriteId.Customer, pose.X, pose.Y, frame);
+        if (pose.CarryingProduct)
+        {
+            Fill(canvas, pose.X - 3, pose.Y - 18, 6, 4, "#F1B844");
+        }
+
+        return true;
     }
 
     public void Dispose()
