@@ -17,7 +17,8 @@ public sealed class DesktopShopWindowRenderingTests
         {
             try
             {
-                var window = new DesktopShopWindow(new MarketViewModel(MarketTestSession.Create()));
+                var viewModel = new MarketViewModel(MarketTestSession.Create());
+                var window = new DesktopShopWindow(viewModel);
                 Assert.Equal(ProductIdentity.DesktopWindowTitle, window.Title);
                 var root = Assert.IsType<Grid>(window.Content);
                 Assert.Equal(4, root.ContextMenu?.Items.Count);
@@ -33,6 +34,19 @@ public sealed class DesktopShopWindowRenderingTests
                 var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.FindName("StoreSurface"));
                 Assert.True(surface.UsesLogicalPixelScaling);
                 Assert.Equal(System.Windows.Visibility.Collapsed, storePage.Visibility);
+
+                viewModel.DesktopNavigation.OpenStoreCommand.Execute("corner-store");
+                streetPage.GetBindingExpression(Grid.VisibilityProperty)?.UpdateTarget();
+                storePage.GetBindingExpression(Grid.VisibilityProperty)?.UpdateTarget();
+
+                Assert.Equal(420, window.Width);
+                Assert.Equal(280, window.Height);
+                Assert.Equal(System.Windows.Visibility.Collapsed, streetPage.Visibility);
+                Assert.Equal(System.Windows.Visibility.Visible, storePage.Visibility);
+
+                viewModel.DesktopNavigation.BackToStreetCommand.Execute(null);
+                Assert.Equal(248, window.Width);
+                Assert.Equal(180, window.Height);
 
                 window.Close();
             }

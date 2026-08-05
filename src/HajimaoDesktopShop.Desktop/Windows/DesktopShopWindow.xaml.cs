@@ -18,12 +18,14 @@ public partial class DesktopShopWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
-        StreetPage.Visibility = viewModel.DesktopNavigation.IsStreet
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        StorePage.Visibility = viewModel.DesktopNavigation.IsStore
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        StreetPage.GetBindingExpression(VisibilityProperty)?.UpdateTarget();
+        StorePage.GetBindingExpression(VisibilityProperty)?.UpdateTarget();
+        StreetPage.SetCurrentValue(
+            VisibilityProperty,
+            viewModel.DesktopNavigation.IsStreet ? Visibility.Visible : Visibility.Collapsed);
+        StorePage.SetCurrentValue(
+            VisibilityProperty,
+            viewModel.DesktopNavigation.IsStore ? Visibility.Visible : Visibility.Collapsed);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.DesktopNavigation.PropertyChanged += OnDesktopNavigationPropertyChanged;
         _viewModel.CommercialStreet.PropertyChanged += OnCommercialStreetPropertyChanged;
@@ -83,6 +85,12 @@ public partial class DesktopShopWindow : Window
     {
         if (e.PropertyName == nameof(DesktopNavigationViewModel.Mode))
         {
+            StreetPage.SetCurrentValue(
+                VisibilityProperty,
+                _viewModel.DesktopNavigation.IsStreet ? Visibility.Visible : Visibility.Collapsed);
+            StorePage.SetCurrentValue(
+                VisibilityProperty,
+                _viewModel.DesktopNavigation.IsStore ? Visibility.Visible : Visibility.Collapsed);
             ApplySurfaceLayout(reposition: true);
         }
     }
