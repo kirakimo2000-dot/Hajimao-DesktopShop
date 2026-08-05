@@ -8,7 +8,34 @@
 
 ## [Unreleased]
 
-- 下一阶段为 0.1.9 发布候选：教程、平衡、长时稳定、安装包和多显示器验收。
+暂无。
+
+## [0.1.9] - 2026-08-05
+
+### Added
+
+- 七步无状态新手任务链与管理页引导；进度完全从真实经营快照推导，保存/恢复不增加 schema 字段。
+- Application 结构化诊断事件端口与 Infrastructure Serilog 文件适配器；日志按天和 5 MiB 双重滚动，最多保留 14 个文件。
+- 可重复的长时经营审计服务，按稳定店铺 ID 输出现金、经验、客流、成交、流失、营收、采购、毛利、工资、运营费、净利、队列、整洁度和库存差值。
+- 纯几何桌面窗口放置策略和 Win32 工作区适配器，覆盖负坐标、显示器空隙、拔除屏幕、纵向排列和 96/120/144/192 DPI。
+- PerMonitorV2 Windows 10 manifest，以及验证 WPF/WinForms 混合宿主 DPI、执行级别和支持系统的自动化契约。
+- 项目级 WiX 6.0.2 MSI、win-x64 自包含便携 ZIP、SHA-256/JSON 清单构建脚本及真实安装/卸载验收脚本。
+- 独立 Release 契约测试项目，锁定版本、WiX SDK、UpgradeCode、主程序/原生依赖、用户数据所有权与安全清理边界。
+
+### Changed
+
+- 桌面端恢复存档时正式执行固定现实 1x 的离线结算，默认最多补算 28,800 秒；系统时间回退不会产生收益，结算后立即写入 schema v6 检查点。
+- 启动、恢复/新局、离线结算、模拟故障、存档失败和退出接入低噪声结构化日志；日志不可用时自动降级，不阻止游戏启动。
+- 正式产品显示名恢复为 `Hajimao DesktopShop`；窗口、通知区域、教程文案、程序集产品信息和现行文档统一使用该名称。
+- 内部 `HajimaoDesktopShop.*` 程序集/命名空间、存档目录和数据库兼容标识保持不变，不触发存档迁移。
+- 窗口恢复从虚拟桌面包围框判断改为逐个真实工作区最小 48 DIP 可见判断；无效旧坐标继续走最近工作区四角吸附。
+- 活跃版本提升至 `0.1.9`；经营规则、固定现实 1x、数据目录与 schema v6 均保持兼容。
+
+### Verification
+
+- 全量测试 362/362：Domain 90、Application 133、Infrastructure 19、Rendering 14、Desktop 99、Release 7；Release 构建与 WiX 验证均为 0 警告/0 错误。
+- 0.1.8 排练和 0.1.9 最终真实验收均覆盖便携版与 MSI 安装版启动、响应、SQLite、日志、任务栏样式、卸载和数据保留。
+- 0.1.9 ZIP/MSI 明确标记为未签名并附 SHA-256；详细记录见 `docs/progress/v0.1.9-release-candidate.md`。
 
 ## [0.1.8] - 2026-08-04
 
@@ -139,7 +166,7 @@
 
 ### Changed
 
-- 正式产品名称确认为 `Hajimao Market`；内部 `HajimaoDesktopShop.*` 技术标识保持兼容。
+- 当时采用 `Hajimao Market` 作为产品显示名；内部 `HajimaoDesktopShop.*` 技术标识保持兼容。该显示名已在 0.1.9 开发期恢复为 `Hajimao DesktopShop`。
 - `BusinessSimulation` 每个固定现实分钟在销售结算后推进一次采购，在线与离线挂机复用同一管线。
 - SQLite `PRAGMA user_version` 从 3 事务化迁移到 4；v1/v2 存档继续逐级迁移。
 - 活跃版本提升至 `0.1.3`。

@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Rendering;
@@ -38,11 +39,13 @@ public sealed class MarketViewModel : ObservableObject
         _session = session;
         _reduceMotion = reduceMotion ?? (() => false);
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
+        GoToOnboardingTaskCommand = new RelayCommand(GoToOnboardingTask);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
         ToggleLockCommand = new RelayCommand(ToggleLock);
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
         ToggleMuteCommand = new RelayCommand(ToggleMute);
         ToggleStatusBarCommand = new RelayCommand(ToggleStatusBar);
+        Onboarding = new OnboardingViewModel();
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
         EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
@@ -69,7 +72,11 @@ public sealed class MarketViewModel : ObservableObject
 
     public CommercialStreetViewModel CommercialStreet { get; }
 
+    public OnboardingViewModel Onboarding { get; }
+
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
+
+    public IRelayCommand GoToOnboardingTaskCommand { get; }
 
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
 
@@ -219,6 +226,7 @@ public sealed class MarketViewModel : ObservableObject
     public void Refresh()
     {
         var snapshot = _session.Simulation.GetSnapshot();
+        Onboarding.Refresh(OnboardingProgressService.CreateSnapshot(snapshot, _session.Game.GetProcurementSnapshot()));
         var completedSales = snapshot.Stores.Sum(item => item.CompletedSales);
         if (completedSales > _lastCompletedSales)
         {
@@ -291,6 +299,8 @@ public sealed class MarketViewModel : ObservableObject
     }
 
     private void Navigate(ManagementSection section) => SelectedSection = section;
+
+    private void GoToOnboardingTask() => Navigate(Onboarding.SuggestedSection);
 
     private void ToggleLock()
     {

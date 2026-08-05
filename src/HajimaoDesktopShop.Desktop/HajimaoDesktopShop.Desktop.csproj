@@ -8,14 +8,16 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyTitle>Hajimao Market</AssemblyTitle>
-    <Product>Hajimao Market</Product>
+    <AssemblyTitle>Hajimao DesktopShop</AssemblyTitle>
+    <Product>Hajimao DesktopShop</Product>
     <Description>Pixel-style Windows desktop idle market management game.</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WPF owns process startup; its manifest must set DPI before any HWND exists. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="Serilog.Extensions.Hosting" />
   </ItemGroup>
 
   <ItemGroup>

@@ -45,6 +45,7 @@ public sealed class MarketViewModelTests
         Assert.Equal("corner-store", viewModel.SelectedStoreId);
         Assert.Equal("街角便利店", viewModel.SelectedStoreName);
         Assert.Equal("固定现实 1x", viewModel.TimeModeText);
+        Assert.Equal("第一次进货", viewModel.Onboarding.Title);
     }
 
     [Fact]
@@ -58,6 +59,18 @@ public sealed class MarketViewModelTests
         Assert.True(viewModel.IsEmployeesSection);
         Assert.False(viewModel.IsProductsSection);
         Assert.NotNull(viewModel.SceneFrame);
+    }
+
+    [Fact]
+    public void GoToOnboardingTask_NavigatesToSuggestedSectionWithoutChangingGameTime()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
+
+        viewModel.GoToOnboardingTaskCommand.Execute(null);
+
+        Assert.Equal(ManagementSection.Procurement, viewModel.SelectedSection);
+        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
     }
 
     [Fact]

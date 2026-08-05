@@ -1,4 +1,4 @@
-# Hajimao Market pixel atlas
+# Hajimao DesktopShop pixel atlas
 
 `market-atlas.png` is the only pixel-art image embedded in the runtime assembly.
 It is a deterministic 256×256 RGBA atlas built by
@@ -6,7 +6,7 @@ It is a deterministic 256×256 RGBA atlas built by
 
 ## Provenance
 
-The source sheets were generated specifically for Hajimao Market with OpenAI's
+The source sheets were generated specifically for Hajimao DesktopShop with OpenAI's
 built-in image generation on 2026-08-04. No third-party game asset pack is used.
 The retained atlas is project-owned generated artwork; raw generation and
 chroma-key working files are intentionally excluded from the repository.

@@ -1,8 +1,8 @@
-# Hajimao Market
+# Hajimao DesktopShop
 
-Hajimao Market 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家可展开管理窗口进货、调价、查看员工与财务。
+Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家可展开管理窗口进货、调价、查看员工与财务。
 
-## 当前版本：0.1.8 商业街 Beta
+## 当前版本：0.1.9 发布候选
 
 - 经营始终按现实 1x 推进，没有暂停或倍速；旧原型存档会迁移并丢弃历史速度字段。
 - 玩家累计经验决定等级，等级解锁商品和新店铺；开局只有一家店。
@@ -36,8 +36,12 @@ Hajimao Market 是一款运行在 Windows 桌面角落的像素风放置经营�
 - 多家店共享同一街道人流，每分钟按店铺吸引力分配至多一名访客；开设新店提高街道总客流但也形成店间竞争。
 - 晴朗、多云、雨天和大风按经营时间确定性变化，并影响共享客流；道路同步显示受预算约束的路人和车辆。
 - 商业街页面显示逐店吸引力与客流份额；底部状态栏可以收起，不影响固定现实 1x 经营。
+- 七步无状态新手任务直接从真实经营快照推导，保存/恢复后不会产生第二套教程状态。
+- 启动、离线结算、模拟与存档故障写入滚动结构化日志；日志不可用不会阻止经营。
+- 桌面窗口按真实显示器工作区恢复和吸附，支持负坐标、显示器空隙、拔除屏幕、纵向排列与 PerMonitorV2 DPI。
+- 仓库提供 win-x64 自包含便携 ZIP、WiX MSI、SHA-256 和机器可读发布清单的统一构建/验收脚本。
 
-0.1.8 已完成商业街共享客流、多店可视化和轻量环境层，同时保持 schema v6、离线同管线与固定现实 1x。0.1.9 将集中完成教程、平衡、长时稳定、安装包和发布矩阵。
+0.1.9 完成教程、平衡/长时稳定、多显示器与 Windows 发布矩阵，同时保持 schema v6、离线同管线与固定现实 1x。下一阶段继续使用 0.1.x 版本完善经营内容和发布签名，不提前跳到 1.0。
 
 ## 运行
 
@@ -50,7 +54,14 @@ dotnet test HajimaoDesktopShop.slnx
 dotnet run --project src/HajimaoDesktopShop.Desktop
 ```
 
-发布包生成后，直接运行 `HajimaoDesktopShop.Desktop.exe`。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`。
+发布包生成后，可解压便携 ZIP 直接运行 `HajimaoDesktopShop.Desktop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.9
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.9
+```
+
+0.1.9 的 ZIP 与 MSI 尚未进行代码签名。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入列入后续 0.1.x 发布工作。
 
 ## 操作提示
 

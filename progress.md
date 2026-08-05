@@ -297,3 +297,74 @@
   - 独立复审为 Critical 0、Important 0、Minor 0；PR #4 合并至 `main`，最终版本由 `v0.1.8` 标签固定。
 - Next actions:
   - 0.1.9 集中教程、平衡、长时稳定、安装包、多显示器矩阵和正式日志。
+
+### Phase 16: 正式版 0.1.9 发布候选
+
+- **Status:** planning
+- Actions taken:
+  - 开始 0.1.9 日志与稳定性子阶段；确认当前 Serilog 只有 Desktop 包引用、没有正式 sink/事件边界，稳定性能力可基于现有 `BusinessSimulation` 批量推进和不可变快照建立，不需要 Domain 测试捷径。
+  - 经 NuGet 官方元数据核对，日志适配器将固定稳定版 `Serilog` 4.4.0 与 `Serilog.Sinks.File` 7.0.0；不引入未实际使用的 Generic Host，文件 sink 由 Infrastructure 完全封装。
+  - 稳定性审计发现正式 Desktop 恢复路径未调用已有 `OfflineSettlementService`，导致真实启动不会补算关闭期间收益；已将此缺口提升为本子阶段第一项，按 TDD 修复后再接日志与审计报告。
+  - 应用户要求开始生成桌面纯文本项目报告；已核对版本分支、产品/路线文档和 Domain/Application/Infrastructure/Rendering/Desktop 实际模块，并提取等级、店铺、商品、员工、需求、采购、成长、商业街、离线与 schema v6 的源码参数。
+  - 已生成 `C:\Users\86427\Desktop\Hajimao DesktopShop项目进度与底层逻辑报告.txt`：644 行、22 个章节，完整覆盖当前进度、版本历史、模块边界、经营 Tick、经济/需求、员工、采购、成长、商业街、挂机、存档、渲染、已知差距和后续计划；严格 UTF-8 与关键章节检查通过。
+  - 用户将正式项目显示名恢复为 `Hajimao DesktopShop`；已盘点旧名称分布并固定兼容边界：只修改用户可见品牌、现行文档与远端仓库名，不改程序集命名空间、存档目录或数据库标识。
+  - 品牌迁移测试盘点确认现有覆盖未锁定窗口标题、管理页品牌头或托盘文字；下一步按 TDD 先增加失败契约测试，再统一生产显示名。
+  - 品牌契约 RED 已确认：focused Desktop 测试因 `ProductIdentity` 尚不存在而以 CS0103/CS0246 失败；随后新增单一产品标识契约，并让窗口、品牌头、托盘、启动错误、新手完成文案和程序集元数据引用正式名称。focused 5/5 GREEN。
+  - 文档迁移策略已固定：README、当前资产说明使用新名称；CHANGELOG 在 Unreleased 记录恢复决定；0.1.3～0.1.8 阶段报告/计划与真实历史 PR 标题保留当时名称，不改写历史。
+  - Codex 任务标题已改为 `Hajimao DesktopShop`；GitHub 所有者认证、私有仓库身份和默认分支已确认，准备同步远端仓库名与 origin。
+  - GitHub 私有仓库已从 `kirakimo2000-dot/Hajimao-Market` 改名为 `kirakimo2000-dot/Hajimao-DesktopShop`，默认分支继续为 `main`；本地共享 origin 与历史 PR 链接已同步。
+  - 全仓品牌扫描完成；旧名仅存在于当时采用旧名称的阶段报告/计划、明确标注的迁移历史与真实旧 PR 标题。`git diff --check` 退出 0；Git 仅提示仓库既有 Windows 换行转换策略。
+  - 首轮完整门禁：全方案测试 Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 57，总计 299/299；Release 构建 0 警告/0 错误。全方案格式校验因未改动的 `Desktop/AssemblyInfo.cs` 既有空白格式失败，按范围保护先审计该文件，不直接机械改写。
+  - 已确认 `AssemblyInfo.cs` 自 0.1.0 起未改动；仅针对本次全部 C# 变更执行 `dotnet format --verify-no-changes` 后退出 0。手工 diff 复核确认品牌改名未触碰版本、存档 schema、业务玩法或数据路径。
+  - 独立审阅首轮 Critical 0、Important 1、Minor 0；Important 指出旧阶段报告/计划不应改写为新名称。已撤回 0.1.3～0.1.8 的历史名称改动，保留 0.1.9 覆盖决定、当前 README/资产资料与新 GitHub URL；复审只剩 1 项记录措辞 Minor，已同步最终历史保留策略。
+  - 修正审阅意见后的完整门禁再次通过：Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 57，总计 299/299；Release 构建 0 警告/0 错误；本次 C# 格式校验与 `git diff --check` 均退出 0；新 origin 的 `main` 可读取并指向 `d06568d`。
+  - 品牌子阶段最终复审 Critical 0、Important 0、Minor 0；实现与记录以提交 `134357f` 建立 v0.1.9 本地检查点，仍不发布、不打标签，下一步继续正式日志与稳定性计划。
+  - 子阶段收尾已执行 Release `dotnet clean`：0 警告/0 错误；无运行中游戏进程、`TestResults` 或 `__pycache__`，工作树干净。
+  - 恢复原始需求、路线图与 0.1.8 发布记录，确认继续使用 .NET 10/WPF 分层、固定现实 1x 和 schema v6 兼容边界。
+  - 创建 `agent/v0.1.9-release-candidate` 隔离工作树。
+  - 首次组合命令在创建工作树后没有切换工作目录，因而在主工作树完成了 260/260 基线；已记录该路径错误，下一步在隔离工作树重新执行恢复和测试。
+  - 隔离工作树完成独立 restore 与 Release 基线，Domain 90、Application 96、Infrastructure 17、Rendering 14、Desktop 43，共 260/260。
+  - 文件扫描命令把 Unix 风格 `Directory.*`/`*.slnx` glob 直接交给 Windows `rg`，触发路径语法错误；后续改用明确路径或 PowerShell 枚举，不重复该命令。
+  - 初步映射确认 `BusinessSession`/`BusinessGameService` 是教程命令与存档的正确 Application 边界，SQLite 当前为 schema v6，窗口放置逻辑需要纯几何策略才能覆盖多显示器矩阵。
+  - 进一步确认教程的七项完成条件均可从现有 Business/Simulation/Procurement 快照派生，因此不新增教程可变状态、不升级 schema；旧存档会按真实经营事实自然恢复教程进度。
+  - 保存 `docs/superpowers/plans/2026-08-04-v0.1.9-onboarding.md`，将 Application 投影、Desktop 映射、WPF 无障碍面板和子阶段门禁拆为四个 TDD 任务。
+  - 计划自检发现 `AutoRestockPolicy` 的实际属性名是 `IsEnabled` 而不是草案中的 `Enabled`，已在执行前校正；其余类型和测试入口与现有代码一致。
+  - 首个 Task 1 执行者运行数分钟后仍未创建文件、提交或响应进度询问，已中断且确认工作树无其残留；按阻塞处理规则将任务缩小后重新派发，不重复同一失败方式。
+  - 缩小后的 Task 1 执行完成：先以缺少 Onboarding 类型得到预期编译 RED，再交付七项无状态投影、严格快照验证和 18 项 focused 测试；提交 `331e3c7`。
+  - 主代理复核实际 diff，并重新运行 focused Release 测试 18/18；完整 Application 由执行者报告 114/114，仍等待规格与代码质量两阶段独立审阅。
+  - Task 1 规格审阅通过；质量审阅发现快照可接受任务前缀和 null entry 两项防御缺口，均先用失败测试复现后在 `f3eb713` 修复。
+  - 后续复审发现旧校验测试会先撞完整数量门禁、没有命中命名对应分支；`65d0f47` 改用完整七项数组构造错误顺序/重复/计数/current 状态，focused 22/22、Application 118/118。
+  - Task 1 最终复审 Critical 0、Important 0、Minor 0，ready to merge；进入 Desktop 教程映射和导航 Task 2。
+  - Task 2 先以缺少 `OnboardingViewModel`、`MarketViewModel.Onboarding` 和导航命令得到预期编译 RED，再由 `dc172c9` 完成七项中文引导映射与无时间推进导航。
+  - 主代理重新运行 Task 2 focused Release 测试 11/11；执行者与独立规格审阅均验证 Desktop 54/54、全方案 293/293。
+  - Task 2 规格审阅通过，代码质量审阅 Critical 0、Important 0、Minor 0，ready to merge；进入 WPF 无障碍面板 Task 3。
+  - Task 3 先以 `OnboardingPanel` 不存在得到预期 RED，`4f21359` 在 250 像素右栏加入绑定进度、标题、引导和导航命令的紧凑像素卡片；主代理 focused 复验 1/1。
+  - Task 3 规格审阅通过；质量审阅仅建议 WPF 测试用 `finally` 关闭窗口，`fc09e33` 完成后 ManagementWindow 2/2、Desktop 55/55，最终复审 Critical 0、Important 0、Minor 0。
+  - 新手任务最终文件/提交：Application 无状态投影与测试 `331e3c7`、快照防御修复 `f3eb713`、精确不变量测试 `65d0f47`、Desktop 映射和导航 `dc172c9`、WPF 面板 `4f21359`、窗口测试清理 `fc09e33`；本次 closeout 仅更新 `docs/superpowers/plans/2026-08-04-v0.1.9-onboarding.md`、`task_plan.md`、`findings.md`、`progress.md`。
+  - RED/GREEN 证据：Task 1 先因缺少 `Application.Business.Onboarding` 编译 RED，快照不变量 focused 22/22、Application 118/118；Task 2 先因缺少 `OnboardingViewModel`、`MarketViewModel.Onboarding` 和导航命令编译 RED，最终 focused 11/11、Desktop 54/54、全方案 293/293；Task 3 先因 `OnboardingPanel` 缺失 RED，最终 ManagementWindow 2/2、Desktop 55/55。
+  - 审阅证据：Task 1 规格审阅通过，质量审阅缺口已由 `f3eb713` 与 `65d0f47` 修复，最终 Critical 0、Important 0、Minor 0；Task 2 规格与质量审阅均 Critical 0、Important 0、Minor 0；Task 3 规格通过，质量建议已在 `fc09e33` 修复，最终 Critical 0、Important 0、Minor 0。
+  - 整体审阅发现计划要求的真实 `BusinessSession` 集成测试缺失；`36007c2` 增加新局、真实前三命令和完整七项命令→保存→恢复三项集成测试，focused 25/25、Application 121/121，确保投影不只对手工快照成立。
+  - 新手任务子阶段最终门禁：`dotnet test HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，Domain 90、Application 121、Infrastructure 17、Rendering 14、Desktop 55，总计 297/297；`dotnet build HajimaoDesktopShop.slnx -c Release --no-restore --nologo` 通过，0 警告、0 错误；`dotnet format HajimaoDesktopShop.slnx --verify-no-changes --no-restore --include $changedCs` 退出 0 且无输出；`git diff --check` 退出 0。
+  - 已知缺口仍保留在后续 0.1.9 范围：正式日志边界、平衡场景、长时/兼容回归、多显示器矩阵、Windows 安装/便携发布物、校验值、独立 Release 审阅、GitHub PR/标签和工作区清理均未在新手任务子阶段完成。
+  - 将 0.1.9 拆为教程/回归与日志、安装发布、多显示器验收三个可独立验证的子计划。
+- Next actions:
+  - 保存并执行 `v0.1.9 logging-and-stability` 计划，先覆盖正式日志边界、平衡场景与长时/兼容回归，不发布、不打标签、不标记 0.1.9 完成。
+- 2026-08-04：新增 `docs/superpowers/plans/2026-08-04-v0.1.9-logging-stability.md`，将本子阶段拆成生产离线结算、应用诊断契约、Serilog 文件适配、生命周期故障、长时经营审计和发布门禁六项任务；自检确认不改 Domain、不扩 UI、不变更 schema v6。
+- 2026-08-04：Task 1 RED 已确认：`DesktopBusinessSessionFactoryTests` 因缺少显式 `nowUtc`、启动结果及离线结算字段而编译失败，证明测试覆盖的是尚未接入生产组合根的新行为。
+- 2026-08-04：Task 1 focused GREEN：5/5 桌面会话工厂测试通过；新局明确无离线结算，恢复会按显式 UTC 推进、执行自定义上限并报告系统时钟回退，`App` 已使用结算后的真实会话。
+- 2026-08-04：Task 1 full GREEN：Desktop 测试 60/60 通过。Task 2 RED/GREEN 完成：8/8 诊断契约聚焦测试、129/129 Application 测试通过；事件会复制只读属性，Application 不持有时间戳、路径或 Serilog 类型。
+- 2026-08-04：Task 3 RED/GREEN 完成：2/2 Serilog 适配器测试、19/19 Infrastructure 测试通过；已移除未使用的 Hosting 包，改为 Infrastructure 独占 Serilog 4.4.0 + File Sink 7.0.0，采用每日/5MB 双滚动、保留 14 文件并即时刷盘。
+- 2026-08-04：Task 4 RED/GREEN 完成：8/8 路径/循环聚焦测试、64/64 Desktop 测试通过；隔离数据目录会同步隔离 `logs`，非取消型模拟异常只报告一次并停止循环，`App` 已记录低噪声生命周期/离线/存档故障并负责 sink 释放。
+- 2026-08-04：Task 5 RED/GREEN 完成：4/4 审计聚焦测试、133/133 Application 测试通过；报告按店铺 ID 稳定输出现金/经验及客流、成交、流失、营收、采购、毛利、工资、运营费、净利、工资失败、队列、整洁和库存差值。既有两店 28,800 秒门禁单测 418ms 通过。
+- 2026-08-04：收尾审阅修正日志初始化单点故障、启动失败误记正常退出及离线结算五秒窗口重复收益风险；修正后 Desktop 64/64、Release 构建 0 警告/0 错误。
+- 2026-08-04：日志与稳定性最终门禁通过：Domain 90、Application 133、Infrastructure 19、Rendering 14、Desktop 64，共 320/320；10 项目无已知直接/传递 NuGet 漏洞，变更范围格式与 `git diff --check` 退出 0。下一步为多显示器矩阵及 Windows 安装/便携发布物。
+- 2026-08-04：最终代码审阅 Critical 0、Important 0、Minor 0；日志实现未泄漏至 Domain/Rendering/ViewModel/WPF，0.1.9 与 schema v6 兼容边界保持不变。
+- 2026-08-04：完成 Release `dotnet clean`（0 警告/0 错误）；无运行中 Hajimao 进程、`TestResults` 或 `__pycache__` 残留，准备建立日志与稳定性子阶段 Git 检查点。
+- 2026-08-05：开始 0.1.9 多显示器与 Windows 发布物子阶段；工作树与远端功能分支同步且干净，已确认窗口放置尚无纯几何矩阵测试、仓库尚无安装器工程。
+- 2026-08-05：保存并自检 `docs/superpowers/plans/2026-08-05-v0.1.9-multidisplay.md` 与 `docs/superpowers/plans/2026-08-05-v0.1.9-windows-release.md`；明确纯几何/Win32 适配器边界、PerMonitorV2 契约、便携包/WiX MSI、真实进程验收、版本晋升和 GitHub 发布顺序，且保持 schema v6、现实 1x 与 UI 范围不变。
+- 2026-08-05：多显示器子计划完成：纯几何策略覆盖负坐标、显示器空隙、拔除显示器、纵向布局、最小可见范围、最近工作区、四角与超大窗口；Win32 适配器覆盖 96/120/144/192 DPI；WPF/WinForms 混合宿主以 WPF manifest 声明 PerMonitorV2。聚焦几何/DPI 33/33、平台契约 2/2、Desktop 99/99、全方案 355/355，Release 构建 0 警告/0 错误；schema 仍为 v6。
+- 2026-08-05：Windows 发布管线完成 RED/GREEN：Release 契约 6/6，WiX 6.0.2 对正式 win-x64 payload 构建 0 警告/0 错误；0.1.8 排练与 0.1.9 最终便携/MSI 真实验收均通过，验证响应、SQLite、日志、无任务栏 AppWindow 样式、卸载移除应用和保留数据。最终 ZIP/MSI/JSON/SHA 已生成并明确 `signed=false`。
+- 2026-08-05：发布脚本首轮独立审阅发现既有 MSI 产品归属、带空格参数和 finally 清理隔离风险；均先补契约门禁再修复。最终实机验收在所有安装上下文预检后完成便携/MSI 启动，核对注册目录属于随机临时根，再按 ProductCode 卸载且注册项清零。
+- 2026-08-05：复审要求安装上下文与 MSI `perMachine` 声明完全一致；删除 per-user 覆盖。非管理员本机通过 MSI administrative image 解包/运行门禁，新增 GitHub `windows-latest` Release gate，在管理员 runner 强制完整 per-machine 安装/卸载，避免以本地权限限制冒充正式安装证据。
+- 2026-08-05：发布安全最终复审 Critical 0、Important 0、Minor 0；本地全量 362/362、Release 构建 0 警告/0 错误、11 项目漏洞审计、变更格式和补丁检查全部通过，等待 GitHub 管理员 runner 与合并发布。
+- 2026-08-05：PR #5 的 GitHub Actions run `30968984051` 用 Windows 管理员 runner 从零完成 Release 构建与完整 per-machine MSI 安装/运行/卸载门禁，`windows-release` 4 分 37 秒通过；正式安装证据已闭环。

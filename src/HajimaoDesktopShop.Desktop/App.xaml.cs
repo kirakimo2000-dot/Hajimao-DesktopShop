@@ -1,12 +1,16 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Offline;
+using HajimaoDesktopShop.Application.Diagnostics;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Desktop.Services;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
 using HajimaoDesktopShop.Infrastructure.Configuration;
+using HajimaoDesktopShop.Infrastructure.Logging;
 using HajimaoDesktopShop.Infrastructure.Persistence;
 
 namespace HajimaoDesktopShop.Desktop;
@@ -24,6 +28,9 @@ public partial class App : System.Windows.Application
     private MarketViewModel? _viewModel;
     private DesktopShopWindow? _desktopWindow;
     private ManagementWindow? _managementWindow;
+    private IGameDiagnosticSink _diagnosticSink = NullGameDiagnosticSink.Instance;
+    private IDisposable? _diagnosticLifetime;
+    private bool _startupCompleted;
     private bool _isExiting;
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -32,17 +39,28 @@ public partial class App : System.Windows.Application
 
         try
         {
+            var dataDirectoryOverride = Environment.GetEnvironmentVariable(
+                ApplicationDataPathPolicy.OverrideEnvironmentVariable);
+            InitializeDiagnostics(dataDirectoryOverride);
+
             var catalogPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
             var products = await new JsonProductCatalog(catalogPath).LoadAsync();
-            var savePath = ApplicationDataPathPolicy.ResolveSavePath(
-                Environment.GetEnvironmentVariable(ApplicationDataPathPolicy.OverrideEnvironmentVariable));
+            var savePath = ApplicationDataPathPolicy.ResolveSavePath(dataDirectoryOverride);
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
             var savedPlacement = await saveStore.LoadDesktopWindowPlacementAsync();
-            _session = DesktopBusinessSessionFactory.Create(
+            var startupUtc = DateTimeOffset.UtcNow;
+            var sessionStart = DesktopBusinessSessionFactory.Create(
                 products,
                 savedGame,
-                Environment.TickCount);
+                Environment.TickCount,
+                startupUtc);
+            _session = sessionStart.Session;
+            ReportSessionStart(sessionStart);
+            if (sessionStart.OfflineSettlement is { AppliedSeconds: > 0 })
+            {
+                await saveStore.SaveGameAsync(_session.CaptureSaveData(startupUtc));
+            }
 
             if (savedGame is null)
             {
@@ -84,7 +102,9 @@ public partial class App : System.Windows.Application
             _trayIconService.OpenManagementRequested += OnOpenManagementRequested;
             _trayIconService.ExitRequested += OnTrayExitRequested;
 
-            _simulationLoop = new SimulationLoop(_session.Simulation.AdvanceRealSecond);
+            _simulationLoop = new SimulationLoop(
+                _session.Simulation.AdvanceRealSecond,
+                reportFailure: ReportSimulationFailure);
             _simulationLoop.Start();
             _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -103,12 +123,18 @@ public partial class App : System.Windows.Application
             };
             _autosaveTimer.Tick += OnAutosaveTick;
             _autosaveTimer.Start();
+            _startupCompleted = true;
         }
         catch (Exception exception)
         {
+            ReportDiagnostic(
+                "application.startup.failed",
+                GameDiagnosticLevel.Error,
+                "Application startup failed.",
+                exception: exception);
             MessageBox.Show(
-                $"Hajimao Market 启动失败。\n\n{exception.Message}\n\n请确认 Assets/Config/products.json 完整可读。",
-                "Hajimao Market 启动错误",
+                $"{ProductIdentity.DisplayName} 启动失败。\n\n{exception.Message}\n\n请确认 Assets/Config/products.json 完整可读。",
+                ProductIdentity.StartupErrorTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(-1);
@@ -137,7 +163,11 @@ public partial class App : System.Windows.Application
         }
         catch (Exception exception)
         {
-            System.Diagnostics.Debug.WriteLine($"Final autosave failed: {exception}");
+            ReportDiagnostic(
+                "persistence.final_save.failed",
+                GameDiagnosticLevel.Error,
+                "Final save failed during shutdown.",
+                exception: exception);
         }
 
         _soundService?.Dispose();
@@ -150,6 +180,17 @@ public partial class App : System.Windows.Application
             _trayIconService.Dispose();
         }
 
+        if (_startupCompleted)
+        {
+            ReportDiagnostic(
+                "application.stopped",
+                GameDiagnosticLevel.Information,
+                "Application stopped normally.");
+        }
+
+        _diagnosticLifetime?.Dispose();
+        _diagnosticLifetime = null;
+        _diagnosticSink = NullGameDiagnosticSink.Instance;
         base.OnExit(e);
     }
 
@@ -194,6 +235,11 @@ public partial class App : System.Windows.Application
         }
         catch (Exception exception)
         {
+            ReportDiagnostic(
+                "persistence.autosave.failed",
+                GameDiagnosticLevel.Error,
+                "Autosave failed.",
+                exception: exception);
             _viewModel?.ReportSystemMessage($"自动存档失败：{exception.Message}");
         }
     }
@@ -263,6 +309,102 @@ public partial class App : System.Windows.Application
         if (_desktopWindow is { IsLoaded: true })
         {
             _desktopWindow.Topmost = true;
+        }
+    }
+
+    private void ReportSessionStart(DesktopBusinessSessionStartResult sessionStart)
+    {
+        ReportDiagnostic(
+            "application.started",
+            GameDiagnosticLevel.Information,
+            "Application session started.",
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Mode"] = sessionStart.IsNewGame ? "new" : "restored",
+                ["StoreCount"] = sessionStart.Session.Game.GetSnapshot().Stores.Count
+                    .ToString(CultureInfo.InvariantCulture)
+            });
+
+        if (sessionStart.OfflineSettlement is not { } settlement)
+        {
+            return;
+        }
+
+        var properties = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["RequestedSeconds"] = settlement.RequestedSeconds.ToString(CultureInfo.InvariantCulture),
+            ["AppliedSeconds"] = settlement.AppliedSeconds.ToString(CultureInfo.InvariantCulture),
+            ["WasCapped"] = settlement.WasCapped.ToString(CultureInfo.InvariantCulture),
+            ["CashDeltaCents"] = (settlement.After.CashCents - settlement.Before.CashCents)
+                .ToString(CultureInfo.InvariantCulture),
+            ["CompletedSalesDelta"] = (settlement.After.CompletedSales - settlement.Before.CompletedSales)
+                .ToString(CultureInfo.InvariantCulture)
+        };
+        if (settlement.Anomaly == OfflineTimeAnomaly.ClockMovedBackward)
+        {
+            ReportDiagnostic(
+                "offline.settlement.clock_moved_backward",
+                GameDiagnosticLevel.Warning,
+                "Offline settlement was skipped because the system clock moved backward.",
+                properties);
+            return;
+        }
+
+        ReportDiagnostic(
+            settlement.WasCapped
+                ? "offline.settlement.capped"
+                : "offline.settlement.completed",
+            settlement.WasCapped
+                ? GameDiagnosticLevel.Warning
+                : GameDiagnosticLevel.Information,
+            settlement.WasCapped
+                ? "Offline settlement completed at the configured limit."
+                : "Offline settlement completed.",
+            properties);
+    }
+
+    private void ReportSimulationFailure(Exception exception) =>
+        ReportDiagnostic(
+            "simulation.failed",
+            GameDiagnosticLevel.Error,
+            "Simulation loop stopped after an unexpected failure.",
+            exception: exception);
+
+    private void InitializeDiagnostics(string? dataDirectoryOverride)
+    {
+        try
+        {
+            var fileDiagnosticSink = new SerilogGameDiagnosticSink(
+                ApplicationDataPathPolicy.ResolveLogDirectory(dataDirectoryOverride));
+            _diagnosticSink = fileDiagnosticSink;
+            _diagnosticLifetime = fileDiagnosticSink;
+        }
+        catch
+        {
+            _diagnosticSink = NullGameDiagnosticSink.Instance;
+            _diagnosticLifetime = null;
+        }
+    }
+
+    private void ReportDiagnostic(
+        string name,
+        GameDiagnosticLevel level,
+        string message,
+        IReadOnlyDictionary<string, string>? properties = null,
+        Exception? exception = null)
+    {
+        try
+        {
+            _diagnosticSink.Write(new GameDiagnosticEvent(
+                name,
+                level,
+                message,
+                properties,
+                exception));
+        }
+        catch
+        {
+            // Diagnostics must never prevent simulation, saving, or shutdown.
         }
     }
 }

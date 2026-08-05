@@ -6,7 +6,7 @@
 
 ## Current Phase
 
-0.1.8 商业街共享客流、多店可视化、天气/车辆/路人和收起状态栏已完成；下一阶段执行 0.1.9 发布候选。
+0.1.9 发布候选已完成教程、日志/稳定性、多显示器和 Windows 发布物实现；当前执行独立审阅、最终门禁、GitHub 发布与清理。
 
 ## Phases
 
@@ -79,7 +79,7 @@
 - [x] 建立离线上限、异常时间戳和大批量性能边界
 - **Status:** complete
 
-### Phase 10–17: 0.1.3–1.0.0
+### Phase 10–17: 0.1.3–0.1.10
 
 - [x] 0.1.3 三渠道采购与自动补货
 - [x] 0.1.4 招聘、排班、培训、体力和满意度
@@ -87,9 +87,17 @@
 - [x] 0.1.6 管理前端与桌面交互
 - [x] 0.1.7 正式像素资产、动画与音效
 - [x] 0.1.8 商业街 Beta
-- [ ] 0.1.9 发布候选与长时验收（next）
-- [ ] 1.0 正式发布验收
+- [ ] 0.1.9 发布候选与长时验收（closeout）
+- [ ] 0.1.10 后续经营内容与签名准备
 - **Status:** pending
+
+### Phase 16: 0.1.9 发布候选
+
+- [x] 无状态新手任务链与管理页引导
+- [x] 正式日志边界、平衡场景与长时/兼容回归
+- [x] 多显示器矩阵、Windows 安装/便携发布物与校验值
+- [ ] 独立审阅、完整 Release 门禁、GitHub PR/标签和工作区清理
+- **Status:** in_progress
 
 ## 1.0 Demo 完成标准（历史）
 
@@ -133,8 +141,15 @@
 | 每店独立成长、共享资金支付 | 保留多店配置差异，同时让玩家继续管理一套业务现金流 |
 | 扩建、货架与装修采用平方费用 | 形成长期增量目标；容量和需求提升经营上限而非直接发钱 |
 | 促销在 Tick 末扣除持续时间 | 当前分钟在线/离线效果一致，且不会因批量结算产生少算一 Tick |
+| 正式显示名恢复为 `Hajimao DesktopShop` | 用户于 2026-08-04 覆盖此前 `Hajimao Market` 决定；程序集/命名空间/存档与数据库兼容标识保持 `HajimaoDesktopShop.*`，不因品牌调整破坏旧存档 |
 
 ## Errors Encountered
+
+- `test-release.ps1` 的 MSI `ProductCode` 读取函数把 COM `Execute()` 的返回值一并写入了 PowerShell 管道，导致产品预检参数收到对象数组；已将该调用显式丢弃，首次验收在任何安装动作前安全终止。
+- `Start-Process -ArgumentList` 会在带空格的 MSI 路径上重新拼接参数，首次修复尝试得到 `msiexec 1639`；改用 `ProcessStartInfo.ArgumentList` 逐参数传递，并保留 Windows PowerShell 的显式引用回退。
+- Windows Installer `ProductsEx` 返回的安装对象可调用 `InstallProperty()`，但在当前 PowerShell COM 包装中不公开 `ProductCode/Context/UserSid` 属性；移除无关属性读取，保留已知 ProductCode 与注册安装目录证据。
+- 当前 Codex 会话不是管理员，按机器 MSI 以正确的 `ALLUSERS=1` 静默安装返回 1603；本地门禁改走不注册产品的 MSI administrative image 并运行解包程序，GitHub Windows 管理员 runner 强制 `-RequireFullMsiInstall` 完成真正安装/卸载。
+- GitHub CLI OAuth 缺少 `workflow` scope，首轮推送被拒；未扩展账号权限，改用已安装 GitHub 插件创建 workflow。Git Data API 工作区 CRLF blob 与本地 LF 提交合并时产生纯换行冲突，已中止普通合并并用明确双父树只带回 workflow，最终分支无源码冲突且同步。
 
 | Error | Attempt | Resolution |
 | --- | --- | --- |
@@ -148,6 +163,28 @@
 | 底层审计猜测了不存在的 `TransactionEntry.cs` 与 `ShopFinancials.cs` | 1 | 实际文件为 `Economy/LedgerEntry.cs` 与 `Shops/ShopFinancialState.cs`；已通过 `rg --files` 定位 |
 | 启用 WinForms 后 WPF 类型出现 `UserControl`/`MessageBox` 歧义 | 1 | Desktop 禁用隐式 using，并用显式全局 using 保持 WPF/WinForms 边界清晰 |
 | 极高合法效率在清洁恢复计算中触发 `OverflowException` | 1 | 回归测试复现后改用 `long` 乘法，并在转换前把单 Tick 恢复量夹到整洁度上限 |
+| 品牌字符串双向 `rg` 检查返回退出码 1 | 1 | 旧名称匹配正常；第二次搜索新名称无匹配导致组合命令非零，后续把“无匹配”视为迁移前的预期状态并分开检查 |
+| 全方案 `dotnet format --verify-no-changes` 命中未改动的 `Desktop/AssemblyInfo.cs` 既有空白格式 | 1 | 测试 299/299 与构建 0 警告/0 错误已通过；先确认该文件是否为用户/历史内容，再只格式化本次变更的 C# 文件，避免扩张品牌改名范围 |
+| 报告取证命令将 `Application/Persistence/*.cs` glob 直接交给 Windows `rg` | 1 | 前序文件内容与其他匹配已成功返回；后续使用明确目录参数或 PowerShell 枚举，不重复 Windows 路径 glob |
+| 日志稳定性计划首次读取猜错 onboarding 计划文件名 | 1 | 实际文件为 `2026-08-04-v0.1.9-onboarding.md`；后续先枚举或用 `rg --files` 定位 |
+| 最终复核猜测了不存在的 `GameSaveSchema.cs` | 1 | schema 常量实际位于 `Persistence/GameSaveData.cs`；已改用 `rg --files` 定位并确认 v6 |
+| 多显示器基线猜测了不存在的 `WindowInteractionServiceTests.cs` | 1 | 当前确实没有专门测试；改为新增纯几何策略测试，而不是继续猜测测试路径 |
+| 工具探测将缺失命令直接交给 `Get-Command`，组合命令退出 1 | 1 | 已确认仓库无安装器工具；后续逐项容错探测，安装器采用项目级 WiX SDK，不依赖全局命令 |
+| DPI/工具盘点首个 `rg` 无匹配导致组合命令最终退出 1 | 1 | 输出已完整取得；后续把“无 manifest 匹配”作为预期分支并显式处理退出码 |
+| 计划自检再次将 `2026-08-05-v0.1.9-*.md` glob 直接交给 Windows `rg` | 1 | 已改为显式列出两份计划文件；后续 Windows 上不把路径 glob 交给 `rg` |
+| 负坐标最近显示器吸附测试期望为 `-420` | 1 | 正确右侧吸附需再扣除 12 DIP 边距，期望修正为 `-432`；实现无需变更 |
+| `EnumDisplayMonitors` lambda 未显式声明第三参数 `ref` | 1 | 按委托签名为全部参数补充显式类型与 `ref NativeRect` |
+| 平台契约测试首次 RED 被缺少 `System.IO` using 提前截断 | 1 | 补充显式 using 并同时消除 xUnit2031 写法，再重新取得产品契约缺失的有效 RED |
+| 显式 DPI manifest 在混合 WPF/WinForms 项目触发 WFO0003 | 1 | 保留 WPF manifest 契约，并为托盘所用 WinForms 同步声明 `ApplicationHighDpiMode=PerMonitorV2` |
+| 增加 `ApplicationHighDpiMode` 后 WFO0003 仍持续 | 2 | 查阅 Microsoft 规则与生成机制后确认 WinForms 项目属性不会替代 WPF 启动 manifest；移除该属性并仅抑制此混合宿主误报，契约测试锁定理由 |
+| 首次 WiX 语法构建对三个 RID 原生 `e_sqlite3.dll` 报 ICE60 | 1 | MSI 表取证确认它们有版本但无语言；正式 win-x64 发布仅有根目录一份，改为显式声明 `DefaultLanguage=0` 并从递归收集中排除重复项 |
+| 为原生 SQLite 填 `DefaultLanguage=0` 后触发 WIX1101 | 2 | 不伪造不存在的语言资源；将原生 DLL 与主 EXE 放入同一组件并声明 `CompanionFile=MainExecutable`，用主程序版本驱动维修/升级 |
+| 主 EXE/companion DLL 多文件组件不能自动生成 GUID | 1 | 为这一稳定组件写入固定 GUID；递归收集的单文件组件仍由 WiX 生成稳定 GUID |
+| Windows PowerShell 5 的 `Add-Type` 不支持 C# 字符串插值 | 1 | 将窗口样式诊断消息改为 `string.Format`，保持脚本声明的 Windows PowerShell 兼容性 |
+| Windows PowerShell 5 的 `Add-Type` 同样不支持 C# `out var` | 2 | 改为预先声明 `int ownerProcessId`，并移除可能依赖新编译器的 lambda discard |
+| 日志等待条件中的换行让 PowerShell 把 `-and` 绑定为 `Test-Path` 参数 | 1 | 对 `Test-Path` 与文件枚举两侧显式加括号，固定布尔表达式解析边界 |
+| MSI 冒烟的自定义 `INSTALLFOLDER` 掩盖默认 per-user 仍指向 Program Files | 1 | 查询最终 MSI 的 Directory/Property 表确认后，先加失败契约，再把默认二进制目录改为 `LocalAppDataFolder\Programs`；用户数据目录仍不归 MSI 所有 |
+| 用户配置目录的 500+ 自包含文件触发 ICE38/ICE64 | 2 | 不压制 Windows Installer 验证、不生成数百个 HKCU KeyPath；正式 MSI 改为 per-machine Program Files，便携 ZIP 承担免管理员场景 |
 
 ## Notes
 

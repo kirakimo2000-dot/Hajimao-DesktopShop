@@ -12,5 +12,6 @@
     <Project Path="tests/HajimaoDesktopShop.Desktop.Tests/HajimaoDesktopShop.Desktop.Tests.csproj" />
     <Project Path="tests/HajimaoDesktopShop.Infrastructure.Tests/HajimaoDesktopShop.Infrastructure.Tests.csproj" />
     <Project Path="tests/HajimaoDesktopShop.Rendering.Tests/HajimaoDesktopShop.Rendering.Tests.csproj" />
+    <Project Path="tests/HajimaoDesktopShop.Release.Tests/HajimaoDesktopShop.Release.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Hajimao Market's deterministic 256x256 production sprite atlas."""
+"""Build Hajimao DesktopShop's deterministic 256x256 production sprite atlas."""
 
 from __future__ import annotations
 
