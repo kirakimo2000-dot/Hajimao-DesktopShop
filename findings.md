@@ -204,3 +204,4 @@
 - 2026-08-05：发布脚本独立审阅发现 MSI 冒烟可能触碰机器上同 ProductCode 的既有安装。最终门禁改为安装前枚举所有安装上下文、安装后核对 Windows Installer 注册目录精确属于随机临时根，只有核对成功才记录卸载所有权；MSI 参数改为逐参数传递，finally 的进程、MSI、临时目录清理互不阻断。
 - 2026-08-05：当前 Codex 进程不在管理员令牌中，正式 per-machine MSI 的静默安装会以 1603 拒绝。验收脚本因此区分两条诚实路径：非管理员用标准 `/a` administrative image 验证 MSI 解包内容并真实启动其中程序；GitHub Windows runner 通过 `-RequireFullMsiInstall` 强制执行 `ALLUSERS=1` 注册、目录归属核对、运行和按 ProductCode 卸载，不能退化成 per-user 安装。
 - 2026-08-05：发布安全最终复审为 Critical 0、Important 0、Minor 0；确认 ProductCode 所有权在安装成功后、注册断言前建立，per-user 参数完全移除，非管理员分支不注册产品，管理员 workflow 不能退化为 `/a`。
+- 2026-08-05：GitHub Actions run `30968984051` 已在 Windows 管理员 runner 通过完整 per-machine MSI 生命周期，验证 `-RequireFullMsiInstall` 未退化为本地 `/a` 分支；本机权限差距不再是发布证据缺口。

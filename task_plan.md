@@ -149,6 +149,7 @@
 - `Start-Process -ArgumentList` 会在带空格的 MSI 路径上重新拼接参数，首次修复尝试得到 `msiexec 1639`；改用 `ProcessStartInfo.ArgumentList` 逐参数传递，并保留 Windows PowerShell 的显式引用回退。
 - Windows Installer `ProductsEx` 返回的安装对象可调用 `InstallProperty()`，但在当前 PowerShell COM 包装中不公开 `ProductCode/Context/UserSid` 属性；移除无关属性读取，保留已知 ProductCode 与注册安装目录证据。
 - 当前 Codex 会话不是管理员，按机器 MSI 以正确的 `ALLUSERS=1` 静默安装返回 1603；本地门禁改走不注册产品的 MSI administrative image 并运行解包程序，GitHub Windows 管理员 runner 强制 `-RequireFullMsiInstall` 完成真正安装/卸载。
+- GitHub CLI OAuth 缺少 `workflow` scope，首轮推送被拒；未扩展账号权限，改用已安装 GitHub 插件创建 workflow。Git Data API 工作区 CRLF blob 与本地 LF 提交合并时产生纯换行冲突，已中止普通合并并用明确双父树只带回 workflow，最终分支无源码冲突且同步。
 
 | Error | Attempt | Resolution |
 | --- | --- | --- |

@@ -367,3 +367,4 @@
 - 2026-08-05：发布脚本首轮独立审阅发现既有 MSI 产品归属、带空格参数和 finally 清理隔离风险；均先补契约门禁再修复。最终实机验收在所有安装上下文预检后完成便携/MSI 启动，核对注册目录属于随机临时根，再按 ProductCode 卸载且注册项清零。
 - 2026-08-05：复审要求安装上下文与 MSI `perMachine` 声明完全一致；删除 per-user 覆盖。非管理员本机通过 MSI administrative image 解包/运行门禁，新增 GitHub `windows-latest` Release gate，在管理员 runner 强制完整 per-machine 安装/卸载，避免以本地权限限制冒充正式安装证据。
 - 2026-08-05：发布安全最终复审 Critical 0、Important 0、Minor 0；本地全量 362/362、Release 构建 0 警告/0 错误、11 项目漏洞审计、变更格式和补丁检查全部通过，等待 GitHub 管理员 runner 与合并发布。
+- 2026-08-05：PR #5 的 GitHub Actions run `30968984051` 用 Windows 管理员 runner 从零完成 Release 构建与完整 per-machine MSI 安装/运行/卸载门禁，`windows-release` 4 分 37 秒通过；正式安装证据已闭环。
