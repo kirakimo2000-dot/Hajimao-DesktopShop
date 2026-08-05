@@ -368,3 +368,4 @@
 - 2026-08-05：复审要求安装上下文与 MSI `perMachine` 声明完全一致；删除 per-user 覆盖。非管理员本机通过 MSI administrative image 解包/运行门禁，新增 GitHub `windows-latest` Release gate，在管理员 runner 强制完整 per-machine 安装/卸载，避免以本地权限限制冒充正式安装证据。
 - 2026-08-05：发布安全最终复审 Critical 0、Important 0、Minor 0；本地全量 362/362、Release 构建 0 警告/0 错误、11 项目漏洞审计、变更格式和补丁检查全部通过，等待 GitHub 管理员 runner 与合并发布。
 - 2026-08-05：PR #5 的 GitHub Actions run `30968984051` 用 Windows 管理员 runner 从零完成 Release 构建与完整 per-machine MSI 安装/运行/卸载门禁，`windows-release` 4 分 37 秒通过；正式安装证据已闭环。
+- 2026-08-05：PR #5 在最终 head 上的 run `30969260038` 再次通过后 squash 合并至 `main`（`ab408e4`）；注释标签与 GitHub Release `v0.1.9` 已创建，四个资产上传并按名称/字节复核。合并态 restore 后 362/362、构建 0 警告/0 错误；功能工作树及本地/远端分支已清理，最终产物保留在主工作区。

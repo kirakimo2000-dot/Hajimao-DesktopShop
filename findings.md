@@ -205,3 +205,4 @@
 - 2026-08-05：当前 Codex 进程不在管理员令牌中，正式 per-machine MSI 的静默安装会以 1603 拒绝。验收脚本因此区分两条诚实路径：非管理员用标准 `/a` administrative image 验证 MSI 解包内容并真实启动其中程序；GitHub Windows runner 通过 `-RequireFullMsiInstall` 强制执行 `ALLUSERS=1` 注册、目录归属核对、运行和按 ProductCode 卸载，不能退化成 per-user 安装。
 - 2026-08-05：发布安全最终复审为 Critical 0、Important 0、Minor 0；确认 ProductCode 所有权在安装成功后、注册断言前建立，per-user 参数完全移除，非管理员分支不注册产品，管理员 workflow 不能退化为 `/a`。
 - 2026-08-05：GitHub Actions run `30968984051` 已在 Windows 管理员 runner 通过完整 per-machine MSI 生命周期，验证 `-RequireFullMsiInstall` 未退化为本地 `/a` 分支；本机权限差距不再是发布证据缺口。
+- 2026-08-05：0.1.9 最终发布闭环：PR #5 合并提交 `ab408e4`，注释标签 `v0.1.9` 指向该提交，Release 包含 91,222,209 字节 ZIP、74,403,530 字节 MSI、JSON 与 SHA 清单；功能工作树/分支已删除，主工作区只新增保留最终 0.1.9 产物。
