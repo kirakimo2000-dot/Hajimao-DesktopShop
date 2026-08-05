@@ -1,0 +1,39 @@
+name: release-gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build release artifacts
+        shell: pwsh
+        run: |
+          [xml]$properties = Get-Content -LiteralPath Directory.Build.props -Raw
+          $version = [string]$properties.Project.PropertyGroup.VersionPrefix
+          ./scripts/build-release.ps1 -Version $version
+
+      - name: Verify full per-machine MSI lifecycle
+        shell: pwsh
+        run: |
+          [xml]$properties = Get-Content -LiteralPath Directory.Build.props -Raw
+          $version = [string]$properties.Project.PropertyGroup.VersionPrefix
+          ./scripts/test-release.ps1 -Version $version -RequireFullMsiInstall
