@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
              UseLayoutRounding="True" SnapsToDevicePixels="True"
-             Loaded="OnLoaded" Unloaded="OnUnloaded">
+             Loaded="OnLoaded" Unloaded="OnUnloaded"
+             MouseLeftButtonUp="OnMouseLeftButtonUp"
+             MouseWheel="OnMouseWheel">
     <Grid Background="#17191D" ClipToBounds="True">
         <skia:SKElement x:Name="SceneSurface"
                         PaintSurface="OnPaintSurface"

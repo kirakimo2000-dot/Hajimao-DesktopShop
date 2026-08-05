@@ -10,7 +10,7 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class DesktopShopWindowRenderingTests
 {
     [Fact]
-    public void Content_UsesOneFlattenedSurfaceAndThreeAccessibleHitTargets()
+    public void Content_DefaultsToAOneStoreStreetAndKeepsTheShopSurfaceAvailable()
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -21,11 +21,18 @@ public sealed class DesktopShopWindowRenderingTests
                 Assert.Equal(ProductIdentity.DesktopWindowTitle, window.Title);
                 var root = Assert.IsType<Grid>(window.Content);
                 Assert.Equal(4, root.ContextMenu?.Items.Count);
+                Assert.Equal(248, window.Width);
+                Assert.Equal(180, window.Height);
 
-                var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.Children[0]);
+                var streetPage = Assert.IsType<Grid>(root.FindName("StreetPage"));
+                var street = Assert.IsType<CommercialStreetSceneControl>(root.FindName("StreetScene"));
+                Assert.True(street.UsesLogicalPixelScaling);
+                Assert.Equal(System.Windows.Visibility.Visible, streetPage.Visibility);
+
+                var storePage = Assert.IsType<Grid>(root.FindName("StorePage"));
+                var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.FindName("StoreSurface"));
                 Assert.True(surface.UsesLogicalPixelScaling);
-                var hitTargets = Assert.IsType<Canvas>(root.Children[1]);
-                Assert.Equal(3, hitTargets.Children.Count);
+                Assert.Equal(System.Windows.Visibility.Collapsed, storePage.Visibility);
 
                 window.Close();
             }
