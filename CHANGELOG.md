@@ -8,7 +8,15 @@
 
 ## [Unreleased]
 
-暂无。
+### Added
+
+- 项目内快速 GitHub 分支发布脚本：网页端连接最多探测 5 秒，普通 push 最多尝试一次，失败后通过 Git Data API 精确上传。
+- `hajimao-fast-github` 本地 Codex skill：固定阶段末批量发布、PR 门禁、合并、发版与清理顺序，避免重复等待网络慢路径。
+
+### Verification
+
+- 发布脚本会逐个核对本地与 GitHub blob SHA，并核对最终 tree SHA；任一不一致都会在创建远端分支前停止。
+- 新增 3 项发布工作流契约测试；全量测试提升至 417 项。
 
 ## [0.1.11] - 2026-08-05
 
