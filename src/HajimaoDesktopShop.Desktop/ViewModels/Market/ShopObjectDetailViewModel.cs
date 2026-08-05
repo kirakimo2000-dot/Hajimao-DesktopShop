@@ -8,4 +8,12 @@ public sealed record ShopObjectDetailViewModel(
     string Title,
     string CategoryText,
     string SummaryText,
-    string StatusText);
+    string StatusText,
+    string ActionTargetKey,
+    string ActionHintText,
+    bool IsAutoRestockEnabled)
+{
+    public bool IsShelf => Kind == BusinessShopInteractionKind.Shelf;
+
+    public bool IsEmployee => Kind == BusinessShopInteractionKind.Employee;
+}

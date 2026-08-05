@@ -54,6 +54,12 @@ public sealed class MarketViewModel : ObservableObject
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
         EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
+        _shopObjectActions = new ShopObjectActionsViewModel(
+            () => SelectedShopObject,
+            () => SelectedStoreId,
+            ProductManagement,
+            EmployeeManagement,
+            Refresh);
         StoreGrowth = new StoreGrowthManagementViewModel(session, () => SelectedStoreId);
         Finance = new FinanceViewModel(session, () => SelectedStoreId);
         CommercialStreet = new CommercialStreetViewModel();
@@ -88,6 +94,18 @@ public sealed class MarketViewModel : ObservableObject
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
 
     public IRelayCommand<BusinessShopInteractionTarget> SelectShopObjectCommand { get; }
+
+    private readonly ShopObjectActionsViewModel _shopObjectActions;
+
+    public IRelayCommand QuickRestockSelectedShelfCommand => _shopObjectActions.QuickRestockCommand;
+
+    public IRelayCommand ToggleAutoRestockSelectedShelfCommand => _shopObjectActions.ToggleAutoRestockCommand;
+
+    public IRelayCommand TrainSelectedEmployeeCommand => _shopObjectActions.TrainEmployeeCommand;
+
+    public IRelayCommand SetSelectedEmployeeDayShiftCommand => _shopObjectActions.SetDayShiftCommand;
+
+    public IRelayCommand SetSelectedEmployeeNightShiftCommand => _shopObjectActions.SetNightShiftCommand;
 
     public IRelayCommand ToggleLockCommand { get; }
 
@@ -240,11 +258,16 @@ public sealed class MarketViewModel : ObservableObject
             if (SetProperty(ref _selectedShopObject, value))
             {
                 OnPropertyChanged(nameof(HasSelectedShopObject));
+                OnPropertyChanged(nameof(SelectedShelfAutoRestockActionText));
+                _shopObjectActions.NotifySelectionChanged();
             }
         }
     }
 
     public bool HasSelectedShopObject => SelectedShopObject is not null;
+
+    public string SelectedShelfAutoRestockActionText =>
+        _shopObjectActions.AutoRestockActionText;
 
     public void Refresh()
     {
@@ -431,13 +454,24 @@ public sealed class MarketViewModel : ObservableObject
         var averageMargin = products.Length == 0
             ? 0
             : (long)Math.Round(products.Average(product => product.UnitGrossProfitCents));
+        var actionTarget = ShelfActionTargetSelector.Select(products, shelfKind);
+        var isAutoRestockEnabled = actionTarget is not null
+            && _session.Game.GetProcurementSnapshot().AutoRestockPolicies.Any(policy =>
+                policy.StoreId == SelectedStoreId
+                && policy.ProductId == actionTarget.Id
+                && policy.IsEnabled);
         return new ShopObjectDetailViewModel(
             BusinessShopInteractionKind.Shelf,
             shelfKind,
             title,
             "商品与库存",
             $"SKU {products.Length} · 库存 {quantity}/{capacity}",
-            $"缺货 {outOfStock} · 低库存 {lowStock} · 平均毛利 {FormatMoney(averageMargin)}");
+            $"缺货 {outOfStock} · 低库存 {lowStock} · 平均毛利 {FormatMoney(averageMargin)}",
+            actionTarget?.Id ?? string.Empty,
+            actionTarget is null
+                ? "当前货架没有可经营商品"
+                : $"优先商品 {actionTarget.Name} {actionTarget.Quantity}/{actionTarget.Capacity}",
+            isAutoRestockEnabled);
     }
 
     private ShopObjectDetailViewModel? CreateEmployeeDetail(
@@ -470,7 +504,10 @@ public sealed class MarketViewModel : ObservableObject
             employee.Name,
             role,
             $"效率 {FormatPermille(employee.EffectiveEfficiencyPermille)} · 工资 {FormatMoney(employee.HourlyWageCents)}/小时",
-            $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift}");
+            $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift}",
+            employee.EmployeeId,
+            $"培训 Lv.{employee.TrainingLevel}",
+            IsAutoRestockEnabled: false);
     }
 
     private void SelectStoreById(string storeId) =>

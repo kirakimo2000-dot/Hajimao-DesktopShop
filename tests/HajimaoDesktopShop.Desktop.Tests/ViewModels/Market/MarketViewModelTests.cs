@@ -202,6 +202,89 @@ public sealed class MarketViewModelTests
         Assert.Null(viewModel.SelectedShopObject);
     }
 
+    [Fact]
+    public void QuickRestockSelectedShelf_UsesLocalOrderWithoutAdvancingTime()
+    {
+        var session = MarketTestSession.Create();
+        var viewModel = new MarketViewModel(session);
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Shelf,
+            "ambient"));
+        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
+
+        Assert.Equal("water", viewModel.SelectedShopObject?.ActionTargetKey);
+        Assert.Contains("矿泉水 0/20", viewModel.SelectedShopObject?.ActionHintText);
+        Assert.True(viewModel.QuickRestockSelectedShelfCommand.CanExecute(null));
+        Assert.False(viewModel.TrainSelectedEmployeeCommand.CanExecute(null));
+
+        viewModel.QuickRestockSelectedShelfCommand.Execute(null);
+
+        var snapshot = viewModel.SceneFrame.Snapshot;
+        var water = snapshot.Business.Stores
+            .Single(store => store.Id == "corner-store")
+            .Products.Single(product => product.Id == "water");
+        Assert.Equal(5, water.Quantity);
+        Assert.Equal(99_375, snapshot.Business.CashCents);
+        Assert.Equal(minute, snapshot.GameMinute);
+        Assert.Contains("矿泉水 5/20", viewModel.SelectedShopObject!.ActionHintText);
+    }
+
+    [Fact]
+    public void ToggleAutoRestockSelectedShelf_UpdatesRealPolicyAndActionText()
+    {
+        var session = MarketTestSession.Create();
+        var viewModel = new MarketViewModel(session);
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Shelf,
+            "ambient"));
+
+        Assert.Equal("开启自动补货", viewModel.SelectedShelfAutoRestockActionText);
+
+        viewModel.ToggleAutoRestockSelectedShelfCommand.Execute(null);
+
+        Assert.Contains(
+            session.Game.GetProcurementSnapshot().AutoRestockPolicies,
+            policy => policy.ProductId == "water" && policy.IsEnabled);
+        Assert.Equal("关闭自动补货", viewModel.SelectedShelfAutoRestockActionText);
+
+        viewModel.ToggleAutoRestockSelectedShelfCommand.Execute(null);
+
+        Assert.Contains(
+            session.Game.GetProcurementSnapshot().AutoRestockPolicies,
+            policy => policy.ProductId == "water" && !policy.IsEnabled);
+        Assert.Equal("开启自动补货", viewModel.SelectedShelfAutoRestockActionText);
+    }
+
+    [Fact]
+    public void SelectedEmployeeActions_TrainAndApplyShiftsWithoutAdvancingTime()
+    {
+        var session = MarketTestSession.Create(openingCashCents: 2_000_000);
+        var viewModel = new MarketViewModel(session);
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Employee,
+            "starter-cashier"));
+        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
+
+        Assert.True(viewModel.TrainSelectedEmployeeCommand.CanExecute(null));
+        Assert.False(viewModel.QuickRestockSelectedShelfCommand.CanExecute(null));
+        Assert.Contains("培训 Lv.0", viewModel.SelectedShopObject?.ActionHintText);
+
+        viewModel.TrainSelectedEmployeeCommand.Execute(null);
+
+        var trained = session.Simulation.Employees.GetSnapshot().Employees
+            .Single(employee => employee.EmployeeId == "starter-cashier");
+        Assert.Equal(1, trained.TrainingLevel);
+        Assert.Contains("培训 Lv.1", viewModel.SelectedShopObject?.ActionHintText);
+        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
+
+        viewModel.SetSelectedEmployeeDayShiftCommand.Execute(null);
+        Assert.Contains("班次 08:00–16:00", viewModel.SelectedShopObject?.StatusText);
+
+        viewModel.SetSelectedEmployeeNightShiftCommand.Execute(null);
+        Assert.Contains("班次 17:00–01:00", viewModel.SelectedShopObject?.StatusText);
+        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
+    }
+
     private static BusinessShopInteractionTarget Target(
         BusinessShopInteractionKind kind,
         string key) =>
