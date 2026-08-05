@@ -87,6 +87,20 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
+    public void DesktopNavigation_DoesNotAdvanceSimulationOrChangeCash()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        var gameMinute = viewModel.SceneFrame!.Snapshot.GameMinute;
+        var cash = viewModel.CashText;
+
+        viewModel.DesktopNavigation.OpenStoreCommand.Execute("corner-store");
+        viewModel.DesktopNavigation.BackToStreetCommand.Execute(null);
+
+        Assert.Equal(gameMinute, viewModel.SceneFrame.Snapshot.GameMinute);
+        Assert.Equal(cash, viewModel.CashText);
+    }
+
+    [Fact]
     public void ToggleStatusBar_ChangesPresentationHeightWithoutChangingGameTime()
     {
         var viewModel = new MarketViewModel(MarketTestSession.Create());
