@@ -360,3 +360,7 @@
 - 2026-08-04：日志与稳定性最终门禁通过：Domain 90、Application 133、Infrastructure 19、Rendering 14、Desktop 64，共 320/320；10 项目无已知直接/传递 NuGet 漏洞，变更范围格式与 `git diff --check` 退出 0。下一步为多显示器矩阵及 Windows 安装/便携发布物。
 - 2026-08-04：最终代码审阅 Critical 0、Important 0、Minor 0；日志实现未泄漏至 Domain/Rendering/ViewModel/WPF，0.1.9 与 schema v6 兼容边界保持不变。
 - 2026-08-04：完成 Release `dotnet clean`（0 警告/0 错误）；无运行中 Hajimao 进程、`TestResults` 或 `__pycache__` 残留，准备建立日志与稳定性子阶段 Git 检查点。
+- 2026-08-05：开始 0.1.9 多显示器与 Windows 发布物子阶段；工作树与远端功能分支同步且干净，已确认窗口放置尚无纯几何矩阵测试、仓库尚无安装器工程。
+- 2026-08-05：保存并自检 `docs/superpowers/plans/2026-08-05-v0.1.9-multidisplay.md` 与 `docs/superpowers/plans/2026-08-05-v0.1.9-windows-release.md`；明确纯几何/Win32 适配器边界、PerMonitorV2 契约、便携包/WiX MSI、真实进程验收、版本晋升和 GitHub 发布顺序，且保持 schema v6、现实 1x 与 UI 范围不变。
+- 2026-08-05：多显示器子计划完成：纯几何策略覆盖负坐标、显示器空隙、拔除显示器、纵向布局、最小可见范围、最近工作区、四角与超大窗口；Win32 适配器覆盖 96/120/144/192 DPI；WPF/WinForms 混合宿主以 WPF manifest 声明 PerMonitorV2。聚焦几何/DPI 33/33、平台契约 2/2、Desktop 99/99、全方案 355/355，Release 构建 0 警告/0 错误；schema 仍为 v6。
+- 2026-08-05：Windows 发布管线完成 RED/GREEN：Release 契约 6/6，WiX 6.0.2 对正式 win-x64 payload 构建 0 警告/0 错误；0.1.8 排练与 0.1.9 最终便携/MSI 真实验收均通过，验证响应、SQLite、日志、无任务栏 AppWindow 样式、卸载移除应用和保留数据。最终 ZIP/MSI/JSON/SHA 已生成并明确 `signed=false`。

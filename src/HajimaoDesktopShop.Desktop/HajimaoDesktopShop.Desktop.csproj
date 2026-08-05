@@ -11,6 +11,9 @@
     <AssemblyTitle>Hajimao DesktopShop</AssemblyTitle>
     <Product>Hajimao DesktopShop</Product>
     <Description>Pixel-style Windows desktop idle market management game.</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WPF owns process startup; its manifest must set DPI before any HWND exists. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

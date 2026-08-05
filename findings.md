@@ -183,3 +183,18 @@
 - 2026-08-04：最终依赖/边界复核确认 Serilog 实现引用只存在于 Infrastructure（Desktop 组合根仅构造适配器）；Domain、Rendering、ViewModel/WPF 均无日志实现依赖。发布目标仍为 0.1.9，`VersionPrefix` 按候选阶段策略暂留 0.1.8，存档 schema 保持 v6。
 - 2026-08-04：最终版本复核首次误猜 `Persistence/GameSaveSchema.cs`；实际常量位于 `Persistence/GameSaveData.cs`，`CurrentVersion = 6`，已用 `rg --files` 校正。
 - 2026-08-04：最终审阅 Critical 0、Important 0、Minor 0；重点复核 UTC/封顶、结算后检查点、sink 所有权/并发释放、异常降级、保留上限、报告排序/checked 差值及固定现实 1x，未发现剩余阻断项。
+- 2026-08-05：多显示器基线确认 `WindowInteractionService` 仍直接混合 WPF/Win32、DPI 换算和几何判断；恢复只检查整个虚拟桌面矩形，会把“落在两块显示器之间空洞区域”的窗口误判为可见。应先抽出无 WPF 的工作区矩形/放置策略，再让 Win32 适配器提供各显示器工作区。
+- 2026-08-05：仓库没有 `WindowInteractionServiceTests.cs`，现有窗口测试没有锁定负坐标、显示器空洞、拔插或混合 DPI；本阶段必须先新增纯几何 RED 测试，不能继续依赖真实机器的单一显示器配置。
+- 2026-08-05：现有正式历史只生成过自包含 win-x64 目录与 ZIP，当前仓库没有安装器工程；0.1.9 需要新增可重复发布脚本与安装器定义，同时保持 `%LocalAppData%/HajimaoDesktopShop` 数据目录不被卸载删除。
+- 2026-08-05：官方 WiX 文档显示 SDK-style `.wixproj` 可由 `dotnet build` 直接生成 MSI，`Files` 支持命名 bind path 与 `**` 递归收集；WiX v6 最新维护版为 6.0.2。为避免依赖机器全局安装，本项目应把 WiX SDK 精确固定在安装器工程，而不是要求全局 `wix` 命令。
+- 2026-08-05：WiX 官方明确指出纯 per-user `Files` 自动收集会产生 ICE 校验问题，推荐 per-user-or-machine/per-machine-or-user；v6 支持 `perUserOrMachine`，适合默认当前用户且无需强制管理员的桌面摆件安装，同时程序数据继续写 LocalAppData 而非安装目录。
+- 2026-08-05：Windows 安装包不应包含或删除 `%LocalAppData%/HajimaoDesktopShop`；MSI 只拥有 Program Files/开始菜单中的应用文件与快捷方式，因此卸载天然保留存档和日志。
+- 2026-08-05：桌面小店固定 420×280 DIP、无边框且不可缩放；现有存档保存 WPF `Left/Top`，本阶段应保持 schema v6，纯几何策略以逻辑坐标接收“窗口矩形 + 每块显示器工作区”，只改变验证/夹取算法，不迁移已保存字段。
+- 2026-08-05：现有恢复在虚拟桌面边界内允许最少 48 DIP 可见，但未验证具体工作区；新策略需以“任一真实工作区与窗口交集的宽高均至少 48 DIP”为可恢复条件，否则夹取到最近工作区角落。显示器列表适配与几何选择必须分离，便于覆盖负坐标、上下排列和空洞。
+- 2026-08-05：`artifacts/` 已被忽略，适合只保留生成发布物；可重复发布定义与 PowerShell 脚本应放入受版本控制的 `installer/`/`scripts/`，解决方案文件可不包含 WiX 项目，避免普通应用测试/构建隐式生成安装包。
+- 2026-08-05：Desktop 当前没有 app manifest 或 DPI 声明；Microsoft 文档说明 WPF 默认仅系统 DPI aware，而 `dpiAwareness=PerMonitorV2` 可在 Windows 10 1703+ 获得逐显示器 DPI 上下文。项目目标最低 Windows 10 2004，因此应新增 manifest 并同时声明 Windows 10 支持。
+- 2026-08-05：.NET 10 的 WFO0003 对任何启用 WinForms 且 manifest 含 DPI 节点的项目告警；`ApplicationHighDpiMode` 生成 WinForms `ApplicationConfiguration`，但本项目由 WPF 启动且只借用 WinForms 托盘。保留 WPF 在 HWND 创建前生效的 manifest，并按 Microsoft 官方规则只抑制 WFO0003，避免重复且不会执行的 DPI 初始化来源。
+- 2026-08-05：WiX v6 `Files` 的排除规则不是 `Exclude` 属性，而是子 `<Exclude Files="..." />` 元素；已在写入安装器前修正规划与契约测试，避免为错误 schema 编写实现。
+- 2026-08-05：当前机器只有 `msiexec` 与 GitHub CLI；没有全局 `wix`、Inno Setup、MakeAppx 或 SignTool，亦未发现 Windows Kits bin。发布方案必须可由 NuGet 恢复的项目级 WiX SDK构建；本机无法执行 Authenticode 签名，只能生成明确标注 unsigned 的 MSI/ZIP 与 SHA-256。
+- 2026-08-05：混合 DPI 不只需要几何矩阵，进程还必须在创建 UI 前声明 PerMonitorV2；manifest 属于 Desktop 组合/平台边界，不改变 Rendering 的逻辑像素、固定 420×280 DIP 或经营 Tick。
+- 2026-08-05：WiX MSBuild 官方契约支持 `<BindPath Include="$(PublishDir)" BindName="PublishDir" />`，WXS 可用 `!(bindpath.PublishDir)\**` 递归收集并精确排除显式主 EXE；`ProductVersion` 等 MSBuild 属性需加入 `DefineConstants` 后才能在 WXS 中以 `$(ProductVersion)` 使用。

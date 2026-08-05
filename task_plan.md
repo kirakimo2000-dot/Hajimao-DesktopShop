@@ -6,7 +6,7 @@
 
 ## Current Phase
 
-0.1.8 商业街共享客流、多店可视化、天气/车辆/路人和收起状态栏已完成；当前 0.1.9 发布候选已完成无状态新手任务及日志/稳定性子阶段，下一步执行多显示器与 Windows 发布物计划。
+0.1.9 发布候选已完成教程、日志/稳定性、多显示器和 Windows 发布物实现；当前执行独立审阅、最终门禁、GitHub 发布与清理。
 
 ## Phases
 
@@ -79,7 +79,7 @@
 - [x] 建立离线上限、异常时间戳和大批量性能边界
 - **Status:** complete
 
-### Phase 10–17: 0.1.3–1.0.0
+### Phase 10–17: 0.1.3–0.1.10
 
 - [x] 0.1.3 三渠道采购与自动补货
 - [x] 0.1.4 招聘、排班、培训、体力和满意度
@@ -87,15 +87,15 @@
 - [x] 0.1.6 管理前端与桌面交互
 - [x] 0.1.7 正式像素资产、动画与音效
 - [x] 0.1.8 商业街 Beta
-- [ ] 0.1.9 发布候选与长时验收（in progress）
-- [ ] 1.0 正式发布验收
+- [ ] 0.1.9 发布候选与长时验收（closeout）
+- [ ] 0.1.10 后续经营内容与签名准备
 - **Status:** pending
 
 ### Phase 16: 0.1.9 发布候选
 
 - [x] 无状态新手任务链与管理页引导
 - [x] 正式日志边界、平衡场景与长时/兼容回归
-- [ ] 多显示器矩阵、Windows 安装/便携发布物与校验值
+- [x] 多显示器矩阵、Windows 安装/便携发布物与校验值
 - [ ] 独立审阅、完整 Release 门禁、GitHub PR/标签和工作区清理
 - **Status:** in_progress
 
@@ -162,6 +162,21 @@
 | 报告取证命令将 `Application/Persistence/*.cs` glob 直接交给 Windows `rg` | 1 | 前序文件内容与其他匹配已成功返回；后续使用明确目录参数或 PowerShell 枚举，不重复 Windows 路径 glob |
 | 日志稳定性计划首次读取猜错 onboarding 计划文件名 | 1 | 实际文件为 `2026-08-04-v0.1.9-onboarding.md`；后续先枚举或用 `rg --files` 定位 |
 | 最终复核猜测了不存在的 `GameSaveSchema.cs` | 1 | schema 常量实际位于 `Persistence/GameSaveData.cs`；已改用 `rg --files` 定位并确认 v6 |
+| 多显示器基线猜测了不存在的 `WindowInteractionServiceTests.cs` | 1 | 当前确实没有专门测试；改为新增纯几何策略测试，而不是继续猜测测试路径 |
+| 工具探测将缺失命令直接交给 `Get-Command`，组合命令退出 1 | 1 | 已确认仓库无安装器工具；后续逐项容错探测，安装器采用项目级 WiX SDK，不依赖全局命令 |
+| DPI/工具盘点首个 `rg` 无匹配导致组合命令最终退出 1 | 1 | 输出已完整取得；后续把“无 manifest 匹配”作为预期分支并显式处理退出码 |
+| 计划自检再次将 `2026-08-05-v0.1.9-*.md` glob 直接交给 Windows `rg` | 1 | 已改为显式列出两份计划文件；后续 Windows 上不把路径 glob 交给 `rg` |
+| 负坐标最近显示器吸附测试期望为 `-420` | 1 | 正确右侧吸附需再扣除 12 DIP 边距，期望修正为 `-432`；实现无需变更 |
+| `EnumDisplayMonitors` lambda 未显式声明第三参数 `ref` | 1 | 按委托签名为全部参数补充显式类型与 `ref NativeRect` |
+| 平台契约测试首次 RED 被缺少 `System.IO` using 提前截断 | 1 | 补充显式 using 并同时消除 xUnit2031 写法，再重新取得产品契约缺失的有效 RED |
+| 显式 DPI manifest 在混合 WPF/WinForms 项目触发 WFO0003 | 1 | 保留 WPF manifest 契约，并为托盘所用 WinForms 同步声明 `ApplicationHighDpiMode=PerMonitorV2` |
+| 增加 `ApplicationHighDpiMode` 后 WFO0003 仍持续 | 2 | 查阅 Microsoft 规则与生成机制后确认 WinForms 项目属性不会替代 WPF 启动 manifest；移除该属性并仅抑制此混合宿主误报，契约测试锁定理由 |
+| 首次 WiX 语法构建对三个 RID 原生 `e_sqlite3.dll` 报 ICE60 | 1 | MSI 表取证确认它们有版本但无语言；正式 win-x64 发布仅有根目录一份，改为显式声明 `DefaultLanguage=0` 并从递归收集中排除重复项 |
+| 为原生 SQLite 填 `DefaultLanguage=0` 后触发 WIX1101 | 2 | 不伪造不存在的语言资源；将原生 DLL 与主 EXE 放入同一组件并声明 `CompanionFile=MainExecutable`，用主程序版本驱动维修/升级 |
+| 主 EXE/companion DLL 多文件组件不能自动生成 GUID | 1 | 为这一稳定组件写入固定 GUID；递归收集的单文件组件仍由 WiX 生成稳定 GUID |
+| Windows PowerShell 5 的 `Add-Type` 不支持 C# 字符串插值 | 1 | 将窗口样式诊断消息改为 `string.Format`，保持脚本声明的 Windows PowerShell 兼容性 |
+| Windows PowerShell 5 的 `Add-Type` 同样不支持 C# `out var` | 2 | 改为预先声明 `int ownerProcessId`，并移除可能依赖新编译器的 lambda discard |
+| 日志等待条件中的换行让 PowerShell 把 `-and` 绑定为 `Test-Path` 参数 | 1 | 对 `Test-Path` 与文件枚举两侧显式加括号，固定布尔表达式解析边界 |
 
 ## Notes
 
