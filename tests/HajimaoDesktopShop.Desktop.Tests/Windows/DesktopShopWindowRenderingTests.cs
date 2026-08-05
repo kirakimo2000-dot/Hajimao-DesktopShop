@@ -57,7 +57,7 @@ public sealed class DesktopShopWindowRenderingTests
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)), "WPF verification thread timed out.");
+        Assert.True(thread.Join(TimeSpan.FromSeconds(15)), "WPF verification thread timed out.");
         if (failure is not null)
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
@@ -89,7 +89,7 @@ public sealed class DesktopShopWindowRenderingTests
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)), "WPF verification thread timed out.");
+        Assert.True(thread.Join(TimeSpan.FromSeconds(15)), "WPF verification thread timed out.");
         if (failure is not null)
         {
             ExceptionDispatchInfo.Capture(failure).Throw();

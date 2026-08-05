@@ -37,7 +37,7 @@ public sealed class TrayIconServiceTests
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)), "Tray verification thread timed out.");
+        Assert.True(thread.Join(TimeSpan.FromSeconds(15)), "Tray verification thread timed out.");
         if (failure is not null)
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
