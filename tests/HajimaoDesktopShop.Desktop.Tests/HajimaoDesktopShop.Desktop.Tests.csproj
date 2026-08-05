@@ -21,4 +21,13 @@
     <ProjectReference Include="..\..\src\HajimaoDesktopShop.Desktop\HajimaoDesktopShop.Desktop.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\app.manifest"
+          Link="TestData\app.manifest"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\HajimaoDesktopShop.Desktop.csproj"
+          Link="TestData\HajimaoDesktopShop.Desktop.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
