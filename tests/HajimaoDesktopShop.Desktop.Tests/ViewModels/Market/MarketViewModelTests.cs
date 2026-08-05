@@ -1,4 +1,6 @@
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
+using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 
@@ -133,4 +135,75 @@ public sealed class MarketViewModelTests
         Assert.Equal(56d, viewModel.StatusBarHeight);
         Assert.Equal("收起状态栏", viewModel.StatusBarToggleText);
     }
+
+    [Fact]
+    public void SelectShopObject_ShelfBuildsAggregateDetailAndNavigatesToProducts()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Shelf,
+            "ambient"));
+
+        Assert.Equal(ManagementSection.Products, viewModel.SelectedSection);
+        Assert.NotNull(viewModel.SelectedShopObject);
+        Assert.Equal("常温货架", viewModel.SelectedShopObject.Title);
+        Assert.Equal("商品与库存", viewModel.SelectedShopObject.CategoryText);
+        Assert.Contains("库存 0/20", viewModel.SelectedShopObject.SummaryText);
+        Assert.Contains("缺货 1", viewModel.SelectedShopObject.StatusText);
+    }
+
+    [Fact]
+    public void SelectShopObject_EmployeeBuildsOperationalDetailAndNavigatesToEmployees()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Employee,
+            "starter-cashier"));
+
+        Assert.Equal(ManagementSection.Employees, viewModel.SelectedSection);
+        Assert.NotNull(viewModel.SelectedShopObject);
+        Assert.Equal("小葵", viewModel.SelectedShopObject.Title);
+        Assert.Equal("收银员", viewModel.SelectedShopObject.CategoryText);
+        Assert.Contains("效率 96%", viewModel.SelectedShopObject.SummaryText);
+        Assert.Contains("工资 ¥60.00/小时", viewModel.SelectedShopObject.SummaryText);
+        Assert.Contains("体力 100%", viewModel.SelectedShopObject.StatusText);
+        Assert.Contains("满意度 70%", viewModel.SelectedShopObject.StatusText);
+        Assert.Contains("班次", viewModel.SelectedShopObject.StatusText);
+    }
+
+    [Fact]
+    public void Refresh_ReprojectsSelectionWithoutAdvancingGameTime()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Employee,
+            "starter-restocker"));
+        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
+
+        viewModel.Refresh();
+
+        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
+        Assert.Equal("阿澄", viewModel.SelectedShopObject!.Title);
+    }
+
+    [Fact]
+    public void SelectingAnotherStore_ClearsObjectThatIsNotInThatStore()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        viewModel.SelectShopObjectCommand.Execute(Target(
+            BusinessShopInteractionKind.Employee,
+            "starter-cashier"));
+
+        viewModel.SelectStoreCommand.Execute(
+            viewModel.Stores.Single(store => store.Id == "station-store"));
+
+        Assert.Null(viewModel.SelectedShopObject);
+    }
+
+    private static BusinessShopInteractionTarget Target(
+        BusinessShopInteractionKind kind,
+        string key) =>
+        new(kind, key, new LogicalPixelRect(0, 0, 1, 1));
 }
