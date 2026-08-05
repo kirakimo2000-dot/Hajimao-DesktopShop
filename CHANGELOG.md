@@ -29,9 +29,10 @@
 
 ### Verification
 
-- Release 全量测试 400/400：Domain 90、Application 133、Infrastructure 19、Rendering 44、Desktop 107、Release 7。
+- Release 全量测试 401/401：Domain 90、Application 133、Infrastructure 19、Rendering 44、Desktop 107、Release 8。
 - Release 构建 0 警告/0 错误；11 个项目的直接与传递依赖未发现已知 NuGet 漏洞。
-- 隔离数据目录真实启动保持响应，成功创建 SQLite 与滚动日志；完整记录见 `docs/progress/v0.1.10-desktop-street-navigation.md`。
+- 隔离数据目录真实启动保持响应，成功创建 SQLite 与滚动日志；便携 ZIP 与非管理员 MSI administrative image 冒烟通过。
+- 修复 Windows PowerShell 5.1 下原生参数兼容分支错误引用 `msiexec` 开关的问题；完整记录见 `docs/progress/v0.1.10-desktop-street-navigation.md`。
 
 ## [0.1.9] - 2026-08-05
 

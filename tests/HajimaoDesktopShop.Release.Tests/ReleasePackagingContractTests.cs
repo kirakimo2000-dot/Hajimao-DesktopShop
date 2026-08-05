@@ -207,6 +207,20 @@ public sealed class ReleasePackagingContractTests
     }
 
     [Fact]
+    public void SmokeScript_WindowsPowerShellFallbackDoesNotQuoteNativeSwitches()
+    {
+        var script = File.ReadAllText(_root.File("scripts", "test-release.ps1"));
+        var functionStart = script.IndexOf("function Quote-NativeArgument", StringComparison.Ordinal);
+        var functionEnd = script.IndexOf("function Invoke-MsiExec", functionStart, StringComparison.Ordinal);
+        Assert.True(functionStart >= 0);
+        Assert.True(functionEnd > functionStart);
+        var quoteFunction = script[functionStart..functionEnd];
+
+        Assert.Contains("if ($Value -notmatch '\\s')", quoteFunction, StringComparison.Ordinal);
+        Assert.Contains("return $Value", quoteFunction, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ReleaseWorkflow_RequiresFullPerMachineMsiSmoke()
     {
         var workflow = File.ReadAllText(
