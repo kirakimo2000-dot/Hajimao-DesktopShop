@@ -64,12 +64,56 @@ public sealed class BusinessShopSceneRendererTests
         Assert.Equal(capped, overflow);
     }
 
-    private static string RenderFrame(int animationFrame, bool reduceMotion, int queueLength = 3)
+    [Fact]
+    public void Renderer_ShowsNoJourneyActorBeforeTheFirstVisitor()
+    {
+        var empty = RenderFrame(
+            animationFrame: 0,
+            reduceMotion: false,
+            queueLength: 0,
+            visitors: 0);
+        var active = RenderFrame(
+            animationFrame: 0,
+            reduceMotion: false,
+            queueLength: 0,
+            visitors: 1);
+
+        Assert.NotEqual(empty, active);
+    }
+
+    [Fact]
+    public void Renderer_MovesJourneyActorAcrossCustomerStages()
+    {
+        var entering = RenderFrame(
+            animationFrame: 0,
+            reduceMotion: false,
+            queueLength: 0,
+            visitors: 1);
+        var shelf = RenderFrame(
+            animationFrame: 40,
+            reduceMotion: false,
+            queueLength: 0,
+            visitors: 1);
+        var leaving = RenderFrame(
+            animationFrame: 88,
+            reduceMotion: false,
+            queueLength: 0,
+            visitors: 1);
+
+        Assert.NotEqual(entering, shelf);
+        Assert.NotEqual(shelf, leaving);
+    }
+
+    private static string RenderFrame(
+        int animationFrame,
+        bool reduceMotion,
+        int queueLength = 3,
+        int visitors = 3)
     {
         using var bitmap = new SKBitmap(420, 180);
         using var canvas = new SKCanvas(bitmap);
         using var renderer = new BusinessShopSceneRenderer();
-        var frame = CreateFrame(queueLength) with
+        var frame = CreateFrame(queueLength, visitors) with
         {
             AnimationFrame = animationFrame,
             ReduceMotion = reduceMotion
@@ -81,7 +125,7 @@ public sealed class BusinessShopSceneRendererTests
         return Convert.ToHexString(SHA256.HashData(encoded.ToArray()));
     }
 
-    private static BusinessShopSceneFrame CreateFrame(int queueLength)
+    private static BusinessShopSceneFrame CreateFrame(int queueLength, int visitors = 3)
     {
         var business = new BusinessSnapshot(
             1,
@@ -98,7 +142,7 @@ public sealed class BusinessShopSceneRendererTests
             ]);
         var operations = new StoreOperationsSnapshot(
             "corner-store",
-            3,
+            visitors,
             3,
             0,
             0,
