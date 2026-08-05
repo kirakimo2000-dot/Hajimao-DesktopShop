@@ -7,6 +7,8 @@ using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
+using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
@@ -94,6 +96,46 @@ public sealed class ManagementWindowTests
                 Assert.DoesNotContain(
                     FindLogicalChildren<Button>(window),
                     button => button.Content?.ToString() is "2x" or "4x" or "暂停" or "动画" or "特效" or "倍速");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void SelectShopObject_ShowsAccessibleDetailCardInMatchingSection()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                window.SelectShopObject(new BusinessShopInteractionTarget(
+                    BusinessShopInteractionKind.Employee,
+                    "starter-restocker",
+                    new LogicalPixelRect(0, 0, 1, 1)));
+                window.ApplyTemplate();
+                window.Measure(new Size(1180, 720));
+                window.Arrange(new Rect(0, 0, 1180, 720));
+                window.UpdateLayout();
+
+                Assert.Equal(ManagementSection.Employees, viewModel.SelectedSection);
+                var card = Assert.IsType<Border>(window.FindName("SelectedObjectCard"));
+                Assert.Equal(Visibility.Visible, card.Visibility);
+                Assert.Equal("当前店铺对象详情", AutomationProperties.GetName(card));
+                Assert.Equal("阿澄", viewModel.SelectedShopObject?.Title);
+                Assert.Equal("补货员", viewModel.SelectedShopObject?.CategoryText);
+                Assert.Contains(
+                    FindLogicalChildren<TextBlock>(card),
+                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
+                        == $"{nameof(MarketViewModel.SelectedShopObject)}.{nameof(ShopObjectDetailViewModel.Title)}");
+                Assert.Contains(
+                    FindLogicalChildren<TextBlock>(card),
+                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
+                        == $"{nameof(MarketViewModel.SelectedShopObject)}.{nameof(ShopObjectDetailViewModel.CategoryText)}");
             }
             finally
             {

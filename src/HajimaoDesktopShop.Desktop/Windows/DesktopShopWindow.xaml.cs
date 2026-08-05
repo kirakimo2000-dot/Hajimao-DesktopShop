@@ -4,6 +4,7 @@ using System.Windows.Input;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Services;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
+using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Windows;
 
@@ -35,6 +36,13 @@ public partial class DesktopShopWindow : Window
     }
 
     public event EventHandler? OpenManagementRequested;
+
+    public void SelectShopObject(BusinessShopInteractionTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        _viewModel.SelectShopObjectCommand.Execute(target);
+        OpenManagementRequested?.Invoke(this, EventArgs.Empty);
+    }
 
     private void OnSurfaceMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -119,6 +127,11 @@ public partial class DesktopShopWindow : Window
         object sender,
         CommercialStreetStorefrontClickedEventArgs e) =>
         _viewModel.DesktopNavigation.OpenStoreCommand.Execute(e.StoreId);
+
+    private void OnShopObjectClicked(
+        object sender,
+        BusinessShopObjectClickedEventArgs e) =>
+        SelectShopObject(e.Target);
 
     private int GetOpenedStoreCount() =>
         _viewModel.CommercialStreet.SceneFrame?.Snapshot.Stores.Count ?? 1;

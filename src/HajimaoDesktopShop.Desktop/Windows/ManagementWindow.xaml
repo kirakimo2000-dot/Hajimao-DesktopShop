@@ -92,6 +92,7 @@
                 <Border Grid.Row="0" Style="{DynamicResource PixelPanel}" Padding="0">
                     <controls:BusinessShopSceneControl x:Name="LiveScene"
                                                        Frame="{Binding SceneFrame}"
+                                                       ObjectClicked="OnShopObjectClicked"
                                                        AutomationProperties.Name="实时像素店铺场景" />
                 </Border>
 
@@ -216,6 +217,36 @@
                 <StackPanel>
                     <TextBlock Text="当前店铺" FontSize="17" FontWeight="Bold" />
                     <TextBlock Text="{Binding SelectedStoreName}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6,0,12" />
+                    <Border x:Name="SelectedObjectCard"
+                            Visibility="{Binding HasSelectedShopObject, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Background="{DynamicResource Brush.SurfaceElevated}"
+                            BorderBrush="{DynamicResource Brush.Primary}"
+                            BorderThickness="2"
+                            Padding="10"
+                            Margin="0,0,0,12"
+                            AutomationProperties.Name="当前店铺对象详情">
+                        <StackPanel>
+                            <TextBlock Text="{Binding SelectedShopObject.Title}"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource Brush.Primary}" />
+                            <TextBlock Text="{Binding SelectedShopObject.CategoryText}"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       FontSize="12"
+                                       Margin="0,3,0,0" />
+                            <TextBlock Text="{Binding SelectedShopObject.SummaryText}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding SelectedShopObject.StatusText}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       FontSize="12"
+                                       Margin="0,4,0,0" />
+                            <TextBlock Text="已进入对应管理页"
+                                       Foreground="{DynamicResource Brush.Primary}"
+                                       FontSize="11"
+                                       Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
                     <Border x:Name="OnboardingPanel"
                             Visibility="{Binding DataContext.Onboarding.IsVisible, ElementName=ManagementRoot, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Background="{DynamicResource Brush.SurfaceElevated}"
