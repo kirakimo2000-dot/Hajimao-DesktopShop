@@ -7,6 +7,7 @@
     <Grid Background="#17191D" ClipToBounds="True">
         <skia:SKElement x:Name="Surface"
                         PaintSurface="OnPaintSurface"
+                        MouseLeftButtonUp="OnMouseLeftButtonUp"
                         IgnorePixelScaling="True" />
     </Grid>
 </UserControl>
