@@ -98,7 +98,8 @@
 - [x] 动态任务栏上方窗口、工作区宽度夹取和滚轮镜头
 - [x] 三类人物八帧图集、连续表现时钟、店内与街区实际位移
 - [x] Release 全量测试、构建、漏洞审计和真实隔离启动
-- [ ] GitHub PR/标签/Release 与隔离工作区清理
+- [x] GitHub PR、Windows 管理员门禁与 squash 合并
+- [ ] v0.1.10 标签/Release 与隔离工作区清理
 - **Status:** release_closing
 
 ### Phase 16: 0.1.9 发布候选

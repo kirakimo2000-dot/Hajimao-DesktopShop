@@ -48,7 +48,7 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 
 0.1.10 完成无限横向街区、街区/店铺导航和八帧人物移动，同时保持 schema v6、离线同管线与固定现实 1x。后续继续使用 0.1.x 深化逐货架动作、直接对象交互和发布签名，不提前跳到 1.0。
 
-已验证发布物见 [GitHub Release v0.1.9](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.9)。
+已验证发布物见 [GitHub Release v0.1.10](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.10)。
 
 ## 运行
 
