@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Input;
 using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.Interactions;
 using SkiaSharp.Views.Desktop;
 using WpfUserControl = System.Windows.Controls.UserControl;
 
@@ -24,6 +26,30 @@ public partial class BusinessShopSceneControl : WpfUserControl
     }
 
     public bool UsesLogicalPixelScaling => SceneSurface.IgnorePixelScaling;
+
+    public event EventHandler<BusinessShopObjectClickedEventArgs>? ObjectClicked;
+
+    public BusinessShopInteractionTarget? HitTestObject(
+        double viewportX,
+        double viewportY,
+        int viewportWidth,
+        int viewportHeight)
+    {
+        if (Frame is null
+            || !LogicalPixelViewport.TryMapPoint(
+                viewportWidth,
+                viewportHeight,
+                BusinessShopSceneRenderer.LogicalWidth,
+                BusinessShopSceneRenderer.LogicalHeight,
+                viewportX,
+                viewportY,
+                out var point))
+        {
+            return null;
+        }
+
+        return BusinessShopInteractionMap.HitTest(Frame, point.X, point.Y);
+    }
 
     private static void OnFrameChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
@@ -54,5 +80,22 @@ public partial class BusinessShopSceneControl : WpfUserControl
         }
 
         _renderer.Render(e.Surface.Canvas, e.Info, Frame);
+    }
+
+    private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var point = e.GetPosition(SceneSurface);
+        var target = HitTestObject(
+            point.X,
+            point.Y,
+            Math.Max(0, (int)Math.Floor(SceneSurface.ActualWidth)),
+            Math.Max(0, (int)Math.Floor(SceneSurface.ActualHeight)));
+        if (target is null)
+        {
+            return;
+        }
+
+        ObjectClicked?.Invoke(this, new BusinessShopObjectClickedEventArgs(target));
+        e.Handled = true;
     }
 }

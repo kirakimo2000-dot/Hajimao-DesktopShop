@@ -60,7 +60,9 @@
 
         <Grid x:Name="StorePage"
               Visibility="{Binding DesktopNavigation.IsStore, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <controls:BusinessDesktopShopSurfaceControl x:Name="StoreSurface" Frame="{Binding DesktopFrame}" />
+            <controls:BusinessDesktopShopSurfaceControl x:Name="StoreSurface"
+                                                        Frame="{Binding DesktopFrame}"
+                                                        ObjectClicked="OnShopObjectClicked" />
             <Canvas>
                 <Button Canvas.Left="6" Canvas.Top="5" Width="68" Height="30"
                         Background="#D931262A" Foreground="#F4EBDD"

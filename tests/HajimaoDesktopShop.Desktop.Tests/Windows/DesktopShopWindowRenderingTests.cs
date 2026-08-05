@@ -4,6 +4,8 @@ using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
+using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
@@ -81,6 +83,43 @@ public sealed class DesktopShopWindowRenderingTests
 
                 management.Close();
                 desktop.Close();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(15)), "WPF verification thread timed out.");
+        if (failure is not null)
+        {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
+    [Fact]
+    public void SelectShopObject_OpensItsManagementSectionAndRequestsManagementWindow()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var viewModel = new MarketViewModel(MarketTestSession.Create());
+                var window = new DesktopShopWindow(viewModel);
+                var requestCount = 0;
+                window.OpenManagementRequested += (_, _) => requestCount++;
+
+                window.SelectShopObject(new BusinessShopInteractionTarget(
+                    BusinessShopInteractionKind.Shelf,
+                    "ambient",
+                    new LogicalPixelRect(0, 0, 1, 1)));
+
+                Assert.Equal(ManagementSection.Products, viewModel.SelectedSection);
+                Assert.Equal("常温货架", viewModel.SelectedShopObject?.Title);
+                Assert.Equal(1, requestCount);
+                window.Close();
             }
             catch (Exception exception)
             {

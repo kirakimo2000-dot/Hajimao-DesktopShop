@@ -2,6 +2,7 @@ using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Rendering.Customers;
+using HajimaoDesktopShop.Rendering.Interactions;
 using HajimaoDesktopShop.Rendering.PixelArt;
 using SkiaSharp;
 
@@ -86,33 +87,24 @@ public sealed class BusinessShopSceneRenderer : IDisposable
 
         Fill(canvas, 322, 106, 84, 5, "#9A6747");
         Fill(canvas, 326, 111, 76, 31, "#6B4634");
-        var cashier = employees.FirstOrDefault(employee => employee.Role == EmployeeRole.Cashier);
-        if (cashier is not null)
+        foreach (var pose in BusinessShopEmployeeChoreography.CreatePoses(
+                     employees,
+                     frame.AnimationFrame,
+                     frame.ReduceMotion))
         {
-            var cashierX = CharacterMotion.PingPong(
-                frame.AnimationFrame,
-                0,
-                350,
-                362,
-                2,
-                frame.ReduceMotion);
-            DrawSprite(canvas, PixelSpriteId.Cashier, cashierX, 142, frame);
+            var sprite = pose.Role switch
+            {
+                EmployeeRole.Cashier => PixelSpriteId.Cashier,
+                EmployeeRole.Restocker => PixelSpriteId.Restocker,
+                _ => PixelSpriteId.Customer
+            };
+            DrawSprite(canvas, sprite, pose.X, pose.Y, frame);
+            if (pose.IsSupporting)
+            {
+                Fill(canvas, pose.X - 5, pose.Y + 3, 10, 3, "#65B8C8");
+            }
         }
 
-        var restocker = employees.FirstOrDefault(employee => employee.Role == EmployeeRole.Restocker);
-        if (restocker is not null)
-        {
-            var restockerX = CharacterMotion.PingPong(
-                frame.AnimationFrame,
-                9,
-                30,
-                230,
-                4,
-                frame.ReduceMotion);
-            DrawSprite(canvas, PixelSpriteId.Restocker, restockerX, 142, frame);
-        }
-
-        DrawSupportingEmployees(canvas, employees, frame);
         var journeyDrawn = DrawCustomerJourney(canvas, store, operations, frame);
 
         var queueLength = Math.Min(
@@ -203,29 +195,6 @@ public sealed class BusinessShopSceneRenderer : IDisposable
                 ? "#E15A5A"
                 : product.Quantity * 4 < product.Capacity ? "#F1B844" : "#72C986";
             Fill(canvas, x + 2, 105, 12, 3, color);
-        }
-    }
-
-    private void DrawSupportingEmployees(
-        SKCanvas canvas,
-        IReadOnlyList<HajimaoDesktopShop.Application.Business.Employees.EmployeeOperationsEmployeeSnapshot> employees,
-        BusinessShopSceneFrame frame)
-    {
-        var supporting = employees
-            .Where(employee => employee.Role is not EmployeeRole.Cashier and not EmployeeRole.Restocker)
-            .Take(2)
-            .ToArray();
-        for (var index = 0; index < supporting.Length; index++)
-        {
-            var anchorX = CharacterMotion.PingPong(
-                frame.AnimationFrame,
-                index * 11,
-                112 + index * 40,
-                176 + index * 40,
-                4,
-                frame.ReduceMotion);
-            DrawSprite(canvas, PixelSpriteId.Customer, anchorX, 142, frame);
-            Fill(canvas, anchorX - 5, 145, 10, 3, "#65B8C8");
         }
     }
 

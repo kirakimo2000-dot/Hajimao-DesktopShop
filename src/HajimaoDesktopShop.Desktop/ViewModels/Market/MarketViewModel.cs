@@ -6,7 +6,9 @@ using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
+using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
@@ -31,6 +33,8 @@ public sealed class MarketViewModel : ObservableObject
     private int _animationFrame;
     private BusinessShopSceneFrame? _sceneFrame;
     private BusinessShopFrame? _desktopFrame;
+    private BusinessShopInteractionTarget? _selectedShopTarget;
+    private ShopObjectDetailViewModel? _selectedShopObject;
 
     public MarketViewModel(BusinessSession session, Func<bool>? reduceMotion = null)
     {
@@ -40,6 +44,7 @@ public sealed class MarketViewModel : ObservableObject
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
         GoToOnboardingTaskCommand = new RelayCommand(GoToOnboardingTask);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
+        SelectShopObjectCommand = new RelayCommand<BusinessShopInteractionTarget>(SelectShopObject);
         ToggleLockCommand = new RelayCommand(ToggleLock);
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
         ToggleMuteCommand = new RelayCommand(ToggleMute);
@@ -81,6 +86,8 @@ public sealed class MarketViewModel : ObservableObject
     public IRelayCommand GoToOnboardingTaskCommand { get; }
 
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
+
+    public IRelayCommand<BusinessShopInteractionTarget> SelectShopObjectCommand { get; }
 
     public IRelayCommand ToggleLockCommand { get; }
 
@@ -225,6 +232,20 @@ public sealed class MarketViewModel : ObservableObject
         private set => SetProperty(ref _desktopFrame, value);
     }
 
+    public ShopObjectDetailViewModel? SelectedShopObject
+    {
+        get => _selectedShopObject;
+        private set
+        {
+            if (SetProperty(ref _selectedShopObject, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedShopObject));
+            }
+        }
+    }
+
+    public bool HasSelectedShopObject => SelectedShopObject is not null;
+
     public void Refresh()
     {
         var snapshot = _session.Simulation.GetSnapshot();
@@ -280,6 +301,7 @@ public sealed class MarketViewModel : ObservableObject
             CustomerCountText,
             IsLocked,
             IsClickThrough);
+        RefreshSelectedShopObject(snapshot);
         Overview.Synchronize(Stores);
         ProductManagement.Refresh();
         EmployeeManagement.Refresh();
@@ -340,7 +362,115 @@ public sealed class MarketViewModel : ObservableObject
 
         SelectedStoreId = store.Id;
         SelectedStoreName = store.Name;
+        _selectedShopTarget = null;
+        SelectedShopObject = null;
         Refresh();
+    }
+
+    private void SelectShopObject(BusinessShopInteractionTarget? target)
+    {
+        if (target is null || SceneFrame is null)
+        {
+            return;
+        }
+
+        _selectedShopTarget = target;
+        SelectedSection = target.Kind == BusinessShopInteractionKind.Shelf
+            ? ManagementSection.Products
+            : ManagementSection.Employees;
+        RefreshSelectedShopObject(SceneFrame.Snapshot);
+    }
+
+    private void RefreshSelectedShopObject(BusinessSimulationSnapshot snapshot)
+    {
+        if (_selectedShopTarget is null)
+        {
+            SelectedShopObject = null;
+            return;
+        }
+
+        SelectedShopObject = _selectedShopTarget.Kind switch
+        {
+            BusinessShopInteractionKind.Shelf => CreateShelfDetail(snapshot, _selectedShopTarget.Key),
+            BusinessShopInteractionKind.Employee => CreateEmployeeDetail(snapshot, _selectedShopTarget.Key),
+            _ => null
+        };
+        if (SelectedShopObject is null)
+        {
+            _selectedShopTarget = null;
+        }
+    }
+
+    private ShopObjectDetailViewModel? CreateShelfDetail(
+        BusinessSimulationSnapshot snapshot,
+        string shelfKind)
+    {
+        var store = snapshot.Business.Stores.SingleOrDefault(item => item.Id == SelectedStoreId);
+        if (store is null)
+        {
+            return null;
+        }
+
+        var products = store.Products
+            .Where(product => string.Equals(
+                product.ShelfKind,
+                shelfKind,
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var title = shelfKind.ToLowerInvariant() switch
+        {
+            "chilled" => "冷藏货架",
+            "frozen" => "冷冻货架",
+            _ => "常温货架"
+        };
+        var quantity = products.Sum(product => product.Quantity);
+        var capacity = products.Sum(product => product.Capacity);
+        var outOfStock = products.Count(product => product.Quantity == 0);
+        var lowStock = products.Count(product =>
+            product.Quantity > 0 && product.Quantity * 4 < product.Capacity);
+        var averageMargin = products.Length == 0
+            ? 0
+            : (long)Math.Round(products.Average(product => product.UnitGrossProfitCents));
+        return new ShopObjectDetailViewModel(
+            BusinessShopInteractionKind.Shelf,
+            shelfKind,
+            title,
+            "商品与库存",
+            $"SKU {products.Length} · 库存 {quantity}/{capacity}",
+            $"缺货 {outOfStock} · 低库存 {lowStock} · 平均毛利 {FormatMoney(averageMargin)}");
+    }
+
+    private ShopObjectDetailViewModel? CreateEmployeeDetail(
+        BusinessSimulationSnapshot snapshot,
+        string employeeId)
+    {
+        var employee = snapshot.Employees.Employees.SingleOrDefault(item =>
+            item.EmployeeId == employeeId && item.StoreId == SelectedStoreId);
+        if (employee is null)
+        {
+            return null;
+        }
+
+        var role = employee.Role switch
+        {
+            EmployeeRole.Cashier => "收银员",
+            EmployeeRole.Restocker => "补货员",
+            EmployeeRole.SalesAssistant => "导购员",
+            EmployeeRole.Cleaner => "清洁员",
+            EmployeeRole.Manager => "店长",
+            EmployeeRole.Buyer => "采购员",
+            _ => employee.Role.ToString()
+        };
+        var shift = employee.IsAlwaysOn
+            ? "全天（兼容）"
+            : $"{FormatMinute(employee.ShiftStartMinute)}–{FormatMinute(employee.ShiftEndMinute)}";
+        return new ShopObjectDetailViewModel(
+            BusinessShopInteractionKind.Employee,
+            employee.EmployeeId,
+            employee.Name,
+            role,
+            $"效率 {FormatPermille(employee.EffectiveEfficiencyPermille)} · 工资 {FormatMoney(employee.HourlyWageCents)}/小时",
+            $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift}");
     }
 
     private void SelectStoreById(string storeId) =>
@@ -364,6 +494,11 @@ public sealed class MarketViewModel : ObservableObject
 
     private static string FormatMoney(long cents) =>
         string.Format(CultureInfo.InvariantCulture, "¥{0:N2}", cents / 100m);
+
+    private static string FormatPermille(int value) =>
+        string.Format(CultureInfo.InvariantCulture, "{0:0}%", value / 10m);
+
+    private static string FormatMinute(int minute) => $"{minute / 60:00}:{minute % 60:00}";
 
     private static string FormatGameTime(long gameMinute)
     {
