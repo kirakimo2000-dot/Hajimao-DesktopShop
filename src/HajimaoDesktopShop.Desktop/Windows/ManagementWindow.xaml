@@ -241,6 +241,46 @@
                                        Foreground="{DynamicResource Brush.TextMuted}"
                                        FontSize="12"
                                        Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding SelectedShopObject.ActionHintText}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.Primary}"
+                                       FontSize="12"
+                                       Margin="0,6,0,0" />
+                            <WrapPanel Margin="0,8,0,0">
+                                <Button x:Name="SelectedShelfQuickRestock"
+                                        Content="快速进货"
+                                        Style="{DynamicResource PrimaryPixelButton}"
+                                        Command="{Binding QuickRestockSelectedShelfCommand}"
+                                        Visibility="{Binding IsShelfObjectSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        AutomationProperties.Name="为货架最紧缺商品快速进货" />
+                                <Button x:Name="SelectedShelfAutoRestock"
+                                        Content="{Binding SelectedShelfAutoRestockActionText}"
+                                        Style="{DynamicResource PixelButton}"
+                                        Margin="5,0,0,0"
+                                        Command="{Binding ToggleAutoRestockSelectedShelfCommand}"
+                                        Visibility="{Binding IsShelfObjectSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        AutomationProperties.Name="切换货架最紧缺商品自动补货" />
+                                <Button x:Name="SelectedEmployeeTrain"
+                                        Content="培训"
+                                        Style="{DynamicResource PrimaryPixelButton}"
+                                        Command="{Binding TrainSelectedEmployeeCommand}"
+                                        Visibility="{Binding IsEmployeeObjectSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        AutomationProperties.Name="培训当前员工" />
+                                <Button x:Name="SelectedEmployeeDayShift"
+                                        Content="白班"
+                                        Style="{DynamicResource PixelButton}"
+                                        Margin="5,0,0,0"
+                                        Command="{Binding SetSelectedEmployeeDayShiftCommand}"
+                                        Visibility="{Binding IsEmployeeObjectSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        AutomationProperties.Name="将当前员工设为白班" />
+                                <Button x:Name="SelectedEmployeeNightShift"
+                                        Content="夜班"
+                                        Style="{DynamicResource PixelButton}"
+                                        Margin="5,0,0,0"
+                                        Command="{Binding SetSelectedEmployeeNightShiftCommand}"
+                                        Visibility="{Binding IsEmployeeObjectSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        AutomationProperties.Name="将当前员工设为夜班" />
+                            </WrapPanel>
                             <TextBlock Text="已进入对应管理页"
                                        Foreground="{DynamicResource Brush.Primary}"
                                        FontSize="11"

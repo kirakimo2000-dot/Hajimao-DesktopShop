@@ -258,6 +258,8 @@ public sealed class MarketViewModel : ObservableObject
             if (SetProperty(ref _selectedShopObject, value))
             {
                 OnPropertyChanged(nameof(HasSelectedShopObject));
+                OnPropertyChanged(nameof(IsShelfObjectSelected));
+                OnPropertyChanged(nameof(IsEmployeeObjectSelected));
                 OnPropertyChanged(nameof(SelectedShelfAutoRestockActionText));
                 _shopObjectActions.NotifySelectionChanged();
             }
@@ -265,6 +267,10 @@ public sealed class MarketViewModel : ObservableObject
     }
 
     public bool HasSelectedShopObject => SelectedShopObject is not null;
+
+    public bool IsShelfObjectSelected => SelectedShopObject?.IsShelf == true;
+
+    public bool IsEmployeeObjectSelected => SelectedShopObject?.IsEmployee == true;
 
     public string SelectedShelfAutoRestockActionText =>
         _shopObjectActions.AutoRestockActionText;
