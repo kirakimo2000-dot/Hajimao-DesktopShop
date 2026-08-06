@@ -21,7 +21,9 @@ public sealed record EmployeeOperationsEmployeeSnapshot(
     string StoreId,
     int ShiftStartMinute,
     int ShiftEndMinute,
-    bool IsAlwaysOn);
+    bool IsAlwaysOn,
+    EmployeeTaskSnapshot? CurrentTask = null,
+    IReadOnlyList<EmployeeTaskKind>? TaskPriorities = null);
 
 internal sealed record EmployeeRuntimeAssignment(
     string StoreId,

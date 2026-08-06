@@ -21,6 +21,8 @@ public sealed class BusinessSimulation
     private readonly EmployeeOperationsService _employeeOperations;
     private readonly CommercialStreetTrafficService _streetTraffic;
     private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
+    private readonly HashSet<EmployeeId> _lastUnpaidEmployees = [];
+    private readonly HashSet<EmployeeId> _lastRestingEmployees = [];
     private BusinessDayReport? _lastCompletedDay;
 
     public BusinessSimulation(
@@ -107,11 +109,12 @@ public sealed class BusinessSimulation
                     business.Stores.Single(snapshot => snapshot.Id == store.StoreId)))
                 .ToArray();
             var street = CreateStreetSnapshot(business, stores);
+            var employeeTasks = CreateEmployeeTasks(business);
             return new BusinessSimulationSnapshot(
                 _clock.GameMinute,
                 business,
                 Array.AsReadOnly(stores),
-                _employeeOperations.GetSnapshot(),
+                _employeeOperations.GetSnapshot(employeeTasks),
                 street,
                 _lastCompletedDay);
         }
@@ -361,6 +364,8 @@ public sealed class BusinessSimulation
     private void ProcessTick()
     {
         SynchronizeStores();
+        _lastUnpaidEmployees.Clear();
+        _lastRestingEmployees.Clear();
         foreach (var store in _stores.Values.OrderBy(runtime => runtime.StoreId, StringComparer.Ordinal))
         {
             ProcessStoreOperations(store);
@@ -440,17 +445,28 @@ public sealed class BusinessSimulation
     private void ProcessStoreOperations(StoreRuntime runtime)
     {
         var paidEmployees = PayEmployees(runtime);
-        ProcessCleaners(runtime, paidEmployees);
-        runtime.ServicePermille = CalculateServicePermille(runtime, paidEmployees);
+        var store = _game.GetSnapshot().Stores.Single(snapshot => snapshot.Id == runtime.StoreId);
+        var employeeTasks = CreateEmployeeTasks(runtime, store);
+        ProcessCleaners(runtime, paidEmployees, employeeTasks);
+        runtime.ServicePermille = CalculateServicePermille(runtime, paidEmployees, employeeTasks);
 
         var cashier = runtime.Employees.FirstOrDefault(employee =>
-            employee.Role == EmployeeRole.Cashier && paidEmployees.Contains(employee.Id));
+            paidEmployees.Contains(employee.Id)
+            && employeeTasks.GetValueOrDefault(employee.Id.Value)?.Kind == EmployeeTaskKind.Checkout);
         ProcessCheckout(runtime, cashier);
     }
 
     private HashSet<EmployeeId> PayEmployees(StoreRuntime runtime)
     {
         var paid = new HashSet<EmployeeId>();
+        foreach (var assignment in _employeeOperations.GetRuntimeAssignments().Where(assignment =>
+                     string.Equals(assignment.StoreId, runtime.StoreId, StringComparison.Ordinal)
+                     && (!assignment.Shift.ContainsMinute(CurrentMinuteOfDay)
+                         || !assignment.Employee.CanWork)))
+        {
+            _lastRestingEmployees.Add(assignment.Employee.Id);
+        }
+
         var available = _employeeOperations.ResolveAvailableEmployees(
             runtime.StoreId,
             CurrentMinuteOfDay);
@@ -465,35 +481,36 @@ public sealed class BusinessSimulation
             else
             {
                 runtime.WagePaymentFailures++;
+                _lastUnpaidEmployees.Add(employee.Id);
             }
         }
 
         return paid;
     }
 
-    private void ProcessCleaners(StoreRuntime runtime, HashSet<EmployeeId> paidEmployees)
+    private void ProcessCleaners(
+        StoreRuntime runtime,
+        HashSet<EmployeeId> paidEmployees,
+        IReadOnlyDictionary<string, EmployeeTaskSnapshot> employeeTasks)
     {
         foreach (var cleaner in runtime.Employees.Where(employee =>
-                     employee.Role == EmployeeRole.Cleaner && paidEmployees.Contains(employee.Id)))
+                     paidEmployees.Contains(employee.Id)
+                     && employeeTasks.GetValueOrDefault(employee.Id.Value)?.Kind == EmployeeTaskKind.Clean))
         {
-            var scaledRecovery = checked(
-                (long)_options.CleanerBaseRecoveryPermille
-                * cleaner.EffectiveEfficiencyPermille
-                / 1_000L);
-            var recovery = checked((int)Math.Clamp(scaledRecovery, 1L, 1_000L));
+            var recovery = CalculateCleanerRecovery(cleaner);
             runtime.CleanlinessPermille = Math.Min(1_000, runtime.CleanlinessPermille + recovery);
         }
     }
 
     private static int CalculateServicePermille(
         StoreRuntime runtime,
-        HashSet<EmployeeId> paidEmployees)
+        HashSet<EmployeeId> paidEmployees,
+        IReadOnlyDictionary<string, EmployeeTaskSnapshot> employeeTasks)
     {
         var customerFacing = runtime.Employees
             .Where(employee => paidEmployees.Contains(employee.Id)
-                && employee.Role is EmployeeRole.Cashier
-                    or EmployeeRole.SalesAssistant
-                    or EmployeeRole.Manager)
+                && employeeTasks.GetValueOrDefault(employee.Id.Value)?.Kind
+                    == EmployeeTaskKind.CustomerService)
             .ToArray();
         if (customerFacing.Length == 0)
         {
@@ -504,6 +521,147 @@ public sealed class BusinessSimulation
             / customerFacing.Length;
         return checked((int)Math.Clamp(average, 0L, 2_000L));
     }
+
+    private IReadOnlyDictionary<string, EmployeeTaskSnapshot> CreateEmployeeTasks(
+        BusinessSnapshot business)
+    {
+        var tasks = new Dictionary<string, EmployeeTaskSnapshot>(StringComparer.Ordinal);
+        foreach (var runtime in _stores.Values.OrderBy(store => store.StoreId, StringComparer.Ordinal))
+        {
+            var store = business.Stores.Single(snapshot => snapshot.Id == runtime.StoreId);
+            foreach (var pair in CreateEmployeeTasks(runtime, store))
+            {
+                tasks.Add(pair.Key, pair.Value);
+            }
+        }
+
+        return tasks;
+    }
+
+    private IReadOnlyDictionary<string, EmployeeTaskSnapshot> CreateEmployeeTasks(
+        StoreRuntime runtime,
+        BusinessStoreSnapshot store)
+    {
+        var assignments = _employeeOperations.GetRuntimeAssignments()
+            .Where(assignment => string.Equals(
+                assignment.StoreId,
+                runtime.StoreId,
+                StringComparison.Ordinal))
+            .ToArray();
+        var workers = assignments
+            .Select(assignment => new EmployeeTaskWorker(
+                assignment.Employee.Id.Value,
+                assignment.Employee.Role,
+                ResolveTaskAvailability(assignment)))
+            .ToArray();
+        var planned = EmployeeTaskPlanner.Plan(workers, CreateTaskDemand(runtime, store));
+        return AdjustTaskDurations(runtime, planned);
+    }
+
+    private EmployeeTaskAvailability ResolveTaskAvailability(EmployeeRuntimeAssignment assignment)
+    {
+        if (_lastRestingEmployees.Contains(assignment.Employee.Id)
+            || !assignment.Shift.ContainsMinute(CurrentMinuteOfDay)
+            || !assignment.Employee.CanWork)
+        {
+            return EmployeeTaskAvailability.Resting;
+        }
+
+        return _lastUnpaidEmployees.Contains(assignment.Employee.Id)
+            ? EmployeeTaskAvailability.Unpaid
+            : EmployeeTaskAvailability.Working;
+    }
+
+    private StoreTaskDemand CreateTaskDemand(StoreRuntime runtime, BusinessStoreSnapshot store)
+    {
+        var checkoutProductId = runtime.ActiveCheckout?.ProductId;
+        if (checkoutProductId is null)
+        {
+            runtime.CheckoutQueue.TryPeek(out checkoutProductId);
+        }
+
+        var checkoutProduct = checkoutProductId is null
+            ? null
+            : store.Products.Single(product => product.Id == checkoutProductId);
+        var checkout = checkoutProduct is null
+            ? null
+            : new EmployeeTaskTarget(
+                checkoutProduct.Id,
+                checkoutProduct.Name,
+                runtime.ActiveCheckout?.RemainingMinutes ?? _options.BaseCheckoutMinutes);
+
+        var inboundOrder = _game.GetProcurementSnapshot().PendingOrders
+            .Where(order => order.StoreId == runtime.StoreId)
+            .OrderBy(order => order.RemainingMinutes)
+            .ThenBy(order => order.OrderId)
+            .FirstOrDefault();
+        var inboundProduct = inboundOrder is null
+            ? null
+            : store.Products.Single(product => product.Id == inboundOrder.ProductId);
+        var restock = inboundOrder is null || inboundProduct is null
+            ? null
+            : new EmployeeTaskTarget(
+                inboundProduct.ShelfKind,
+                inboundProduct.Name,
+                inboundOrder.RemainingMinutes);
+
+        var clean = runtime.CleanlinessPermille >= 1_000
+            ? null
+            : new EmployeeTaskTarget(
+                runtime.StoreId,
+                $"{store.Name}地面",
+                DivideRoundUp(
+                    1_000 - runtime.CleanlinessPermille,
+                    _options.CleanerBaseRecoveryPermille));
+        var customerService = new EmployeeTaskTarget(
+            runtime.StoreId,
+            "店内顾客",
+            1);
+        return new StoreTaskDemand(checkout, restock, clean, customerService);
+    }
+
+    private IReadOnlyDictionary<string, EmployeeTaskSnapshot> AdjustTaskDurations(
+        StoreRuntime runtime,
+        IReadOnlyDictionary<string, EmployeeTaskSnapshot> planned)
+    {
+        var adjusted = new Dictionary<string, EmployeeTaskSnapshot>(planned, StringComparer.Ordinal);
+        foreach (var pair in planned)
+        {
+            var employee = runtime.Employees.Single(item => item.Id.Value == pair.Key);
+            if (pair.Value.Kind == EmployeeTaskKind.Checkout
+                && runtime.ActiveCheckout is null)
+            {
+                adjusted[pair.Key] = pair.Value with
+                {
+                    RemainingMinutes = employee.CalculateTaskMinutes(_options.BaseCheckoutMinutes)
+                };
+            }
+            else if (pair.Value.Kind == EmployeeTaskKind.Clean)
+            {
+                var recovery = CalculateCleanerRecovery(employee);
+                adjusted[pair.Key] = pair.Value with
+                {
+                    RemainingMinutes = DivideRoundUp(
+                        1_000 - runtime.CleanlinessPermille,
+                        recovery)
+                };
+            }
+        }
+
+        return adjusted;
+    }
+
+    private int CalculateCleanerRecovery(Employee cleaner)
+    {
+        var scaledRecovery = checked(
+            (long)_options.CleanerBaseRecoveryPermille
+            * cleaner.EffectiveEfficiencyPermille
+            / 1_000L);
+        return checked((int)Math.Clamp(scaledRecovery, 1L, 1_000L));
+    }
+
+    private static int DivideRoundUp(int dividend, int divisor) =>
+        checked((dividend + divisor - 1) / divisor);
 
     private void ProcessCheckout(StoreRuntime runtime, Employee? cashier)
     {
