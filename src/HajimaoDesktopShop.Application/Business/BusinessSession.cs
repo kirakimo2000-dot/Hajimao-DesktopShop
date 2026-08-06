@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
@@ -14,11 +15,14 @@ public sealed class BusinessSession
     {
         Game = game;
         Simulation = simulation;
+        Strategy = new StoreStrategyService(game);
     }
 
     public BusinessGameService Game { get; }
 
     public BusinessSimulation Simulation { get; }
+
+    public StoreStrategyService Strategy { get; }
 
     public static BusinessSession Create(
         IEnumerable<ProductDefinition> productDefinitions,
