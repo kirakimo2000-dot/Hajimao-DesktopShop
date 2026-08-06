@@ -5,22 +5,6 @@ namespace HajimaoDesktopShop.Rendering.Tests.PixelArt;
 public sealed class CharacterMotionTests
 {
     [Theory]
-    [InlineData(0, 0)]
-    [InlineData(7, 7)]
-    [InlineData(8, 0)]
-    [InlineData(17, 1)]
-    public void FrameIndex_WrapsEightFrameLoop(long presentationTick, int expected)
-    {
-        Assert.Equal(expected, CharacterMotion.FrameIndex(presentationTick, 8, reduceMotion: false));
-    }
-
-    [Fact]
-    public void FrameIndex_ReducedMotionAlwaysUsesFrameZero()
-    {
-        Assert.Equal(0, CharacterMotion.FrameIndex(7, 8, reduceMotion: true));
-    }
-
-    [Theory]
     [InlineData(0, 0, 40)]
     [InlineData(1, 0, 80)]
     [InlineData(5, 0, 240)]

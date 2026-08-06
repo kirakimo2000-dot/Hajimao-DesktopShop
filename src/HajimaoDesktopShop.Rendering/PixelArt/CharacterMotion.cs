@@ -2,17 +2,6 @@ namespace HajimaoDesktopShop.Rendering.PixelArt;
 
 public static class CharacterMotion
 {
-    public static int FrameIndex(long presentationTick, int frameCount, bool reduceMotion)
-    {
-        ArgumentOutOfRangeException.ThrowIfLessThan(frameCount, 1);
-        if (reduceMotion)
-        {
-            return 0;
-        }
-
-        return (int)((presentationTick % frameCount + frameCount) % frameCount);
-    }
-
     public static int HorizontalLoop(
         long presentationTick,
         int actorSeed,
