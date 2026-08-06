@@ -56,6 +56,25 @@ function Get-ThreePartVersion {
     return $match.Groups[1].Value
 }
 
+function Assert-PublishedVersion {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExecutablePath,
+        [Parameter(Mandatory = $true)][string]$ExpectedVersion,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if (-not (Test-Path -LiteralPath $ExecutablePath -PathType Leaf)) {
+        throw "$Label executable was not found: $ExecutablePath"
+    }
+
+    $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($ExecutablePath)
+    $fileVersion = Get-ThreePartVersion -Value $versionInfo.FileVersion
+    $productVersion = Get-ThreePartVersion -Value $versionInfo.ProductVersion
+    if ($fileVersion -ne $ExpectedVersion -or $productVersion -ne $ExpectedVersion) {
+        throw "$Label executable version mismatch. File=$fileVersion Product=$productVersion Expected=$ExpectedVersion."
+    }
+}
+
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $versionPropsPath = Join-Path $repoRoot 'Directory.Build.props'
 [xml]$versionProps = Get-Content -LiteralPath $versionPropsPath -Raw
@@ -77,12 +96,15 @@ $artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'artifacts')
 $releaseRoot = Assert-ChildPath -Parent $artifactsRoot -Target (Join-Path $artifactsRoot "release\$Version")
 $stagingRoot = Assert-ChildPath -Parent $artifactsRoot -Target (Join-Path $artifactsRoot "staging\$Version")
 $portableDir = Assert-ChildPath -Parent $artifactsRoot -Target (Join-Path $stagingRoot 'portable')
+$installerPublishDir = Assert-ChildPath -Parent $artifactsRoot -Target (Join-Path $stagingRoot 'installer-publish')
 $installerOutput = Assert-ChildPath -Parent $artifactsRoot -Target (Join-Path $stagingRoot 'installer')
 
 New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
 Remove-OwnedPath -ArtifactsRoot $artifactsRoot -Target $releaseRoot
 Remove-OwnedPath -ArtifactsRoot $artifactsRoot -Target $stagingRoot
-New-Item -ItemType Directory -Path $releaseRoot, $portableDir, $installerOutput -Force | Out-Null
+New-Item -ItemType Directory `
+    -Path $releaseRoot, $portableDir, $installerPublishDir, $installerOutput `
+    -Force | Out-Null
 
 $completed = $false
 Push-Location $repoRoot
@@ -98,30 +120,61 @@ try {
 
     & dotnet publish src/HajimaoDesktopShop.Desktop/HajimaoDesktopShop.Desktop.csproj `
         -c Release -r win-x64 --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:IncludeAllContentForSelfExtract=true `
+        -p:EnableCompressionInSingleFile=true `
         -p:DebugType=None -p:DebugSymbols=false `
         -p:IncludeSourceRevisionInInformationalVersion=false `
         -o $portableDir --nologo
-    Assert-LastExitCode 'dotnet publish'
+    Assert-LastExitCode 'portable dotnet publish'
 
     Get-ChildItem -LiteralPath $portableDir -Recurse -File -Filter '*.pdb' | ForEach-Object {
         $pdbPath = Assert-ChildPath -Parent $stagingRoot -Target $_.FullName
         Remove-Item -LiteralPath $pdbPath -Force
     }
 
-    $executablePath = Join-Path $portableDir 'HajimaoDesktopShop.Desktop.exe'
-    if (-not (Test-Path -LiteralPath $executablePath -PathType Leaf)) {
-        throw "Published executable was not found: $executablePath"
+    $portableHostPath = Join-Path $portableDir 'HajimaoDesktopShop.Desktop.exe'
+    if (-not (Test-Path -LiteralPath $portableHostPath -PathType Leaf)) {
+        throw "Portable host executable was not found: $portableHostPath"
     }
 
-    $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($executablePath)
-    $fileVersion = Get-ThreePartVersion -Value $versionInfo.FileVersion
-    $productVersion = Get-ThreePartVersion -Value $versionInfo.ProductVersion
-    if ($fileVersion -ne $Version -or $productVersion -ne $Version) {
-        throw "Published executable version mismatch. File=$fileVersion Product=$productVersion Expected=$Version."
+    $portableExecutablePath = Join-Path $portableDir 'Hajimao DesktopShop.exe'
+    Move-Item -LiteralPath $portableHostPath -Destination $portableExecutablePath
+    $portableFiles = @(Get-ChildItem -LiteralPath $portableDir -File -Recurse)
+    if ($portableFiles.Count -ne 1 -or
+        -not [string]::Equals(
+            $portableFiles[0].FullName,
+            $portableExecutablePath,
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        $unexpectedFiles = ($portableFiles | ForEach-Object FullName) -join ', '
+        throw "Portable output must contain only 'Hajimao DesktopShop.exe'. Actual: $unexpectedFiles"
     }
+
+    Assert-PublishedVersion `
+        -ExecutablePath $portableExecutablePath `
+        -ExpectedVersion $Version `
+        -Label 'Portable'
+
+    & dotnet publish src/HajimaoDesktopShop.Desktop/HajimaoDesktopShop.Desktop.csproj `
+        -c Release -r win-x64 --self-contained true `
+        -p:DebugType=None -p:DebugSymbols=false `
+        -p:IncludeSourceRevisionInInformationalVersion=false `
+        -o $installerPublishDir --nologo
+    Assert-LastExitCode 'installer payload dotnet publish'
+
+    Get-ChildItem -LiteralPath $installerPublishDir -Recurse -File -Filter '*.pdb' | ForEach-Object {
+        $pdbPath = Assert-ChildPath -Parent $stagingRoot -Target $_.FullName
+        Remove-Item -LiteralPath $pdbPath -Force
+    }
+
+    $installerExecutablePath = Join-Path $installerPublishDir 'HajimaoDesktopShop.Desktop.exe'
+    Assert-PublishedVersion `
+        -ExecutablePath $installerExecutablePath `
+        -ExpectedVersion $Version `
+        -Label 'Installer payload'
 
     & dotnet build installer/HajimaoDesktopShop.Installer/HajimaoDesktopShop.Installer.wixproj `
-        -c Release "-p:ProductVersion=$Version" "-p:PublishDir=$portableDir" `
+        -c Release "-p:ProductVersion=$Version" "-p:PublishDir=$installerPublishDir" `
         "-p:OutputPath=$installerOutput" --nologo
     Assert-LastExitCode 'WiX dotnet build'
 
@@ -137,7 +190,10 @@ try {
         throw "WiX output was not found: $installerSource"
     }
 
-    Compress-Archive -Path (Join-Path $portableDir '*') -DestinationPath $portablePath -CompressionLevel Optimal
+    Compress-Archive `
+        -LiteralPath $portableExecutablePath `
+        -DestinationPath $portablePath `
+        -CompressionLevel Optimal
     Copy-Item -LiteralPath $installerSource -Destination $installerPath
 
     $releaseFiles = @($portablePath, $installerPath) | Sort-Object
