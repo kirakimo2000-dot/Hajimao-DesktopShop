@@ -8,14 +8,14 @@ public sealed class ReleasePackagingContractTests
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_1_15()
+    public void ActiveVersion_Is_0_1_16()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.1.15", version.Value.Trim());
+        Assert.Equal("0.1.16", version.Value.Trim());
     }
 
     [Fact]
@@ -143,6 +143,11 @@ public sealed class ReleasePackagingContractTests
         Assert.Contains("dotnet test", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("dotnet publish", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("--self-contained true", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("PublishSingleFile=true", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("IncludeAllContentForSelfExtract=true", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("EnableCompressionInSingleFile=true", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("installer-publish", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Hajimao DesktopShop.exe", script, StringComparison.Ordinal);
         Assert.Contains(
             "IncludeSourceRevisionInInformationalVersion=false",
             script,
@@ -154,6 +159,15 @@ public sealed class ReleasePackagingContractTests
         Assert.Contains("ConvertTo-Json", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("signed = $false", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("schemaVersion = 6", script, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SmokeScript_RequiresOneFriendlyPortableExecutable()
+    {
+        var script = File.ReadAllText(_root.File("scripts", "test-release.ps1"));
+
+        Assert.Contains("$portableFiles.Count -ne 1", script, StringComparison.Ordinal);
+        Assert.Contains("Hajimao DesktopShop.exe", script, StringComparison.Ordinal);
     }
 
     [Fact]

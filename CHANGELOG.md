@@ -10,6 +10,20 @@
 
 暂无。
 
+## [0.1.16] - 2026-08-06
+
+### Changed
+
+- Windows 便携 ZIP 改为真正的单文件目录：解压后只显示 `Hajimao DesktopShop.exe`，不再向玩家暴露数百个 DLL、运行时和资源文件。
+- 便携程序使用 .NET 10 压缩单文件自解压；商品配置、WPF、SkiaSharp、SQLite 与自包含运行时共同进入同一应用包。
+- 发布脚本拆分便携版与 MSI 的 publish 输出；便携版保持单文件体验，WiX 继续消费独立的多文件安装负载，两个交付互不覆盖。
+- 发布冒烟测试先断言 ZIP 恰好只有一个友好命名的 EXE，再验证进程响应、SQLite、日志和任务栏窗口契约。
+- 活跃版本提升至 `0.1.16`；固定现实 `1x`、经营规则、24 帧人物表现和 schema v6 均保持不变。
+
+### Verification
+
+- 发布目录契约按 RED → GREEN 实现；完整构建、真实便携/安装负载冒烟与产物校验见 `docs/progress/v0.1.16-friendly-portable-package.md`。
+
 ## [0.1.15] - 2026-08-06
 
 ### Added

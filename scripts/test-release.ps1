@@ -388,7 +388,16 @@ New-Item -ItemType Directory -Path $testRoot, $portableExtract, $portableData, $
     Out-Null
 try {
     Expand-Archive -LiteralPath $portableArchive -DestinationPath $portableExtract
-    $portableExecutable = Join-Path $portableExtract 'HajimaoDesktopShop.Desktop.exe'
+    $portableFiles = @(Get-ChildItem -LiteralPath $portableExtract -File -Recurse)
+    if ($portableFiles.Count -ne 1) {
+        throw "Portable archive must contain exactly one file; actual: $($portableFiles.Count)."
+    }
+
+    $portableExecutable = Join-Path $portableExtract 'Hajimao DesktopShop.exe'
+    if (-not (Test-Path -LiteralPath $portableExecutable -PathType Leaf)) {
+        throw "Friendly portable executable is missing: $portableExecutable"
+    }
+
     $portableProcess = Start-IsolatedApplication `
         -ExecutablePath $portableExecutable `
         -DataDirectory $portableData
