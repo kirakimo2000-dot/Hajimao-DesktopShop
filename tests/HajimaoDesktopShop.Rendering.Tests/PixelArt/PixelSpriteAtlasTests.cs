@@ -25,6 +25,14 @@ public sealed class PixelSpriteAtlasTests
             Enum.GetValues<PixelSpriteId>().SelectMany(atlas.GetFrames),
             frame => Assert.True(atlas.ContainsVisiblePixels(frame)));
         Assert.All(atlas.ProductFrames, frame => Assert.True(atlas.ContainsVisiblePixels(frame)));
+        Assert.All(
+            new[]
+            {
+                PixelSpriteId.Cashier,
+                PixelSpriteId.Restocker,
+                PixelSpriteId.Customer
+            }.SelectMany(atlas.GetFrames),
+            frame => Assert.True(CharacterSpriteAudit.Analyze(atlas.Bitmap, frame).IsValid));
     }
 
     [Fact]
@@ -68,5 +76,30 @@ public sealed class PixelSpriteAtlasTests
         var exception = Assert.Throws<InvalidDataException>(() => PixelSpriteAtlas.Load(stream));
 
         Assert.Contains("budget", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Load_RejectsDetachedPixelsInsideCharacterCel()
+    {
+        using var bitmap = new SKBitmap(256, 256);
+        bitmap.Erase(SKColors.Transparent);
+        foreach (var rowY in new[] { 0, 40, 80 })
+        {
+            for (var index = 0; index < 8; index++)
+            {
+                using var paint = new SKPaint { Color = SKColors.White };
+                using var canvas = new SKCanvas(bitmap);
+                canvas.DrawRect(index * 32 + 12, rowY + 10, 8, 20, paint);
+            }
+        }
+        bitmap.SetPixel(4, 20, SKColors.White);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = new MemoryStream(encoded.ToArray());
+
+        var exception = Assert.Throws<InvalidDataException>(() => PixelSpriteAtlas.Load(stream));
+
+        Assert.Contains("Cashier", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("cel 0", exception.Message, StringComparison.Ordinal);
     }
 }
