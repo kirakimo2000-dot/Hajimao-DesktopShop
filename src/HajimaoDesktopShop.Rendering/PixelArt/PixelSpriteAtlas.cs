@@ -101,7 +101,7 @@ public sealed class PixelSpriteAtlas : IDisposable
 
     private static IReadOnlyList<PixelSpriteFrame> CharacterFrames(int y) =>
         Array.AsReadOnly(
-            Enumerable.Range(0, PixelArtBudget.CharacterFrameCount)
+            Enumerable.Range(0, PixelArtBudget.StoredCharacterCelCount)
                 .Select(index => new PixelSpriteFrame(index * 32, y, 32, 40, 16, 40))
                 .ToArray());
 
