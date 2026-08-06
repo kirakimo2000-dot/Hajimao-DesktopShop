@@ -28,6 +28,25 @@ public sealed class PixelSpriteAtlasTests
     }
 
     [Fact]
+    public void GetCharacterFrame_UsesSharedTwentyFourFrameTimeline()
+    {
+        using var atlas = PixelSpriteAtlas.LoadDefault();
+
+        var frame0 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 0, reduceMotion: false);
+        var frame1 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 1, reduceMotion: false);
+        var frame2 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 2, reduceMotion: false);
+        var frame3 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 3, reduceMotion: false);
+        var frame24 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 24, reduceMotion: false);
+        var reduced = atlas.GetCharacterFrame(PixelSpriteId.Customer, 23, reduceMotion: true);
+
+        Assert.Equal(frame0, frame1);
+        Assert.Equal(frame0, frame2);
+        Assert.NotEqual(frame0, frame3);
+        Assert.Equal(frame0, frame24);
+        Assert.Equal(frame0, reduced);
+    }
+
+    [Fact]
     public void Load_RejectsAtlasWithWrongDimensions()
     {
         using var bitmap = new SKBitmap(1, 1);

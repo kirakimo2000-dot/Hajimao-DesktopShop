@@ -74,6 +74,32 @@ public sealed class PixelSpriteAtlas : IDisposable
 
     public IReadOnlyList<PixelSpriteFrame> GetFrames(PixelSpriteId spriteId) => _frames[spriteId];
 
+    public PixelSpriteFrame GetCharacterFrame(
+        PixelSpriteId spriteId,
+        long presentationFrame,
+        bool reduceMotion)
+    {
+        if (spriteId is not PixelSpriteId.Cashier
+            and not PixelSpriteId.Restocker
+            and not PixelSpriteId.Customer)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(spriteId),
+                spriteId,
+                "Only character sprites use the shared animation timeline.");
+        }
+
+        var frames = _frames[spriteId];
+        if (frames.Count != PixelArtBudget.StoredCharacterCelCount)
+        {
+            throw new InvalidDataException(
+                $"Character sprite '{spriteId}' must contain "
+                + $"{PixelArtBudget.StoredCharacterCelCount} stored cels.");
+        }
+
+        return frames[CharacterAnimation.CelIndex(presentationFrame, reduceMotion)];
+    }
+
     public bool ContainsVisiblePixels(PixelSpriteFrame frame)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(frame.X);

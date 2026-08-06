@@ -205,12 +205,11 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         int anchorY,
         BusinessShopSceneFrame scene)
     {
-        var frames = _atlas.GetFrames(spriteId);
-        var normalizedFrame = CharacterMotion.FrameIndex(
-            scene.AnimationFrame,
-            frames.Count,
-            scene.ReduceMotion);
-        var frame = frames[normalizedFrame];
+        var frame = spriteId is PixelSpriteId.Cashier
+            or PixelSpriteId.Restocker
+            or PixelSpriteId.Customer
+                ? _atlas.GetCharacterFrame(spriteId, scene.AnimationFrame, scene.ReduceMotion)
+                : _atlas.GetFrames(spriteId)[0];
         DrawAtlasFrame(
             canvas,
             frame,

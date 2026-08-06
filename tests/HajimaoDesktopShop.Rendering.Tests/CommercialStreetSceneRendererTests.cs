@@ -39,10 +39,10 @@ public sealed class CommercialStreetSceneRendererTests
     }
 
     [Fact]
-    public void Renderer_MovesPedestriansAfterACompleteEightFrameAnimationCycle()
+    public void Renderer_MovesPedestriansAfterACompleteTwentyFourFrameAnimationCycle()
     {
         var origin = RenderHash(animationFrame: 0, reduceMotion: false);
-        var advanced = RenderHash(animationFrame: 8, reduceMotion: false);
+        var advanced = RenderHash(animationFrame: 24, reduceMotion: false);
 
         Assert.NotEqual(origin, advanced);
     }

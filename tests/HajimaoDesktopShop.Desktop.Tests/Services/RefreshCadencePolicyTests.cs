@@ -7,7 +7,7 @@ public sealed class RefreshCadencePolicyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GetInterval_UsesEightFramePresentationCadenceWithoutChangingSimulation(bool managementOpen)
+    public void GetInterval_UsesDedicatedPresentationCadenceWithoutChangingSimulation(bool managementOpen)
     {
         Assert.Equal(
             TimeSpan.FromMilliseconds(125),

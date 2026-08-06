@@ -103,12 +103,10 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         var count = Math.Min(
             Math.Max(0, frame.Snapshot.VisiblePedestrians),
             PixelArtBudget.MaximumVisibleStreetPedestrians);
-        var frames = _atlas.GetFrames(PixelSpriteId.Customer);
-        var frameIndex = CharacterMotion.FrameIndex(
+        var sprite = _atlas.GetCharacterFrame(
+            PixelSpriteId.Customer,
             frame.AnimationFrame,
-            frames.Count,
             frame.ReduceMotion);
-        var sprite = frames[frameIndex];
         var contentWidth = CommercialStreetLayout.GetContentWidth(frame.Snapshot.Stores.Count);
         for (var index = 0; index < count; index++)
         {
