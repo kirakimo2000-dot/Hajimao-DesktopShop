@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
@@ -9,6 +10,65 @@ namespace HajimaoDesktopShop.Application.Tests.Business;
 
 public sealed class BusinessGameServiceTests
 {
+    [Fact]
+    public void NewBusiness_StartsWithBalancedAutomaticStockingWithoutImmediatePurchase()
+    {
+        var game = BusinessTestSessionFactory.Create().Game;
+
+        var procurement = game.GetProcurementSnapshot();
+        var policies = procurement.AutoRestockPolicies
+            .Where(policy => policy.StoreId == "store-1")
+            .ToArray();
+
+        Assert.Equal(2, policies.Length);
+        Assert.All(policies, policy =>
+        {
+            Assert.True(policy.IsEnabled);
+            Assert.Equal("regional-distributor", policy.PreferredChannelId);
+            Assert.True(policy.UseEmergencySupplierWhenOutOfStock);
+        });
+        Assert.Empty(procurement.PendingOrders);
+    }
+
+    [Fact]
+    public void OpenStore_AddsBalancedAutomaticStockingWithoutImmediatePurchase()
+    {
+        var game = BusinessTestSessionFactory.Create().Game;
+
+        var result = game.OpenStore("store-2");
+        var procurement = game.GetProcurementSnapshot();
+
+        Assert.Equal(OpenShopStatus.Success, result.Status);
+        Assert.Equal(
+            ["bread", "water"],
+            procurement.AutoRestockPolicies
+                .Where(policy => policy.StoreId == "store-2")
+                .Select(policy => policy.ProductId));
+        Assert.All(
+            procurement.AutoRestockPolicies.Where(policy => policy.StoreId == "store-2"),
+            policy => Assert.True(policy.IsEnabled));
+        Assert.Empty(procurement.PendingOrders);
+    }
+
+    [Fact]
+    public void RestoredBusiness_PreservesExactAutomaticStockingPolicies()
+    {
+        var session = BusinessTestSessionFactory.Create();
+        session.Game.ConfigureAutoRestock(new AutoRestockPolicy(
+            "store-1",
+            "water",
+            IsEnabled: false,
+            ReorderPoint: 5,
+            TargetQuantity: 20,
+            PreferredChannelId: "local-wholesale",
+            UseEmergencySupplierWhenOutOfStock: false));
+        var expected = session.Game.GetProcurementSnapshot().AutoRestockPolicies;
+
+        var restored = BusinessTestSessionFactory.Restore(session.CaptureSaveData());
+
+        Assert.Equal(expected, restored.Game.GetProcurementSnapshot().AutoRestockPolicies);
+    }
+
     [Fact]
     public void StoreCatalog_ExposesOpenAndLockedStoresWithoutLeakingDefinitions()
     {
