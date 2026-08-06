@@ -65,6 +65,46 @@ public sealed class BusinessShopEmployeeChoreographyTests
         Assert.Single(positions.Distinct());
     }
 
+    [Fact]
+    public void CreatePoses_PrioritizesActiveDutiesWithinFourActorBudget()
+    {
+        EmployeeOperationsEmployeeSnapshot[] employees =
+        [
+            Employee("employee-a", EmployeeRole.SalesAssistant, EmployeeTaskKind.Idle, null),
+            Employee("employee-b", EmployeeRole.SalesAssistant, EmployeeTaskKind.Rest, null),
+            Employee("employee-c", EmployeeRole.SalesAssistant, EmployeeTaskKind.CustomerService, "corner-store"),
+            Employee("employee-d", EmployeeRole.Cleaner, EmployeeTaskKind.Clean, "corner-store"),
+            Employee("employee-z", EmployeeRole.Cashier, EmployeeTaskKind.Checkout, "water")
+        ];
+
+        var poses = BusinessShopEmployeeChoreography.CreatePoses(employees, 0, false);
+
+        Assert.Equal(4, poses.Count);
+        Assert.Contains(poses, pose => pose.EmployeeId == "employee-z");
+        Assert.DoesNotContain(poses, pose => pose.EmployeeId == "employee-a");
+    }
+
+    [Fact]
+    public void CreatePoses_TreatsMissingTaskProjectionAsIdle()
+    {
+        var employee = Employee(
+            "employee",
+            EmployeeRole.Cashier,
+            EmployeeTaskKind.Checkout,
+            "water") with
+        {
+            CurrentTask = null
+        };
+
+        var poses = Enumerable.Range(0, 24)
+            .Select(frame => Assert.Single(
+                BusinessShopEmployeeChoreography.CreatePoses([employee], frame, false)))
+            .ToArray();
+
+        Assert.All(poses, pose => Assert.Equal(EmployeeTaskKind.Idle, pose.TaskKind));
+        Assert.Single(poses.Select(pose => pose.X).Distinct());
+    }
+
     private static EmployeeOperationsEmployeeSnapshot Employee(
         string id,
         EmployeeRole role,

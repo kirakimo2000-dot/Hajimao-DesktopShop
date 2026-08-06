@@ -12,7 +12,12 @@ public static class BusinessShopEmployeeChoreography
         bool reduceMotion)
     {
         ArgumentNullException.ThrowIfNull(employees);
-        var visible = employees.Take(4).ToArray();
+        var visible = employees
+            .OrderBy(employee => DutyDisplayOrder(
+                employee.CurrentTask?.Kind ?? EmployeeTaskKind.Idle))
+            .ThenBy(employee => employee.EmployeeId, StringComparer.Ordinal)
+            .Take(4)
+            .ToArray();
         var poses = new BusinessShopEmployeePose[visible.Length];
         for (var index = 0; index < visible.Length; index++)
         {
@@ -28,7 +33,7 @@ public static class BusinessShopEmployeeChoreography
         int animationFrame,
         bool reduceMotion)
     {
-        var taskKind = employee.CurrentTask?.Kind ?? DefaultTask(employee.Role);
+        var taskKind = employee.CurrentTask?.Kind ?? EmployeeTaskKind.Idle;
         var targetKey = employee.CurrentTask?.TargetKey;
         var x = taskKind switch
         {
@@ -84,17 +89,20 @@ public static class BusinessShopEmployeeChoreography
         _ => 230
     };
 
-    private static EmployeeTaskKind DefaultTask(EmployeeRole role) => role switch
-    {
-        EmployeeRole.Cashier => EmployeeTaskKind.Checkout,
-        EmployeeRole.Restocker => EmployeeTaskKind.Restock,
-        _ => EmployeeTaskKind.CustomerService
-    };
-
     private static int IdleAnchor(EmployeeRole role, int index) => role switch
     {
         EmployeeRole.Cashier => 356,
         EmployeeRole.Restocker => 30,
         _ => 112 + (index * 40)
+    };
+
+    private static int DutyDisplayOrder(EmployeeTaskKind kind) => kind switch
+    {
+        EmployeeTaskKind.Checkout => 0,
+        EmployeeTaskKind.Restock => 1,
+        EmployeeTaskKind.Clean => 2,
+        EmployeeTaskKind.CustomerService => 3,
+        EmployeeTaskKind.Rest => 4,
+        _ => 5
     };
 }

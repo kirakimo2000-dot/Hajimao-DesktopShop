@@ -19,7 +19,20 @@ public sealed record EmployeeTaskWorker(
 public sealed record EmployeeTaskTarget(
     string TargetKey,
     string TargetName,
-    int RemainingMinutes);
+    int RemainingMinutes)
+{
+    public string TargetKey { get; } = string.IsNullOrWhiteSpace(TargetKey)
+        ? throw new ArgumentException("Task target key is required.", nameof(TargetKey))
+        : TargetKey.Trim();
+
+    public string TargetName { get; } = string.IsNullOrWhiteSpace(TargetName)
+        ? throw new ArgumentException("Task target name is required.", nameof(TargetName))
+        : TargetName.Trim();
+
+    public int RemainingMinutes { get; } = RemainingMinutes < 0
+        ? throw new ArgumentOutOfRangeException(nameof(RemainingMinutes))
+        : RemainingMinutes;
+}
 
 public sealed record StoreTaskDemand(
     EmployeeTaskTarget? Checkout,

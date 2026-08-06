@@ -108,6 +108,15 @@ public sealed class EmployeeTaskPlannerTests
         Assert.Equal(7, result["restocker"].RemainingMinutes);
     }
 
+    [Fact]
+    public void TaskTarget_RejectsBlankIdentityAndNegativeRemainingTime()
+    {
+        Assert.Throws<ArgumentException>(() => new EmployeeTaskTarget(" ", "牛奶", 1));
+        Assert.Throws<ArgumentException>(() => new EmployeeTaskTarget("chilled", " ", 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new EmployeeTaskTarget("chilled", "牛奶", -1));
+    }
+
     private static EmployeeTaskWorker Worker(
         string id,
         EmployeeRole role,

@@ -35,7 +35,7 @@ public sealed class BusinessSimulationTests
 
         Assert.Equal(1, snapshot.GameMinute);
         Assert.Equal(["alpha-store", "zeta-store"], snapshot.Stores.Select(store => store.StoreId));
-        Assert.All(snapshot.Stores, store => Assert.Equal(959, store.ServicePermille));
+        Assert.All(snapshot.Stores, store => Assert.Equal(960, store.ServicePermille));
         Assert.Equal(1, snapshot.Stores.Sum(store => store.Visitors));
         Assert.Equal(1, snapshot.Stores.Sum(store => store.CheckoutQueueLength));
     }
@@ -213,7 +213,7 @@ public sealed class BusinessSimulationTests
         Assert.Equal(1, employee.WorkedMinutes);
         Assert.Equal(998, employeeSnapshot.EnergyPermille);
         Assert.Equal(959, employeeSnapshot.EffectiveEfficiencyPermille);
-        Assert.Equal(959, store.ServicePermille);
+        Assert.Equal(960, store.ServicePermille);
     }
 
     [Fact]
@@ -280,6 +280,31 @@ public sealed class BusinessSimulationTests
         var working = Assert.Single(simulation.GetSnapshot().Employees.Employees);
         Assert.Equal(2, working.EnergyPermille);
         Assert.Equal(EmployeeTaskKind.CustomerService, working.CurrentTask?.Kind);
+    }
+
+    [Fact]
+    public void EmployeeWithFinalEnergyMinute_PerformsPaidDutyBeforeBecomingExhausted()
+    {
+        var employee = Employee.Restore(
+            new EmployeeId("cashier"),
+            "cashier",
+            EmployeeRole.Cashier,
+            1_000,
+            new Money(60),
+            new EmployeeWorkState(0, Money.Zero, 0),
+            new EmployeeConditionState(0, 2, 700, 0, 0));
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [new StoreEmployeeAssignment("zeta-store", employee)],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        simulation.AdvanceRealSecond();
+
+        var snapshot = simulation.GetSnapshot();
+        Assert.Equal(1, employee.WorkedMinutes);
+        Assert.Equal(0, Assert.Single(snapshot.Employees.Employees).EnergyPermille);
+        Assert.True(Assert.Single(snapshot.Stores).ServicePermille > 0);
     }
 
     [Fact]
@@ -485,7 +510,7 @@ public sealed class BusinessSimulationTests
 
         var originalStore = original.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
         var restoredStore = restored.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
-        Assert.Equal(959, originalStore.ServicePermille);
+        Assert.Equal(960, originalStore.ServicePermille);
         Assert.Equivalent(originalStore, restoredStore, strict: true);
     }
 

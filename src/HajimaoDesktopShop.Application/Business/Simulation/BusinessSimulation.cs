@@ -455,6 +455,10 @@ public sealed class BusinessSimulation
             paidEmployees.Contains(employee.Id)
             && employeeTasks.GetValueOrDefault(employee.Id.Value)?.Kind == EmployeeTaskKind.Checkout);
         ProcessCheckout(runtime, cashier);
+        foreach (var employeeId in paidEmployees)
+        {
+            _employeeOperations.RecordPaidWorkCondition(employeeId);
+        }
     }
 
     private HashSet<EmployeeId> PayEmployees(StoreRuntime runtime)
@@ -476,7 +480,6 @@ public sealed class BusinessSimulation
             var payment = _game.PayEmployeeMinute(runtime.StoreId, employee);
             if (payment.Status == WagePaymentStatus.Success)
             {
-                _employeeOperations.RecordPaidWorkCondition(employee.Id);
                 paid.Add(employee.Id);
             }
             else
