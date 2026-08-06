@@ -36,10 +36,10 @@ public sealed class BusinessShopSceneRendererTests
     }
 
     [Fact]
-    public void Renderer_MovesActorsAfterACompleteEightFrameAnimationCycle()
+    public void Renderer_MovesActorsAfterACompleteTwentyFourFrameAnimationCycle()
     {
         var origin = RenderFrame(animationFrame: 0, reduceMotion: false);
-        var advanced = RenderFrame(animationFrame: 8, reduceMotion: false);
+        var advanced = RenderFrame(animationFrame: 24, reduceMotion: false);
 
         Assert.NotEqual(origin, advanced);
     }

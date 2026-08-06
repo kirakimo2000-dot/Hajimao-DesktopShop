@@ -2,12 +2,12 @@
 
 Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家可展开管理窗口进货、调价、查看员工与财务。
 
-## 当前版本：0.1.11 顾客分段行为
+## 当前版本：0.1.14 人物动画与资源整治
 
 - 桌面常态现在是任务栏上方的横向街区；初始一家店时窗口只有一个店面的 248×180 逻辑尺寸。
 - 街区内容横向不设上限；每开一家店都会追加店面，超出当前显示器工作区后用鼠标滚轮浏览。
 - 点击已开店面进入原有 420×280 店铺经营页面，点击“返回街区”回到总览；托盘恢复默认回到街区。
-- 收银员、补货员、顾客均扩展为八帧，并具有独立于换帧的实际移动路径。
+- 收银员、补货员、顾客与街区路人全部使用统一 24 帧表现时间轴；每人复用 8 个关键姿势，位置逐帧移动，不重复存储相同图片。
 - 店内顾客会依次进店、寻找对应常温/冷藏/冷冻货架、拿货、排队、结账并离店。
 
 - 经营始终按现实 1x 推进，没有暂停或倍速；旧原型存档会迁移并丢弃历史速度字段。
@@ -35,7 +35,7 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 管理窗口提供店铺、商品、进货、员工、成长、财务和商业街七个单一导航页面，实时小店场景始终可见。
 - 桌面右键可打开管理、锁定位置、切换鼠标穿透和静音；管理窗没有暂停或倍速入口。
 - 正式 WPF 运行完整 `BusinessSession`，旧单店渲染与模拟代码只保留为存档和测试兼容层。
-- 正式场景使用一张 256×256 嵌入式像素图集，包含收银员、补货员、顾客八帧动作、三类货架和十种商品。
+- 正式场景使用一张 256×256、低于 24 KiB 的索引色像素图集，包含三类人物各 8 个去重关键姿势、三类货架和十种商品。
 - Windows 减少动态效果开启时角色固定首帧和位置；表现以 125 ms 更新，经营 Tick 仍固定现实 1x。
 - 八类短促芯片提示音由程序确定性生成并受 16 KiB 单音预算约束；托盘使用 32×32 品牌像素店面图标。
 - 正式等级曲线可成长至 Lv.10，并逐段解锁街角、相邻店铺、一段商业街和完整街区；当前所有已开店铺出现在同一像素街景中。
@@ -47,9 +47,9 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 桌面窗口按真实显示器工作区恢复和吸附，支持负坐标、显示器空隙、拔除屏幕、纵向排列与 PerMonitorV2 DPI。
 - 仓库提供 win-x64 自包含便携 ZIP、WiX MSI、SHA-256 和机器可读发布清单的统一构建/验收脚本。
 
-0.1.11 完成六阶段顾客店内旅程和三类货架目的地，同时保持 schema v6、离线同管线与固定现实 1x。后续继续使用 0.1.x 增加直接对象交互、店面差异化和发布签名，不提前跳到 1.0。
+0.1.14 完成全人物 24 帧时间轴、坏帧门禁和图集压缩，同时保持 schema v6、离线同管线与固定现实 1x。后续继续使用 0.1.x 增加员工任务反馈、岗位优先级和店铺经营身份，不提前跳到 1.0。
 
-已验证发布物见 [GitHub Release v0.1.11](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.11)。
+已验证发布物见 [GitHub Release v0.1.14](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.14)。
 
 ## 运行
 
@@ -65,11 +65,11 @@ dotnet run --project src/HajimaoDesktopShop.Desktop
 发布包生成后，可解压便携 ZIP 直接运行 `HajimaoDesktopShop.Desktop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.11
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.11
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.14
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.14
 ```
 
-0.1.11 的 ZIP 与 MSI 仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入列入后续 0.1.x 发布工作。
+0.1.14 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
 
 ## 操作提示
 

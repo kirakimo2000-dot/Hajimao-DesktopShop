@@ -9,9 +9,11 @@ public sealed class PixelArtBudgetTests
     {
         Assert.Equal(256, PixelArtBudget.AtlasWidth);
         Assert.Equal(256, PixelArtBudget.AtlasHeight);
-        Assert.Equal(8, PixelArtBudget.CharacterFrameCount);
+        Assert.Equal(24, PixelArtBudget.CharacterAnimationFrameCount);
+        Assert.Equal(8, PixelArtBudget.StoredCharacterCelCount);
+        Assert.Equal(3, PixelArtBudget.CharacterFramesPerCel);
         Assert.Equal(5, PixelArtBudget.MaximumVisibleCustomers);
-        Assert.Equal(256 * 1024, PixelArtBudget.MaximumAtlasBytes);
+        Assert.Equal(24 * 1024, PixelArtBudget.MaximumAtlasBytes);
         Assert.Equal(16 * 1024, PixelArtBudget.MaximumSoundBytes);
     }
 }

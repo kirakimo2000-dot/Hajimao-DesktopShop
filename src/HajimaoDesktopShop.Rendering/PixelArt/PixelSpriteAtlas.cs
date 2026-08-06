@@ -69,10 +69,46 @@ public sealed class PixelSpriteAtlas : IDisposable
                 + $"received {actualDimensions}.");
         }
 
-        return new PixelSpriteAtlas(bitmap, encodedBytes.Length);
+        var atlas = new PixelSpriteAtlas(bitmap, encodedBytes.Length);
+        try
+        {
+            atlas.ValidateCharacterFrames();
+            return atlas;
+        }
+        catch
+        {
+            atlas.Dispose();
+            throw;
+        }
     }
 
     public IReadOnlyList<PixelSpriteFrame> GetFrames(PixelSpriteId spriteId) => _frames[spriteId];
+
+    public PixelSpriteFrame GetCharacterFrame(
+        PixelSpriteId spriteId,
+        long presentationFrame,
+        bool reduceMotion)
+    {
+        if (spriteId is not PixelSpriteId.Cashier
+            and not PixelSpriteId.Restocker
+            and not PixelSpriteId.Customer)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(spriteId),
+                spriteId,
+                "Only character sprites use the shared animation timeline.");
+        }
+
+        var frames = _frames[spriteId];
+        if (frames.Count != PixelArtBudget.StoredCharacterCelCount)
+        {
+            throw new InvalidDataException(
+                $"Character sprite '{spriteId}' must contain "
+                + $"{PixelArtBudget.StoredCharacterCelCount} stored cels.");
+        }
+
+        return frames[CharacterAnimation.CelIndex(presentationFrame, reduceMotion)];
+    }
 
     public bool ContainsVisiblePixels(PixelSpriteFrame frame)
     {
@@ -99,9 +135,35 @@ public sealed class PixelSpriteAtlas : IDisposable
 
     public void Dispose() => Bitmap.Dispose();
 
+    private void ValidateCharacterFrames()
+    {
+        foreach (var spriteId in new[]
+                 {
+                     PixelSpriteId.Cashier,
+                     PixelSpriteId.Restocker,
+                     PixelSpriteId.Customer
+                 })
+        {
+            var frames = _frames[spriteId];
+            for (var index = 0; index < frames.Count; index++)
+            {
+                var result = CharacterSpriteAudit.Analyze(Bitmap, frames[index]);
+                if (!result.IsValid)
+                {
+                    throw new InvalidDataException(
+                        $"Character sprite '{spriteId}' cel {index} is invalid: "
+                        + $"visible={result.VisiblePixelCount}, "
+                        + $"components=[{string.Join(",", result.ComponentSizes)}], "
+                        + $"padding={result.LeftPadding}/{result.TopPadding}/"
+                        + $"{result.RightPadding}/{result.BottomPadding}.");
+                }
+            }
+        }
+    }
+
     private static IReadOnlyList<PixelSpriteFrame> CharacterFrames(int y) =>
         Array.AsReadOnly(
-            Enumerable.Range(0, PixelArtBudget.CharacterFrameCount)
+            Enumerable.Range(0, PixelArtBudget.StoredCharacterCelCount)
                 .Select(index => new PixelSpriteFrame(index * 32, y, 32, 40, 16, 40))
                 .ToArray());
 
