@@ -2,7 +2,7 @@
 
 Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家可展开管理窗口进货、调价、查看员工与财务。
 
-## 当前版本：0.1.14 人物动画与资源整治
+## 当前版本：0.1.16 单文件便携发布
 
 - 桌面常态现在是任务栏上方的横向街区；初始一家店时窗口只有一个店面的 248×180 逻辑尺寸。
 - 街区内容横向不设上限；每开一家店都会追加店面，超出当前显示器工作区后用鼠标滚轮浏览。
@@ -47,9 +47,9 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 桌面窗口按真实显示器工作区恢复和吸附，支持负坐标、显示器空隙、拔除屏幕、纵向排列与 PerMonitorV2 DPI。
 - 仓库提供 win-x64 自包含便携 ZIP、WiX MSI、SHA-256 和机器可读发布清单的统一构建/验收脚本。
 
-0.1.14 完成全人物 24 帧时间轴、坏帧门禁和图集压缩，同时保持 schema v6、离线同管线与固定现实 1x。后续继续使用 0.1.x 增加员工任务反馈、岗位优先级和店铺经营身份，不提前跳到 1.0。
+0.1.16 已将便携 ZIP 收敛为单个玩家入口，同时保持 schema v6、离线同管线与固定现实 1x。项目确认当前七区管理和逐项维护操作不构成可玩 Demo；0.1.17～0.1.20 将依次完成核心循环瘦身、投资回报、目标平衡和 Playable Demo 1，不提前扩充资源或跳到 1.0。
 
-已验证发布物见 [GitHub Release v0.1.14](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.14)。
+已验证发布物见 [GitHub Release v0.1.16](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.16)。
 
 ## 运行
 
@@ -62,14 +62,14 @@ dotnet test HajimaoDesktopShop.slnx
 dotnet run --project src/HajimaoDesktopShop.Desktop
 ```
 
-发布包生成后，可解压便携 ZIP 直接运行 `HajimaoDesktopShop.Desktop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
+发布包生成后，可解压便携 ZIP 直接运行唯一的 `Hajimao DesktopShop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.14
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.14
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.16
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.16
 ```
 
-0.1.14 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
+0.1.16 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
 
 ## 操作提示
 
@@ -82,4 +82,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Ve
 - 开启鼠标穿透前会先展开管理窗，避免失去恢复入口。
 - 关闭桌面小店只会隐藏窗口，经营模拟和自动存档继续运行；需要从通知区域菜单明确退出程序。
 
-项目定位见 [docs/product-vision.md](docs/product-vision.md)，技术边界见 [docs/architecture/technical-foundation.md](docs/architecture/technical-foundation.md)，版本记录见 [CHANGELOG.md](CHANGELOG.md)。
+项目定位见 [docs/product-vision.md](docs/product-vision.md)，可玩 Demo 收敛计划见 [docs/design/playable-demo-plan.md](docs/design/playable-demo-plan.md)，技术边界见 [docs/architecture/technical-foundation.md](docs/architecture/technical-foundation.md)，版本记录见 [CHANGELOG.md](CHANGELOG.md)。
