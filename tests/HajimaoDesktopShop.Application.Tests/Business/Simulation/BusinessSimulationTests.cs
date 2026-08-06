@@ -35,7 +35,7 @@ public sealed class BusinessSimulationTests
 
         Assert.Equal(1, snapshot.GameMinute);
         Assert.Equal(["alpha-store", "zeta-store"], snapshot.Stores.Select(store => store.StoreId));
-        Assert.All(snapshot.Stores, store => Assert.Equal(959, store.ServicePermille));
+        Assert.All(snapshot.Stores, store => Assert.Equal(960, store.ServicePermille));
         Assert.Equal(1, snapshot.Stores.Sum(store => store.Visitors));
         Assert.Equal(1, snapshot.Stores.Sum(store => store.CheckoutQueueLength));
     }
@@ -213,7 +213,162 @@ public sealed class BusinessSimulationTests
         Assert.Equal(1, employee.WorkedMinutes);
         Assert.Equal(998, employeeSnapshot.EnergyPermille);
         Assert.Equal(959, employeeSnapshot.EffectiveEfficiencyPermille);
-        Assert.Equal(959, store.ServicePermille);
+        Assert.Equal(960, store.ServicePermille);
+    }
+
+    [Fact]
+    public void Snapshot_ExposesCheckoutTargetRemainingTimeAndRolePriorities()
+    {
+        var service = CreateService();
+        service.PurchaseStock("zeta-store", "water", 10);
+        var simulation = new BusinessSimulation(
+            service,
+            [AssignCashier("zeta-store", "cashier", 1_000)],
+            new ScriptedRandomSource(Enumerable.Repeat(0d, 12).ToArray()),
+            CreateAlwaysBusyOptions());
+
+        simulation.AdvanceRealSeconds(2);
+
+        var employee = Assert.Single(simulation.GetSnapshot().Employees.Employees);
+        Assert.Equal(EmployeeTaskKind.Checkout, employee.CurrentTask?.Kind);
+        Assert.Equal("water", employee.CurrentTask?.TargetKey);
+        Assert.Equal("矿泉水", employee.CurrentTask?.TargetName);
+        Assert.True(employee.CurrentTask?.RemainingMinutes > 0);
+        Assert.Equal(EmployeeTaskKind.Checkout, employee.TaskPriorities?[0]);
+    }
+
+    [Fact]
+    public void Snapshot_ReportsOffShiftEmployeeAsResting()
+    {
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [AssignCashier("zeta-store", "cashier", 1_000)],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+        simulation.Employees.SetShift("cashier", 480, 960);
+
+        var employee = Assert.Single(simulation.GetSnapshot().Employees.Employees);
+
+        Assert.Equal(EmployeeTaskKind.Rest, employee.CurrentTask?.Kind);
+        Assert.True(employee.CurrentTask?.IsResting);
+    }
+
+    [Fact]
+    public void ExhaustedScheduledEmployee_RestsThenReturnsToDuty()
+    {
+        var exhausted = Employee.Restore(
+            new EmployeeId("cashier"),
+            "cashier",
+            EmployeeRole.Cashier,
+            1_000,
+            new Money(60),
+            new EmployeeWorkState(0, Money.Zero, 0),
+            new EmployeeConditionState(0, 0, 700, 0, 0));
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [new StoreEmployeeAssignment("zeta-store", exhausted)],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        simulation.AdvanceRealSecond();
+        var resting = Assert.Single(simulation.GetSnapshot().Employees.Employees);
+
+        Assert.Equal(4, resting.EnergyPermille);
+        Assert.Equal(EmployeeTaskKind.Rest, resting.CurrentTask?.Kind);
+
+        simulation.AdvanceRealSecond();
+        var working = Assert.Single(simulation.GetSnapshot().Employees.Employees);
+        Assert.Equal(2, working.EnergyPermille);
+        Assert.Equal(EmployeeTaskKind.CustomerService, working.CurrentTask?.Kind);
+    }
+
+    [Fact]
+    public void EmployeeWithFinalEnergyMinute_PerformsPaidDutyBeforeBecomingExhausted()
+    {
+        var employee = Employee.Restore(
+            new EmployeeId("cashier"),
+            "cashier",
+            EmployeeRole.Cashier,
+            1_000,
+            new Money(60),
+            new EmployeeWorkState(0, Money.Zero, 0),
+            new EmployeeConditionState(0, 2, 700, 0, 0));
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [new StoreEmployeeAssignment("zeta-store", employee)],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        simulation.AdvanceRealSecond();
+
+        var snapshot = simulation.GetSnapshot();
+        Assert.Equal(1, employee.WorkedMinutes);
+        Assert.Equal(0, Assert.Single(snapshot.Employees.Employees).EnergyPermille);
+        Assert.True(Assert.Single(snapshot.Stores).ServicePermille > 0);
+    }
+
+    [Fact]
+    public void Manager_CoversCheckoutWhenNoCashierIsAssigned()
+    {
+        var service = CreateService();
+        service.PurchaseStock("zeta-store", "water", 10);
+        var simulation = new BusinessSimulation(
+            service,
+            [AssignRole("zeta-store", "manager", EmployeeRole.Manager, 1_000)],
+            new ScriptedRandomSource(Enumerable.Repeat(0d, 12).ToArray()),
+            CreateAlwaysBusyOptions());
+
+        simulation.AdvanceRealSeconds(2);
+
+        var employee = Assert.Single(simulation.GetSnapshot().Employees.Employees);
+        Assert.Equal(EmployeeTaskKind.Checkout, employee.CurrentTask?.Kind);
+        Assert.Equal("water", employee.CurrentTask?.TargetKey);
+    }
+
+    [Fact]
+    public void CheckoutDuty_DoesNotAlsoProvideCustomerServiceCredit()
+    {
+        var service = CreateService();
+        service.PurchaseStock("zeta-store", "water", 10);
+        var simulation = new BusinessSimulation(
+            service,
+            [AssignCashier("zeta-store", "cashier", 1_000)],
+            new ScriptedRandomSource(Enumerable.Repeat(0d, 12).ToArray()),
+            CreateAlwaysBusyOptions());
+
+        simulation.AdvanceRealSeconds(2);
+
+        var snapshot = simulation.GetSnapshot();
+        Assert.Equal(
+            EmployeeTaskKind.Checkout,
+            Assert.Single(snapshot.Employees.Employees).CurrentTask?.Kind);
+        Assert.Equal(0, Assert.Single(snapshot.Stores).ServicePermille);
+    }
+
+    [Fact]
+    public void Restocker_TracksNearestInboundProductAndRealRemainingTime()
+    {
+        var service = CreateService();
+        var placed = service.PlaceProcurementOrder(
+            "zeta-store",
+            "water",
+            "regional-distributor",
+            10);
+        Assert.NotNull(placed.Order);
+        var simulation = new BusinessSimulation(
+            service,
+            [AssignRole("zeta-store", "restocker", EmployeeRole.Restocker, 1_000)],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 0));
+
+        simulation.AdvanceRealSecond();
+
+        var order = Assert.Single(service.GetProcurementSnapshot().PendingOrders);
+        var employee = Assert.Single(simulation.GetSnapshot().Employees.Employees);
+        Assert.Equal(EmployeeTaskKind.Restock, employee.CurrentTask?.Kind);
+        Assert.Equal("ambient", employee.CurrentTask?.TargetKey);
+        Assert.Equal("矿泉水", employee.CurrentTask?.TargetName);
+        Assert.Equal(order.RemainingMinutes, employee.CurrentTask?.RemainingMinutes);
     }
 
     [Fact]
@@ -355,7 +510,7 @@ public sealed class BusinessSimulationTests
 
         var originalStore = original.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
         var restoredStore = restored.GetSnapshot().Stores.Single(store => store.StoreId == "alpha-store");
-        Assert.Equal(959, originalStore.ServicePermille);
+        Assert.Equal(960, originalStore.ServicePermille);
         Assert.Equivalent(originalStore, restoredStore, strict: true);
     }
 
@@ -394,6 +549,13 @@ public sealed class BusinessSimulationTests
         string employeeId,
         int efficiencyPermille) =>
         new(storeId, CreateEmployee(employeeId, EmployeeRole.Cleaner, efficiencyPermille, hourlyWageCents: 60));
+
+    private static StoreEmployeeAssignment AssignRole(
+        string storeId,
+        string employeeId,
+        EmployeeRole role,
+        int efficiencyPermille) =>
+        new(storeId, CreateEmployee(employeeId, role, efficiencyPermille, hourlyWageCents: 60));
 
     private static Employee CreateEmployee(
         string id,

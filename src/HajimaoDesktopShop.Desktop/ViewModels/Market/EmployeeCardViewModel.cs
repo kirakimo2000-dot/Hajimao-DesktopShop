@@ -14,6 +14,8 @@ public sealed class EmployeeCardViewModel : ObservableObject
     private int _satisfactionPermille;
     private string _storeId = string.Empty;
     private string _shiftText = string.Empty;
+    private string _taskText = string.Empty;
+    private string _priorityText = string.Empty;
 
     internal EmployeeCardViewModel(
         EmployeeOperationsEmployeeSnapshot snapshot,
@@ -66,6 +68,18 @@ public sealed class EmployeeCardViewModel : ObservableObject
         private set => SetProperty(ref _shiftText, value);
     }
 
+    public string TaskText
+    {
+        get => _taskText;
+        private set => SetProperty(ref _taskText, value);
+    }
+
+    public string PriorityText
+    {
+        get => _priorityText;
+        private set => SetProperty(ref _priorityText, value);
+    }
+
     public string EfficiencyText =>
         string.Format(CultureInfo.InvariantCulture, "{0:0}%", _effectiveEfficiencyPermille / 10m);
 
@@ -82,6 +96,8 @@ public sealed class EmployeeCardViewModel : ObservableObject
         ShiftText = snapshot.IsAlwaysOn
             ? "全天（兼容）"
             : $"{FormatMinute(snapshot.ShiftStartMinute)}–{FormatMinute(snapshot.ShiftEndMinute)}";
+        TaskText = EmployeeTaskTextFormatter.FormatTask(snapshot.CurrentTask);
+        PriorityText = EmployeeTaskTextFormatter.FormatPriorities(snapshot.TaskPriorities);
         SetMetric(ref _effectiveEfficiencyPermille, snapshot.EffectiveEfficiencyPermille, nameof(EfficiencyText));
         SetMetric(ref _energyPermille, snapshot.EnergyPermille, nameof(EnergyText));
         SetMetric(ref _satisfactionPermille, snapshot.SatisfactionPermille, nameof(SatisfactionText));

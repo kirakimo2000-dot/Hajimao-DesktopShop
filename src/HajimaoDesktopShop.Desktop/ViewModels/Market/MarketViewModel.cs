@@ -510,9 +510,9 @@ public sealed class MarketViewModel : ObservableObject
             employee.Name,
             role,
             $"效率 {FormatPermille(employee.EffectiveEfficiencyPermille)} · 工资 {FormatMoney(employee.HourlyWageCents)}/小时",
-            $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift}",
+            $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift} · 任务 {EmployeeTaskTextFormatter.FormatTask(employee.CurrentTask)}",
             employee.EmployeeId,
-            $"培训 Lv.{employee.TrainingLevel}",
+            $"培训 Lv.{employee.TrainingLevel} · {EmployeeTaskTextFormatter.FormatPriorities(employee.TaskPriorities)}",
             IsAutoRestockEnabled: false);
     }
 

@@ -67,7 +67,10 @@ public sealed class EmployeeOperationsService
         }
     }
 
-    public EmployeeOperationsSnapshot GetSnapshot()
+    public EmployeeOperationsSnapshot GetSnapshot() => GetSnapshot(null);
+
+    internal EmployeeOperationsSnapshot GetSnapshot(
+        IReadOnlyDictionary<string, EmployeeTaskSnapshot>? currentTasks)
     {
         lock (_gate)
         {
@@ -80,8 +83,11 @@ public sealed class EmployeeOperationsService
                 {
                     var shift = _roster.GetShift(employee.Id.Value)
                         ?? throw new InvalidOperationException("Every registered employee must have a shift.");
+                    var employeeId = employee.Id.Value;
+                    var currentTask = currentTasks?.GetValueOrDefault(employeeId)
+                        ?? new EmployeeTaskSnapshot(EmployeeTaskKind.Idle, null, null, null);
                     return new EmployeeOperationsEmployeeSnapshot(
-                        employee.Id.Value,
+                        employeeId,
                         employee.Name,
                         employee.Role,
                         employee.EfficiencyPermille,
@@ -93,7 +99,9 @@ public sealed class EmployeeOperationsService
                         _storeByEmployee[employee.Id.Value],
                         shift.StartMinute,
                         shift.EndMinute,
-                        shift.IsAlwaysOn);
+                        shift.IsAlwaysOn,
+                        currentTask,
+                        EmployeeTaskPriorityCatalog.GetPriorities(employee.Role));
                 })
                 .ToArray();
             return new EmployeeOperationsSnapshot(
@@ -357,7 +365,10 @@ public sealed class EmployeeOperationsService
                 if (employee.CanWork)
                 {
                     available.Add(employee);
+                    continue;
                 }
+
+                employee.RecordRestMinute();
             }
 
             return available;
