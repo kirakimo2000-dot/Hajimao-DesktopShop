@@ -92,9 +92,9 @@ public sealed class BusinessShopInteractionMapTests
             1,
             [],
             [
-                Employee("cashier", EmployeeRole.Cashier),
-                Employee("restocker", EmployeeRole.Restocker),
-                Employee("helper", EmployeeRole.SalesAssistant)
+                Employee("cashier", EmployeeRole.Cashier, EmployeeTaskKind.Checkout, "water"),
+                Employee("restocker", EmployeeRole.Restocker, EmployeeTaskKind.Restock, "ambient"),
+                Employee("helper", EmployeeRole.SalesAssistant, EmployeeTaskKind.CustomerService, "corner-store")
             ]);
         var business = new BusinessSnapshot(
             1,
@@ -140,7 +140,11 @@ public sealed class BusinessShopInteractionMapTests
         return new BusinessShopSceneFrame(snapshot, "corner-store", animationFrame);
     }
 
-    private static EmployeeOperationsEmployeeSnapshot Employee(string id, EmployeeRole role) =>
+    private static EmployeeOperationsEmployeeSnapshot Employee(
+        string id,
+        EmployeeRole role,
+        EmployeeTaskKind task,
+        string target) =>
         new(
             id,
             id,
@@ -154,5 +158,7 @@ public sealed class BusinessShopInteractionMapTests
             "corner-store",
             0,
             1_440,
-            true);
+            true,
+            new EmployeeTaskSnapshot(task, target, target, 1),
+            EmployeeTaskPriorityCatalog.GetPriorities(role));
 }
