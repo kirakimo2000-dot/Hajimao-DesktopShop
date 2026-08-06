@@ -8,7 +8,7 @@ public sealed class OnboardingViewModel : ObservableObject
     private string _progressText = string.Empty;
     private string _title = string.Empty;
     private string _guidance = string.Empty;
-    private ManagementSection _suggestedSection = ManagementSection.Store;
+    private ManagementSection _suggestedSection = ManagementSection.Overview;
     private bool _isVisible;
 
     public string ProgressText
@@ -50,7 +50,7 @@ public sealed class OnboardingViewModel : ObservableObject
             ProgressText = "新手任务已完成";
             Title = "新手任务已完成";
             Guidance = ProductIdentity.OnboardingCompletionGuidance;
-            SuggestedSection = ManagementSection.Store;
+            SuggestedSection = ManagementSection.Overview;
             IsVisible = false;
             return;
         }
@@ -69,31 +69,31 @@ public sealed class OnboardingViewModel : ObservableObject
             OnboardingTaskId.RestockProduct => new(
                 "第一次进货",
                 "为任意商品补充库存，让小店可以持续营业。",
-                ManagementSection.Procurement),
+                ManagementSection.Strategy),
             OnboardingTaskId.AdjustPrice => new(
                 "调整商品价格",
                 "根据毛利和需求调整任意商品售价。",
-                ManagementSection.Products),
+                ManagementSection.Strategy),
             OnboardingTaskId.EnableAutoRestock => new(
                 "设置自动补货",
                 "为常卖商品开启自动补货，让挂机真正持续。",
-                ManagementSection.Procurement),
+                ManagementSection.Strategy),
             OnboardingTaskId.CompleteFirstSale => new(
                 "完成第一笔销售",
                 "保持库存并等待顾客完成结账。",
-                ManagementSection.Store),
+                ManagementSection.Overview),
             OnboardingTaskId.TrainEmployee => new(
                 "培训一名员工",
                 "培训员工，提高效率并承担相应工资成本。",
-                ManagementSection.Employees),
+                ManagementSection.Investment),
             OnboardingTaskId.UpgradeStore => new(
                 "完成一次店铺成长",
                 "扩建、升级货架或装修任意一项。",
-                ManagementSection.Growth),
+                ManagementSection.Investment),
             OnboardingTaskId.OpenSecondStore => new(
                 "开设第二家店",
                 "提升等级并积累资金，在店铺总览开设新店。",
-                ManagementSection.Store),
+                ManagementSection.Investment),
             _ => throw new ArgumentOutOfRangeException(nameof(taskId), taskId, null)
         };
 

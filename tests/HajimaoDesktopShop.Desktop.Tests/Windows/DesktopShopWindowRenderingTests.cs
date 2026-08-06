@@ -99,7 +99,7 @@ public sealed class DesktopShopWindowRenderingTests
     }
 
     [Fact]
-    public void SelectShopObject_OpensItsManagementSectionAndRequestsManagementWindow()
+    public void SelectShopObject_OpensReadOnlyOverviewAndRequestsManagementWindow()
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -116,7 +116,7 @@ public sealed class DesktopShopWindowRenderingTests
                     "ambient",
                     new LogicalPixelRect(0, 0, 1, 1)));
 
-                Assert.Equal(ManagementSection.Products, viewModel.SelectedSection);
+                Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
                 Assert.Equal("常温货架", viewModel.SelectedShopObject?.Title);
                 Assert.Equal(1, requestCount);
                 window.Close();

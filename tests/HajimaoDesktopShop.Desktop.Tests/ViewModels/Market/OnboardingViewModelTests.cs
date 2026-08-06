@@ -35,7 +35,7 @@ public sealed class OnboardingViewModelTests
         Assert.Equal("新手任务已完成", viewModel.ProgressText);
         Assert.Equal("新手任务已完成", viewModel.Title);
         Assert.Equal(ProductIdentity.OnboardingCompletionGuidance, viewModel.Guidance);
-        Assert.Equal(ManagementSection.Store, viewModel.SuggestedSection);
+        Assert.Equal(ManagementSection.Overview, viewModel.SuggestedSection);
         Assert.False(viewModel.IsVisible);
     }
 
@@ -71,49 +71,49 @@ public sealed class OnboardingViewModelTests
                 0,
                 "第一次进货",
                 "为任意商品补充库存，让小店可以持续营业。",
-                ManagementSection.Procurement
+                ManagementSection.Strategy
             },
             {
                 OnboardingTaskId.AdjustPrice,
                 1,
                 "调整商品价格",
                 "根据毛利和需求调整任意商品售价。",
-                ManagementSection.Products
+                ManagementSection.Strategy
             },
             {
                 OnboardingTaskId.EnableAutoRestock,
                 2,
                 "设置自动补货",
                 "为常卖商品开启自动补货，让挂机真正持续。",
-                ManagementSection.Procurement
+                ManagementSection.Strategy
             },
             {
                 OnboardingTaskId.CompleteFirstSale,
                 3,
                 "完成第一笔销售",
                 "保持库存并等待顾客完成结账。",
-                ManagementSection.Store
+                ManagementSection.Overview
             },
             {
                 OnboardingTaskId.TrainEmployee,
                 4,
                 "培训一名员工",
                 "培训员工，提高效率并承担相应工资成本。",
-                ManagementSection.Employees
+                ManagementSection.Investment
             },
             {
                 OnboardingTaskId.UpgradeStore,
                 5,
                 "完成一次店铺成长",
                 "扩建、升级货架或装修任意一项。",
-                ManagementSection.Growth
+                ManagementSection.Investment
             },
             {
                 OnboardingTaskId.OpenSecondStore,
                 6,
                 "开设第二家店",
                 "提升等级并积累资金，在店铺总览开设新店。",
-                ManagementSection.Store
+                ManagementSection.Investment
             }
         };
 
