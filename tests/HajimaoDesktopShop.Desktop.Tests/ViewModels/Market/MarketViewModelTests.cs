@@ -171,6 +171,8 @@ public sealed class MarketViewModelTests
         Assert.Contains("体力 100%", viewModel.SelectedShopObject.StatusText);
         Assert.Contains("满意度 70%", viewModel.SelectedShopObject.StatusText);
         Assert.Contains("班次", viewModel.SelectedShopObject.StatusText);
+        Assert.Contains("任务 导购", viewModel.SelectedShopObject.StatusText);
+        Assert.Contains("优先级 收银 → 导购 → 待命", viewModel.SelectedShopObject.ActionHintText);
     }
 
     [Fact]
@@ -279,6 +281,7 @@ public sealed class MarketViewModelTests
 
         viewModel.SetSelectedEmployeeDayShiftCommand.Execute(null);
         Assert.Contains("班次 08:00–16:00", viewModel.SelectedShopObject?.StatusText);
+        Assert.Contains("任务 休息", viewModel.SelectedShopObject?.StatusText);
 
         viewModel.SetSelectedEmployeeNightShiftCommand.Execute(null);
         Assert.Contains("班次 17:00–01:00", viewModel.SelectedShopObject?.StatusText);

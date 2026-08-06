@@ -101,6 +101,7 @@ public sealed class BusinessSimulation
     {
         lock (_gate)
         {
+            SynchronizeStores();
             var business = _game.GetSnapshot();
             var stores = _stores.Values
                 .OrderBy(store => store.StoreId, StringComparer.Ordinal)

@@ -40,7 +40,7 @@ public sealed class EmployeeManagementViewModel : ObservableObject
 
     public void Refresh()
     {
-        var snapshot = _session.Simulation.Employees.GetSnapshot();
+        var snapshot = _session.Simulation.GetSnapshot().Employees;
         Employees.Clear();
         foreach (var employee in snapshot.Employees)
         {
