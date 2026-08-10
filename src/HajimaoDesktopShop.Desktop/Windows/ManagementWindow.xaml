@@ -279,6 +279,19 @@
                             <TextBlock Text="对象详情仅用于观察，经营调整请使用整店策略。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" Margin="0,7,0,0" />
                         </StackPanel>
                     </Border>
+                    <Border x:Name="ReturnBriefingPanel"
+                            Visibility="{Binding ReturnBriefing.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Background="#302A35"
+                            BorderBrush="{DynamicResource Brush.Primary}"
+                            BorderThickness="2" Padding="10" Margin="0,0,0,12"
+                            AutomationProperties.Name="本次离线回归简报">
+                        <StackPanel>
+                            <TextBlock Text="本次回归" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                            <TextBlock Text="{Binding ReturnBriefing.DurationText}" FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding ReturnBriefing.ResultText}" TextWrapping="Wrap" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding ReturnBriefing.GuidanceText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
                     <Border x:Name="OnboardingPanel"
                             Visibility="{Binding DataContext.Onboarding.IsVisible, ElementName=ManagementRoot, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Background="{DynamicResource Brush.SurfaceElevated}"

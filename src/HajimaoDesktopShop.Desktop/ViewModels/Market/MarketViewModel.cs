@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Analysis;
 using HajimaoDesktopShop.Application.Business.Investments;
+using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Simulation;
@@ -39,7 +40,10 @@ public sealed class MarketViewModel : ObservableObject
     private BusinessShopInteractionTarget? _selectedShopTarget;
     private ShopObjectDetailViewModel? _selectedShopObject;
 
-    public MarketViewModel(BusinessSession session, Func<bool>? reduceMotion = null)
+    public MarketViewModel(
+        BusinessSession session,
+        Func<bool>? reduceMotion = null,
+        OfflineSettlementResult? offlineSettlement = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
@@ -60,6 +64,20 @@ public sealed class MarketViewModel : ObservableObject
         Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
         Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
         CommercialStreet = new CommercialStreetViewModel();
+        var returnBriefing = offlineSettlement is null
+            ? new ReturnBriefingSnapshot(
+                IsVisible: false,
+                AppliedSeconds: 0,
+                CashDeltaCents: 0,
+                CompletedSalesDelta: 0,
+                NetProfitDeltaCents: 0,
+                AttentionStoreId: null,
+                StoreBottleneck.InsufficientData,
+                ReturnBriefingPriority.Observe)
+            : ReturnBriefingService.Create(offlineSettlement, session.Simulation.GetSnapshot());
+        ReturnBriefing = new ReturnBriefingViewModel(
+            returnBriefing,
+            session.Game.GetStoreCatalogSnapshot());
         Strategy.FeedbackRaised += RelayFeedback;
         Investment.FeedbackRaised += RelayFeedback;
         Refresh();
@@ -80,6 +98,8 @@ public sealed class MarketViewModel : ObservableObject
     public CommercialStreetViewModel CommercialStreet { get; }
 
     public OnboardingViewModel Onboarding { get; }
+
+    public ReturnBriefingViewModel ReturnBriefing { get; }
 
     public DesktopNavigationViewModel DesktopNavigation { get; }
 
