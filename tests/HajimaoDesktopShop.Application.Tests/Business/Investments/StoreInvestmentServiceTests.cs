@@ -1,5 +1,13 @@
+using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Investments;
+using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Tests.Business;
+using HajimaoDesktopShop.Application.Tests.Simulation;
+using HajimaoDesktopShop.Domain.Economy;
+using HajimaoDesktopShop.Domain.Employees;
+using HajimaoDesktopShop.Domain.Players;
+using HajimaoDesktopShop.Domain.Shops;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Investments;
 
@@ -92,4 +100,68 @@ public sealed class StoreInvestmentServiceTests
         Assert.Equal(InvestmentCommandStatus.NotAvailable, blocked.Status);
         Assert.Equal(1, session.Game.GetStoreGrowthSnapshot("store-1").ShelfLevel);
     }
+
+    [Fact]
+    public void Execute_OpenStoreCandidateUsesExistingOpenCommandAndCreatesRuntime()
+    {
+        var session = CreateOpeningSession(openingCashCents: 200_000);
+        var candidate = session.Investments.GetPortfolio("store-1")!.Candidates
+            .Single(item => item.Kind == InvestmentKind.OpenStore);
+
+        var result = session.Investments.Execute("store-1", candidate.Id);
+
+        Assert.Equal(InvestmentCommandStatus.Success, result.Status);
+        Assert.Equal(80_000, result.CostCents);
+        Assert.Equal(120_000, session.Game.GetSnapshot().CashCents);
+        Assert.Equal(2, session.Game.GetSnapshot().Stores.Count);
+        Assert.Contains(session.Simulation.GetSnapshot().Stores, store => store.StoreId == "store-2");
+        Assert.Equal(candidate.Id, session.Investments.GetLatestComparison("store-2")?.CandidateId);
+    }
+
+    [Fact]
+    public void Execute_RevalidatesOpenedAndUnaffordableStoreCandidatesAtomically()
+    {
+        var available = CreateOpeningSession(openingCashCents: 200_000);
+        var candidateId = available.Investments.GetPortfolio("store-1")!.Candidates
+            .Single(item => item.Kind == InvestmentKind.OpenStore).Id;
+        Assert.Equal(
+            InvestmentCommandStatus.Success,
+            available.Investments.Execute("store-1", candidateId).Status);
+        var cashAfterOpen = available.Game.GetSnapshot().CashCents;
+
+        var stale = available.Investments.Execute("store-1", candidateId);
+        var poor = CreateOpeningSession(openingCashCents: 79_999);
+        var poorCandidate = poor.Investments.GetPortfolio("store-1")!.Candidates
+            .Single(item => item.Kind == InvestmentKind.OpenStore);
+        var insufficient = poor.Investments.Execute("store-1", poorCandidate.Id);
+
+        Assert.Equal(InvestmentCommandStatus.UnknownCandidate, stale.Status);
+        Assert.Equal(cashAfterOpen, available.Game.GetSnapshot().CashCents);
+        Assert.Equal(InvestmentCommandStatus.InsufficientFunds, insufficient.Status);
+        Assert.Single(poor.Game.GetSnapshot().Stores);
+        Assert.Equal(79_999, poor.Game.GetSnapshot().CashCents);
+    }
+
+    private static BusinessSession CreateOpeningSession(long openingCashCents) =>
+        BusinessSession.Create(
+            [new ProductDefinition("water", "矿泉水", 100, 200, 10, "ambient")],
+            [
+                new ShopDefinition(new ShopId("store-1"), "街角店", 1, Money.Zero),
+                new ShopDefinition(new ShopId("store-2"), "车站店", 1, new Money(80_000))
+            ],
+            new LevelCurve([0]),
+            "store-1",
+            openingCashCents,
+            [
+                new StoreEmployeeAssignment(
+                    "store-1",
+                    new Employee(
+                        new EmployeeId("cashier"),
+                        "收银员",
+                        EmployeeRole.Cashier,
+                        1_000,
+                        new Money(600)))
+            ],
+            new StatefulTestRandomSource(123),
+            new BusinessSimulationOptions());
 }

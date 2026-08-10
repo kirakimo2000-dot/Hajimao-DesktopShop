@@ -5,7 +5,8 @@ public enum InvestmentKind
     Expansion,
     Shelf,
     Decoration,
-    Employee
+    Employee,
+    OpenStore
 }
 
 public enum InvestmentEstimateCondition
@@ -14,12 +15,14 @@ public enum InvestmentEstimateCondition
     QueueLossesRepeat,
     StockLossesRepeat,
     TrafficConversionStaysStable,
-    RoleBottleneckPersists
+    RoleBottleneckPersists,
+    NewStoreNeedsCompletedDay
 }
 
 public enum InvestmentAvailability
 {
     Available,
     InsufficientFunds,
-    PrerequisiteNotMet
+    PrerequisiteNotMet,
+    LevelLocked
 }
