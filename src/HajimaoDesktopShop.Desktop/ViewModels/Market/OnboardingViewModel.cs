@@ -66,33 +66,29 @@ public sealed class OnboardingViewModel : ObservableObject
     private static OnboardingTaskPresentation GetPresentation(OnboardingTaskId taskId) =>
         taskId switch
         {
-            OnboardingTaskId.RestockProduct => new(
-                "第一次进货",
-                "为任意商品补充库存，让小店可以持续营业。",
-                ManagementSection.Strategy),
-            OnboardingTaskId.AdjustPrice => new(
-                "调整商品价格",
-                "根据毛利和需求调整任意商品售价。",
-                ManagementSection.Strategy),
-            OnboardingTaskId.EnableAutoRestock => new(
-                "设置自动补货",
-                "为常卖商品开启自动补货，让挂机真正持续。",
+            OnboardingTaskId.ReviewEconomy => new(
+                "查看经营概览",
+                "先看收入、利润率、现金续航和主要瓶颈。",
+                ManagementSection.Overview),
+            OnboardingTaskId.ChooseStoreStrategy => new(
+                "选择整店策略",
+                "在定价和备货中各选一项，系统会负责执行。",
                 ManagementSection.Strategy),
             OnboardingTaskId.CompleteFirstSale => new(
-                "完成第一笔销售",
-                "保持库存并等待顾客完成结账。",
+                "等待第一笔销售",
+                "保持游戏运行，观察系统完成进货、服务与结账。",
                 ManagementSection.Overview),
-            OnboardingTaskId.TrainEmployee => new(
-                "培训一名员工",
-                "培训员工，提高效率并承担相应工资成本。",
-                ManagementSection.Investment),
-            OnboardingTaskId.UpgradeStore => new(
-                "完成一次店铺成长",
-                "扩建、升级货架或装修任意一项。",
+            OnboardingTaskId.ReachPositiveDay => new(
+                "实现首个盈利日",
+                "根据瓶颈调整策略，让完整一天的净利润转正。",
+                ManagementSection.Overview),
+            OnboardingTaskId.MakeFirstInvestment => new(
+                "完成第一次投资",
+                "把现金投入扩建、货架、装修或关键员工。",
                 ManagementSection.Investment),
             OnboardingTaskId.OpenSecondStore => new(
                 "开设第二家店",
-                "提升等级并积累资金，在店铺总览开设新店。",
+                "提升等级并积累资金，把盈利能力复制到新店。",
                 ManagementSection.Investment),
             _ => throw new ArgumentOutOfRangeException(nameof(taskId), taskId, null)
         };

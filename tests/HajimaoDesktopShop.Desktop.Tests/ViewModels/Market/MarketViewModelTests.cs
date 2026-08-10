@@ -69,7 +69,7 @@ public sealed class MarketViewModelTests
         Assert.Equal("corner-store", viewModel.SelectedStoreId);
         Assert.Equal("街角便利店", viewModel.SelectedStoreName);
         Assert.Equal("固定现实 1x", viewModel.TimeModeText);
-        Assert.Equal("第一次进货", viewModel.Onboarding.Title);
+        Assert.Equal("查看经营概览", viewModel.Onboarding.Title);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public sealed class MarketViewModelTests
 
         viewModel.GoToOnboardingTaskCommand.Execute(null);
 
-        Assert.Equal(ManagementSection.Strategy, viewModel.SelectedSection);
+        Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
         Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
     }
 
