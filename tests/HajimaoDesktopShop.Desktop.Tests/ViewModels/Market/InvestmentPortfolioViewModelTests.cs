@@ -5,6 +5,17 @@ namespace HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 public sealed class InvestmentPortfolioViewModelTests
 {
     [Fact]
+    public void Refresh_PresentsAtMostThreePortfolioLevelCapitalChoices()
+    {
+        var viewModel = new InvestmentPortfolioViewModel(
+            MarketTestSession.Create(),
+            () => "corner-store",
+            refreshMarket: () => { });
+
+        Assert.InRange(viewModel.Candidates.Count, 1, 3);
+    }
+
+    [Fact]
     public void Refresh_FormatsCalculatedCandidateWithoutOwningReturnFormula()
     {
         var session = MarketTestSession.Create();
@@ -15,6 +26,8 @@ public sealed class InvestmentPortfolioViewModelTests
 
         var shelf = viewModel.Candidates.Single(candidate => candidate.Id == "growth:shelf");
 
+        Assert.Equal("稳住弱店", shelf.ThesisText);
+        Assert.Equal("街角便利店", shelf.StoreContextText);
         Assert.Equal("升级货架", shelf.TitleText);
         Assert.Equal("投入 ¥250.00", shelf.CostText);
         Assert.Equal("暂无足够数据", shelf.ExpectedBenefitText);
@@ -48,18 +61,36 @@ public sealed class InvestmentPortfolioViewModelTests
     }
 
     [Fact]
-    public void Refresh_DisablesUnaffordableCandidateAndExplainsPressure()
+    public void InvestCommand_UsesTheAdvisorsExecutionStoreInsteadOfSelectedStore()
+    {
+        var session = MarketTestSession.Create();
+        var viewModel = new InvestmentPortfolioViewModel(
+            session,
+            () => "station-store",
+            refreshMarket: () => { });
+
+        viewModel.Candidates.Single(candidate => candidate.Id == "growth:shelf")
+            .InvestCommand.Execute(null);
+
+        Assert.Equal(1, session.Game.GetStoreGrowthSnapshot("corner-store").ShelfLevel);
+        Assert.DoesNotContain(
+            session.Game.GetSnapshot().Stores,
+            store => store.Id == "station-store");
+    }
+
+    [Fact]
+    public void Refresh_HidesUnaffordableOperatingMovesInsteadOfFillingThePage()
     {
         var viewModel = new InvestmentPortfolioViewModel(
             MarketTestSession.Create(openingCashCents: 10_000),
             () => "corner-store",
             refreshMarket: () => { });
 
-        var shelf = viewModel.Candidates.Single(candidate => candidate.Id == "growth:shelf");
+        var opening = Assert.Single(viewModel.Candidates);
 
-        Assert.False(shelf.InvestCommand.CanExecute(null));
-        Assert.Equal("资金不足", shelf.AvailabilityText);
-        Assert.Equal("无法支付", shelf.CashPressureText);
+        Assert.Equal("扩张街区", opening.ThesisText);
+        Assert.Equal("store:open:station-store", opening.Id);
+        Assert.False(opening.InvestCommand.CanExecute(null));
     }
 
     [Fact]
@@ -73,6 +104,8 @@ public sealed class InvestmentPortfolioViewModelTests
         var opening = viewModel.Candidates.Single(candidate =>
             candidate.Id == "store:open:station-store");
 
+        Assert.Equal("扩张街区", opening.ThesisText);
+        Assert.Equal("车站便利店", opening.StoreContextText);
         Assert.Equal("开设 车站便利店", opening.TitleText);
         Assert.Equal("投入 ¥800.00", opening.CostText);
         Assert.Equal("新店尚无完整经营数据", opening.ExpectedBenefitText);

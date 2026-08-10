@@ -59,6 +59,17 @@ public sealed class StoreInvestmentService
 
     public bool HasAnyInvestment => _tracker.HasAnyInvestment;
 
+    public CapitalAllocationSnapshot GetCapitalAllocation()
+    {
+        var catalog = _game.GetStoreCatalogSnapshot();
+        var portfolios = catalog
+            .Where(store => store.IsOpen)
+            .Select(store => GetPortfolio(store.Id))
+            .OfType<StoreInvestmentPortfolio>()
+            .ToArray();
+        return CapitalAllocationAdvisor.Create(catalog, portfolios);
+    }
+
     public InvestmentCommandResult Execute(string storeId, string candidateId)
     {
         var portfolio = GetPortfolio(storeId);

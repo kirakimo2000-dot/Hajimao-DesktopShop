@@ -59,22 +59,17 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
     public void Refresh()
     {
         Candidates.Clear();
-        var storeId = _selectedStoreId();
-        var portfolio = _session.Investments.GetPortfolio(storeId);
-        if (portfolio is not null)
+        foreach (var option in _session.Investments.GetCapitalAllocation().Options)
         {
-            foreach (var candidate in portfolio.Candidates)
-            {
-                Candidates.Add(new InvestmentCandidateCardViewModel(candidate, Invest));
-            }
+            Candidates.Add(new InvestmentCandidateCardViewModel(option, Invest));
         }
 
-        RefreshComparison(storeId);
+        RefreshComparison(ResolveComparisonStoreId());
     }
 
     private void Invest(InvestmentCandidateCardViewModel card)
     {
-        var result = _session.Investments.Execute(_selectedStoreId(), card.Id);
+        var result = _session.Investments.Execute(card.ExecutionStoreId, card.Id);
         StatusMessage = result.Status switch
         {
             InvestmentCommandStatus.Success => $"投资成功：{card.TitleText}",
@@ -96,6 +91,14 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
 
         Refresh();
     }
+
+    private string ResolveComparisonStoreId() =>
+        _session.Investments.CaptureTrackingSaveData().LatestInvestments
+            .OrderByDescending(investment => investment.GameMinute)
+            .ThenBy(investment => investment.StoreId, StringComparer.Ordinal)
+            .Select(investment => investment.StoreId)
+            .FirstOrDefault()
+        ?? _selectedStoreId();
 
     private void RefreshComparison(string storeId)
     {

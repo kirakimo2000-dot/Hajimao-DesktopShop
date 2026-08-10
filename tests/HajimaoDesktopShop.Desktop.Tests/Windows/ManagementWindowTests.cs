@@ -70,6 +70,22 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
+    public void ManagementWindow_ContainsReadOnlyReturnBriefingBeforeOnboarding()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+
+        Assert.Contains("x:Name=\"ReturnBriefingPanel\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"{Binding ReturnBriefing.IsVisible", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding ReturnBriefing.DurationText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding ReturnBriefing.ResultText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding ReturnBriefing.GuidanceText}\"", xaml, StringComparison.Ordinal);
+        Assert.True(
+            xaml.IndexOf("x:Name=\"ReturnBriefingPanel\"", StringComparison.Ordinal)
+                < xaml.IndexOf("x:Name=\"OnboardingPanel\"", StringComparison.Ordinal));
+        Assert.DoesNotContain("领取离线", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManagementWindow_HasThreeInvestorNavigationTargetsPersistentSceneAndNoSpeedControls()
     {
         RunOnSta(() =>
@@ -130,6 +146,8 @@ public sealed class ManagementWindowTests
                 Assert.Contains("Command=\"{Binding InvestCommand}\"", xaml, StringComparison.Ordinal);
                 foreach (var property in new[]
                          {
+                             nameof(InvestmentCandidateCardViewModel.ThesisText),
+                             nameof(InvestmentCandidateCardViewModel.StoreContextText),
                              nameof(InvestmentCandidateCardViewModel.TitleText),
                              nameof(InvestmentCandidateCardViewModel.CostText),
                              nameof(InvestmentCandidateCardViewModel.ExpectedBenefitText),
@@ -142,6 +160,10 @@ public sealed class ManagementWindowTests
                 }
 
                 Assert.IsType<Border>(window.FindName("LatestInvestmentPanel"));
+                Assert.Contains(
+                    "每次只比较稳住弱店、提高回报、扩张街区三种资本用途。",
+                    xaml,
+                    StringComparison.Ordinal);
                 Assert.DoesNotContain("StoreGrowth.Upgrade", xaml, StringComparison.Ordinal);
                 Assert.DoesNotContain("EmployeeManagement.Candidates", xaml, StringComparison.Ordinal);
                 Assert.DoesNotContain("Overview.OpenStoreCommand", xaml, StringComparison.Ordinal);

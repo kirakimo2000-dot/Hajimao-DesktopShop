@@ -8,18 +8,32 @@ namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 public sealed class InvestmentCandidateCardViewModel
 {
     internal InvestmentCandidateCardViewModel(
-        InvestmentCandidate candidate,
+        CapitalAllocationOption option,
         Action<InvestmentCandidateCardViewModel> invest)
     {
-        ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(option);
         ArgumentNullException.ThrowIfNull(invest);
-        Candidate = candidate;
-        InvestCommand = new RelayCommand(() => invest(this), () => candidate.IsExecutable);
+        Option = option;
+        InvestCommand = new RelayCommand(() => invest(this), () => Candidate.IsExecutable);
     }
 
-    internal InvestmentCandidate Candidate { get; }
+    internal CapitalAllocationOption Option { get; }
+
+    internal InvestmentCandidate Candidate => Option.Candidate;
 
     public string Id => Candidate.Id;
+
+    public string ExecutionStoreId => Option.ExecutionStoreId;
+
+    public string ThesisText => Option.Thesis switch
+    {
+        CapitalAllocationThesis.StabilizeWeakestStore => "稳住弱店",
+        CapitalAllocationThesis.ImproveReturn => "提高回报",
+        CapitalAllocationThesis.ExpandStreet => "扩张街区",
+        _ => Option.Thesis.ToString()
+    };
+
+    public string StoreContextText => Option.StoreName;
 
     public string TitleText => Candidate.Kind switch
     {

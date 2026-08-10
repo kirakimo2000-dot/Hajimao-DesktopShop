@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Business.Simulation;
@@ -31,7 +32,11 @@ internal sealed record ProgressionCheckpoint(
     int CashRunwayTenthsOfDay,
     int CompletedSales,
     long RevenueCents,
-    long GrossProfitCents);
+    long GrossProfitCents,
+    long WageCostCents,
+    long OperatingCostCents,
+    string WeakestStoreId,
+    long WeakestStoreNetProfitCents);
 
 internal sealed record LongTermProgressionScenario(
     IReadOnlyList<ProgressionCheckpoint> Checkpoints,
@@ -120,20 +125,39 @@ internal static class LongTermProgressionScenarioRunner
             .DistinctBy(route => (route.StoreId, route.Candidate.Id))
             .ToArray();
 
-        var unstaffedStoreIds = business.Stores
-            .Where(store => employees.All(employee => employee.StoreId != store.Id))
-            .Select(store => store.Id)
-            .ToHashSet(StringComparer.Ordinal);
+        var staffingNeeds = business.Stores
+            .Select(store => new StaffingNeed(
+                store.Id,
+                employees.Count(employee => string.Equals(
+                    employee.StoreId,
+                    store.Id,
+                    StringComparison.Ordinal)),
+                HasTaskCapability(employees, store.Id, EmployeeTaskKind.Checkout),
+                HasTaskCapability(employees, store.Id, EmployeeTaskKind.Restock)))
+            .Where(need => need.EmployeeCount < 2
+                || !need.HasCheckout
+                || !need.HasRestock)
+            .ToDictionary(need => need.StoreId, StringComparer.Ordinal);
         var staffing = candidates
             .Where(route => route.Candidate.Kind == InvestmentKind.Employee
-                && unstaffedStoreIds.Contains(route.StoreId))
-            .OrderBy(route => route.Candidate.Effect.AddedRole == EmployeeRole.Cashier ? 0 : 1)
+                && route.Candidate.Effect.AddedRole is { } role
+                && staffingNeeds.TryGetValue(route.StoreId, out var need)
+                && CandidateMeetsNeed(role, need))
+            .OrderBy(route => StaffingPriority(
+                route.Candidate.Effect.AddedRole!.Value,
+                staffingNeeds[route.StoreId]))
             .ThenBy(route => route.Candidate.Return.CostCents)
             .ThenBy(route => route.StoreId, StringComparer.Ordinal)
             .ThenBy(route => route.Candidate.Id, StringComparer.Ordinal)
             .ToArray();
-        if (unstaffedStoreIds.Count > 0)
+        if (staffingNeeds.Count > 0)
         {
+            if (staffing.Length == 0)
+            {
+                session.Simulation.Employees.RefreshCandidates();
+                return false;
+            }
+
             return TryExecuteFirst(session, staffing);
         }
 
@@ -147,12 +171,21 @@ internal static class LongTermProgressionScenarioRunner
                         && route.Candidate.TargetId == nextStore.Id)
                     .OrderBy(route => route.StoreId, StringComparer.Ordinal)
                     .ToArray();
-                return TryExecuteFirst(session, opening);
+                if (TryExecuteFirst(session, opening))
+                {
+                    return true;
+                }
+
+                if (session.Investments.HasAnyInvestment)
+                {
+                    return false;
+                }
             }
         }
 
         var ordered = candidates
-            .Where(route => route.Candidate.Kind != InvestmentKind.OpenStore)
+            .Where(route => route.Candidate.Kind is not (
+                InvestmentKind.OpenStore or InvestmentKind.Employee))
             .OrderBy(route => Priority(policy, route.Candidate.Kind))
             .ThenBy(route => route.Candidate.Return.CostCents)
             .ThenBy(route => route.StoreId, StringComparer.Ordinal)
@@ -191,7 +224,15 @@ internal static class LongTermProgressionScenarioRunner
             store.RevenueCents - store.GrossProfitCents
             + store.WageCostCents
             + store.OperatingCostCents));
-        return candidate.Return.CashAfterInvestmentCents >= necessaryOutflow;
+        var reserveCycles = candidate.Kind == InvestmentKind.OpenStore ? 2 : 1;
+        var staffingReserve = candidate.Kind == InvestmentKind.OpenStore
+            ? session.Simulation.Employees.GetSnapshot().Candidates
+                .OrderBy(item => item.HireCost.Cents)
+                .Take(2)
+                .Sum(item => item.HireCost.Cents)
+            : 0;
+        return candidate.Return.CashAfterInvestmentCents
+            >= checked((necessaryOutflow * reserveCycles) + staffingReserve);
     }
 
     private static ProgressionCheckpoint Capture(
@@ -221,6 +262,10 @@ internal static class LongTermProgressionScenarioRunner
             : checked((int)Math.Min(
                 int.MaxValue,
                 snapshot.Business.CashCents * 10 / necessaryOutflow));
+        var weakestStore = report.Stores
+            .OrderBy(store => store.NetProfitCents)
+            .ThenBy(store => store.StoreId, StringComparer.Ordinal)
+            .First();
         return new ProgressionCheckpoint(
             day,
             snapshot.Business.CashCents,
@@ -234,7 +279,11 @@ internal static class LongTermProgressionScenarioRunner
             cashRunway,
             report.Stores.Sum(store => store.CompletedSales),
             report.Stores.Sum(store => store.RevenueCents),
-            report.Stores.Sum(store => store.GrossProfitCents));
+            report.Stores.Sum(store => store.GrossProfitCents),
+            report.Stores.Sum(store => store.WageCostCents),
+            report.Stores.Sum(store => store.OperatingCostCents),
+            weakestStore.StoreId,
+            weakestStore.NetProfitCents);
     }
 
     private static int Priority(
@@ -274,6 +323,35 @@ internal static class LongTermProgressionScenarioRunner
         return growth.ExpansionLevel + growth.ShelfLevel + growth.DecorationLevel;
     }
 
+    private static bool HasTaskCapability(
+        IReadOnlyList<EmployeeOperationsEmployeeSnapshot> employees,
+        string storeId,
+        EmployeeTaskKind task) =>
+        employees.Any(employee => string.Equals(
+                employee.StoreId,
+                storeId,
+                StringComparison.Ordinal)
+            && EmployeeTaskPriorityCatalog.GetPriorities(employee.Role).Contains(task));
+
+    private static bool CandidateMeetsNeed(EmployeeRole role, StaffingNeed need)
+    {
+        var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
+        return (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
+            || (!need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock))
+            || (need.HasCheckout && need.HasRestock && need.EmployeeCount < 2);
+    }
+
+    private static int StaffingPriority(EmployeeRole role, StaffingNeed need)
+    {
+        var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
+        if (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
+        {
+            return 0;
+        }
+
+        return !need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock) ? 1 : 2;
+    }
+
     private static IReadOnlyList<ProductDefinition> LoadProducts()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
@@ -281,4 +359,10 @@ internal static class LongTermProgressionScenarioRunner
     }
 
     private sealed record CandidateRoute(string StoreId, InvestmentCandidate Candidate);
+
+    private sealed record StaffingNeed(
+        string StoreId,
+        int EmployeeCount,
+        bool HasCheckout,
+        bool HasRestock);
 }

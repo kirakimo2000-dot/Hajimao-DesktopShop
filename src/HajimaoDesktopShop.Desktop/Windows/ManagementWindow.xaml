@@ -193,7 +193,7 @@
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="投资决策" FontSize="18" FontWeight="Bold" />
-                                <TextBlock Text="比较真实成本、保守收益和现金压力，再决定把资金投向哪里。"
+                                <TextBlock Text="每次只比较稳住弱店、提高回报、扩张街区三种资本用途。"
                                            TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,12" />
                                 <ItemsControl x:Name="InvestmentCandidateList"
                                               ItemsSource="{Binding Investment.Candidates}">
@@ -215,6 +215,10 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
+                                                        <WrapPanel Margin="0,0,0,4">
+                                                            <TextBlock Text="{Binding ThesisText}" Foreground="{DynamicResource Brush.Primary}" FontWeight="Bold" Margin="0,0,10,0" />
+                                                            <TextBlock Text="{Binding StoreContextText}" Foreground="{DynamicResource Brush.TextMuted}" />
+                                                        </WrapPanel>
                                                         <TextBlock Text="{Binding TitleText}" FontWeight="Bold" FontSize="15" />
                                                         <TextBlock Text="{Binding AvailabilityText}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,3,0,0" />
                                                     </StackPanel>
@@ -273,6 +277,19 @@
                             <TextBlock Text="{Binding SelectedShopObject.StatusText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,4,0,0" />
                             <TextBlock Text="{Binding SelectedShopObject.ActionHintText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Primary}" FontSize="12" Margin="0,6,0,0" />
                             <TextBlock Text="对象详情仅用于观察，经营调整请使用整店策略。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" Margin="0,7,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="ReturnBriefingPanel"
+                            Visibility="{Binding ReturnBriefing.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Background="#302A35"
+                            BorderBrush="{DynamicResource Brush.Primary}"
+                            BorderThickness="2" Padding="10" Margin="0,0,0,12"
+                            AutomationProperties.Name="本次离线回归简报">
+                        <StackPanel>
+                            <TextBlock Text="本次回归" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                            <TextBlock Text="{Binding ReturnBriefing.DurationText}" FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding ReturnBriefing.ResultText}" TextWrapping="Wrap" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding ReturnBriefing.GuidanceText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,5,0,0" />
                         </StackPanel>
                     </Border>
                     <Border x:Name="OnboardingPanel"

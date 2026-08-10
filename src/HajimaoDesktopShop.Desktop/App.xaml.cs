@@ -77,7 +77,8 @@ public partial class App : System.Windows.Application
 
             _viewModel = new MarketViewModel(
                 _session,
-                reduceMotion: () => !SystemParameters.ClientAreaAnimation);
+                reduceMotion: () => !SystemParameters.ClientAreaAnimation,
+                offlineSettlement: sessionStart.OfflineSettlement);
             _soundOutput = new PixelGameSoundOutput();
             _soundService = new GameSoundService(_viewModel, _soundOutput);
             if (savedPlacement is not null)

@@ -65,7 +65,7 @@ public static class StoreStrategyPlanner
     {
         StorePricingPreset.HighTurnover => 9_000,
         StorePricingPreset.Balanced => 10_000,
-        StorePricingPreset.HighMargin => 11_500,
+        StorePricingPreset.HighMargin => 10_800,
         _ => throw new ArgumentOutOfRangeException(nameof(pricing))
     };
 

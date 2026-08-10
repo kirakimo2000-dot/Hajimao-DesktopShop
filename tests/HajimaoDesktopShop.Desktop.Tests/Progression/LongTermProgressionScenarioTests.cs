@@ -9,6 +9,47 @@ public sealed class LongTermProgressionScenarioTests
     [InlineData(LongTermProgressionPolicy.HighTurnover)]
     [InlineData(LongTermProgressionPolicy.HighMargin)]
     [InlineData(LongTermProgressionPolicy.CashPreservation)]
+    public void NinetyDayPolicies_RemainSolventAndRetainCapitalChoices(
+        LongTermProgressionPolicy policy)
+    {
+        var scenario = LongTermProgressionScenarioRunner.Run(policy, days: 90);
+        var dayThirty = scenario.Day(30);
+        var dayNinety = scenario.Day(90);
+        var firstWageFailure = scenario.Checkpoints.FirstOrDefault(
+            checkpoint => checkpoint.WagePaymentFailures > 0);
+        var beforeWageFailure = firstWageFailure is null || firstWageFailure.Day == 1
+            ? null
+            : scenario.Day(firstWageFailure.Day - 1);
+        var firstThreeStores = scenario.Checkpoints.FirstOrDefault(
+            checkpoint => checkpoint.OpenStores == 3);
+        var firstFourthInvestment = scenario.Checkpoints.FirstOrDefault(
+            checkpoint => checkpoint.Investments >= 4);
+
+        Assert.True(dayNinety.CashCents >= 0);
+        Assert.True(
+            dayNinety.WagePaymentFailures == 0,
+            $"{policy}: firstThreeStores={firstThreeStores}; "
+                + $"firstFourthInvestment={firstFourthInvestment}; "
+                + $"beforeFailure={beforeWageFailure}; firstFailure={firstWageFailure}; "
+                + $"day30={dayThirty}; day90={dayNinety}");
+        Assert.True(
+            dayNinety.OpenStores == 3,
+            $"{policy}: day30={dayThirty}; day90={dayNinety}");
+        Assert.True(
+            dayNinety.Investments > dayThirty.Investments,
+            $"{policy}: day30={dayThirty}; day90={dayNinety}");
+        Assert.True(
+            dayNinety.AvailableInvestmentRoutes > 0,
+            $"{policy}: day30={dayThirty}; day90={dayNinety}");
+        Assert.True(
+            dayNinety.MaximumGrowthStores < dayNinety.OpenStores,
+            $"{policy}: day30={dayThirty}; day90={dayNinety}");
+    }
+
+    [Theory]
+    [InlineData(LongTermProgressionPolicy.HighTurnover)]
+    [InlineData(LongTermProgressionPolicy.HighMargin)]
+    [InlineData(LongTermProgressionPolicy.CashPreservation)]
     public void ThirtyDayPolicies_AreDeterministicSolventAndLeaveLongTermGoals(
         LongTermProgressionPolicy policy)
     {

@@ -74,21 +74,13 @@ public sealed class OnboardingViewModel : ObservableObject
                 "选择整店策略",
                 "尝试高周转、高毛利、精益或充足策略，系统会负责执行。",
                 ManagementSection.Strategy),
-            OnboardingTaskId.CompleteFirstSale => new(
-                "等待第一笔销售",
-                "保持游戏运行，观察系统完成进货、服务与结账。",
-                ManagementSection.Overview),
-            OnboardingTaskId.ReachPositiveDay => new(
-                "实现首个盈利日",
-                "根据瓶颈调整策略，让完整一天的净利润转正。",
-                ManagementSection.Overview),
             OnboardingTaskId.MakeFirstInvestment => new(
                 "完成第一次投资",
-                "把现金投入扩建、货架或装修，提升长期经营能力。",
+                "选择一个能改变现金流或经营能力的方案，不需要逐项维护。",
                 ManagementSection.Investment),
-            OnboardingTaskId.OpenSecondStore => new(
-                "开设第二家店",
-                "提升等级并积累资金，把盈利能力复制到新店。",
+            OnboardingTaskId.ReviewInvestmentReturn => new(
+                "查看投资回报",
+                "等待下一份完整日结，对比净利润、成交与流失变化。",
                 ManagementSection.Investment),
             _ => throw new ArgumentOutOfRangeException(nameof(taskId), taskId, null)
         };

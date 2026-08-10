@@ -4,8 +4,6 @@ public enum OnboardingTaskId
 {
     ReviewEconomy,
     ChooseStoreStrategy,
-    CompleteFirstSale,
-    ReachPositiveDay,
     MakeFirstInvestment,
-    OpenSecondStore
+    ReviewInvestmentReturn
 }

@@ -14,6 +14,27 @@ namespace HajimaoDesktopShop.Application.Tests.Business.Investments;
 public sealed class StoreInvestmentServiceTests
 {
     [Fact]
+    public void GetCapitalAllocation_ComposesOpenStorePortfoliosWithoutChangingState()
+    {
+        var session = CreateOpeningSession(openingCashCents: 200_000);
+        var cashBefore = session.Game.GetSnapshot().CashCents;
+
+        var allocation = session.Investments.GetCapitalAllocation();
+
+        Assert.Equal(2, allocation.Options.Count);
+        Assert.Contains(allocation.Options, option =>
+            option.Thesis == CapitalAllocationThesis.StabilizeWeakestStore
+            && option.ExecutionStoreId == "store-1"
+            && option.Candidate.Kind == InvestmentKind.Shelf);
+        Assert.Contains(allocation.Options, option =>
+            option.Thesis == CapitalAllocationThesis.ExpandStreet
+            && option.ExecutionStoreId == "store-1"
+            && option.Candidate.TargetId == "store-2");
+        Assert.Equal(cashBefore, session.Game.GetSnapshot().CashCents);
+        Assert.Single(session.Game.GetSnapshot().Stores);
+    }
+
+    [Fact]
     public void Execute_GrowthCandidateUsesExistingUpgradeCommandForSelectedStoreOnly()
     {
         var session = BusinessTestSessionFactory.Create(
