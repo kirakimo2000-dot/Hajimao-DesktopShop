@@ -71,10 +71,10 @@ public static class StoreStrategyPlanner
 
     private static (int ReorderPermille, int TargetPermille) StockingThresholds(
         StoreStockingPreset stocking) => stocking switch
-    {
-        StoreStockingPreset.Lean => (200, 550),
-        StoreStockingPreset.Balanced => (300, 750),
-        StoreStockingPreset.FullShelves => (450, 900),
-        _ => throw new ArgumentOutOfRangeException(nameof(stocking))
-    };
+        {
+            StoreStockingPreset.Lean => (200, 550),
+            StoreStockingPreset.Balanced => (300, 750),
+            StoreStockingPreset.FullShelves => (450, 900),
+            _ => throw new ArgumentOutOfRangeException(nameof(stocking))
+        };
 }

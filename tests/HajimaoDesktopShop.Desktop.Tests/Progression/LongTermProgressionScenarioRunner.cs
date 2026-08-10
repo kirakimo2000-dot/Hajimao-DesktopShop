@@ -240,33 +240,33 @@ internal static class LongTermProgressionScenarioRunner
     private static int Priority(
         LongTermProgressionPolicy policy,
         InvestmentKind kind) => policy switch
-    {
-        LongTermProgressionPolicy.HighTurnover => kind switch
         {
-            InvestmentKind.Shelf => 0,
-            InvestmentKind.Expansion => 1,
-            InvestmentKind.OpenStore => 2,
-            InvestmentKind.Employee => 3,
-            _ => 4
-        },
-        LongTermProgressionPolicy.HighMargin => kind switch
-        {
-            InvestmentKind.Decoration => 0,
-            InvestmentKind.Expansion => 1,
-            InvestmentKind.OpenStore => 2,
-            InvestmentKind.Shelf => 3,
-            _ => 4
-        },
-        LongTermProgressionPolicy.CashPreservation => kind switch
-        {
-            InvestmentKind.OpenStore => 0,
-            InvestmentKind.Shelf => 1,
-            InvestmentKind.Decoration => 2,
-            InvestmentKind.Expansion => 3,
-            _ => 4
-        },
-        _ => throw new ArgumentOutOfRangeException(nameof(policy))
-    };
+            LongTermProgressionPolicy.HighTurnover => kind switch
+            {
+                InvestmentKind.Shelf => 0,
+                InvestmentKind.Expansion => 1,
+                InvestmentKind.OpenStore => 2,
+                InvestmentKind.Employee => 3,
+                _ => 4
+            },
+            LongTermProgressionPolicy.HighMargin => kind switch
+            {
+                InvestmentKind.Decoration => 0,
+                InvestmentKind.Expansion => 1,
+                InvestmentKind.OpenStore => 2,
+                InvestmentKind.Shelf => 3,
+                _ => 4
+            },
+            LongTermProgressionPolicy.CashPreservation => kind switch
+            {
+                InvestmentKind.OpenStore => 0,
+                InvestmentKind.Shelf => 1,
+                InvestmentKind.Decoration => 2,
+                InvestmentKind.Expansion => 3,
+                _ => 4
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
 
     private static int GrowthTotal(BusinessSession session, string storeId)
     {

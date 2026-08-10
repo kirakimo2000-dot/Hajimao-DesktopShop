@@ -36,11 +36,11 @@ public sealed class InvestmentCandidateCardViewModel
     public string ExpectedBenefitText => Candidate.Kind == InvestmentKind.OpenStore
         ? "新店尚无完整经营数据"
         : Candidate.Return.ExpectedDailyNetBenefitCents switch
-    {
-        > 0 => $"保守估计 +{FormatMoney(Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
-        < 0 => $"保守估计 -{FormatMoney(-Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
-        _ => "暂无足够数据"
-    };
+        {
+            > 0 => $"保守估计 +{FormatMoney(Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
+            < 0 => $"保守估计 -{FormatMoney(-Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
+            _ => "暂无足够数据"
+        };
 
     public string PaybackText => Candidate.Kind == InvestmentKind.OpenStore
         ? "新店日结后评估回本"
