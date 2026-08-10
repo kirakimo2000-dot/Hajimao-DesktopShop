@@ -134,16 +134,15 @@ internal static class LongTermProgressionScenarioRunner
                     StringComparison.Ordinal)),
                 HasTaskCapability(employees, store.Id, EmployeeTaskKind.Checkout),
                 HasTaskCapability(employees, store.Id, EmployeeTaskKind.Restock)))
-            .Where(need => need.EmployeeCount < 2
-                || !need.HasCheckout
-                || !need.HasRestock)
+            .Where(need => RequiresAdditionalStaff(policy, need))
             .ToDictionary(need => need.StoreId, StringComparer.Ordinal);
         var staffing = candidates
             .Where(route => route.Candidate.Kind == InvestmentKind.Employee
                 && route.Candidate.Effect.AddedRole is { } role
                 && staffingNeeds.TryGetValue(route.StoreId, out var need)
-                && CandidateMeetsNeed(role, need))
+                && CandidateMeetsNeed(policy, role, need))
             .OrderBy(route => StaffingPriority(
+                policy,
                 route.Candidate.Effect.AddedRole!.Value,
                 staffingNeeds[route.StoreId]))
             .ThenBy(route => route.Candidate.Return.CostCents)
@@ -333,17 +332,66 @@ internal static class LongTermProgressionScenarioRunner
                 StringComparison.Ordinal)
             && EmployeeTaskPriorityCatalog.GetPriorities(employee.Role).Contains(task));
 
-    private static bool CandidateMeetsNeed(EmployeeRole role, StaffingNeed need)
+    private static bool RequiresAdditionalStaff(
+        LongTermProgressionPolicy policy,
+        StaffingNeed need) => policy switch
+        {
+            LongTermProgressionPolicy.HighTurnover =>
+                need.EmployeeCount < 2 || !need.HasCheckout || !need.HasRestock,
+            LongTermProgressionPolicy.HighMargin or LongTermProgressionPolicy.CashPreservation =>
+                !need.HasCheckout || !need.HasRestock,
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
+
+    private static bool CandidateMeetsNeed(
+        LongTermProgressionPolicy policy,
+        EmployeeRole role,
+        StaffingNeed need)
     {
         var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
-        return (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
-            || (!need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock))
-            || (need.HasCheckout && need.HasRestock && need.EmployeeCount < 2);
+        return policy switch
+        {
+            LongTermProgressionPolicy.HighTurnover =>
+                (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
+                || (!need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock))
+                || (need.HasCheckout && need.HasRestock && need.EmployeeCount < 2),
+            LongTermProgressionPolicy.HighMargin or LongTermProgressionPolicy.CashPreservation =>
+                CandidateMeetsLeanStaffingNeed(tasks, need),
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
     }
 
-    private static int StaffingPriority(EmployeeRole role, StaffingNeed need)
+    private static bool CandidateMeetsLeanStaffingNeed(
+        IReadOnlyList<EmployeeTaskKind> tasks,
+        StaffingNeed need)
+    {
+        var coversCheckout = tasks.Contains(EmployeeTaskKind.Checkout);
+        var coversRestock = tasks.Contains(EmployeeTaskKind.Restock);
+        if (!need.HasCheckout && !need.HasRestock)
+        {
+            return coversCheckout && coversRestock;
+        }
+
+        return (!need.HasCheckout && coversCheckout)
+            || (!need.HasRestock && coversRestock);
+    }
+
+    private static int StaffingPriority(
+        LongTermProgressionPolicy policy,
+        EmployeeRole role,
+        StaffingNeed need)
     {
         var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
+        if ((policy is LongTermProgressionPolicy.HighMargin
+                or LongTermProgressionPolicy.CashPreservation)
+            && !need.HasCheckout
+            && !need.HasRestock
+            && tasks.Contains(EmployeeTaskKind.Checkout)
+            && tasks.Contains(EmployeeTaskKind.Restock))
+        {
+            return 0;
+        }
+
         if (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
         {
             return 0;

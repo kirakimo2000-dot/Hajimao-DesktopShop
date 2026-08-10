@@ -9,6 +9,78 @@ public sealed class LongTermProgressionScenarioTests
     [InlineData(LongTermProgressionPolicy.HighTurnover)]
     [InlineData(LongTermProgressionPolicy.HighMargin)]
     [InlineData(LongTermProgressionPolicy.CashPreservation)]
+    public void OneYearPolicies_RemainHealthyAndLeaveGrowthHeadroom(
+        LongTermProgressionPolicy policy)
+    {
+        var scenario = LongTermProgressionScenarioRunner.Run(policy, days: 365);
+        var dayNinety = scenario.Day(90);
+        var dayOneEighty = scenario.Day(180);
+        var dayThreeSixtyFive = scenario.Day(365);
+
+        Assert.All(scenario.Checkpoints, checkpoint =>
+        {
+            Assert.True(checkpoint.CashCents >= 0, $"{policy}: {checkpoint}");
+            Assert.Equal(0, checkpoint.WagePaymentFailures);
+        });
+        Assert.Equal(3, dayOneEighty.OpenStores);
+        Assert.Equal(3, dayThreeSixtyFive.OpenStores);
+        Assert.True(
+            dayOneEighty.Investments > dayNinety.Investments,
+            $"{policy}: day90={dayNinety}; day180={dayOneEighty}");
+        Assert.True(
+            dayThreeSixtyFive.Investments > dayOneEighty.Investments,
+            $"{policy}: day180={dayOneEighty}; day365={dayThreeSixtyFive}");
+        Assert.True(
+            dayThreeSixtyFive.MaximumGrowthStores < dayThreeSixtyFive.OpenStores,
+            $"{policy}: day365={dayThreeSixtyFive}");
+        Assert.True(
+            scenario.Checkpoints
+                .Where(checkpoint => checkpoint.Day > 335)
+                .Count(checkpoint => checkpoint.NetProfitCents > 0) >= 24,
+            $"{policy}: final30={string.Join("; ", scenario.Checkpoints.Where(checkpoint => checkpoint.Day > 335))}");
+    }
+
+    [Fact]
+    public void OneYearPolicies_ProduceDistinctTradeoffsAndPositiveDay365Profit()
+    {
+        var turnover = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.HighTurnover,
+            days: 365);
+        var margin = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.HighMargin,
+            days: 365);
+        var preservation = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.CashPreservation,
+            days: 365);
+
+        Assert.NotEqual(
+            turnover.Day(365).CompletedSales,
+            margin.Day(365).CompletedSales);
+        Assert.True(
+            GrossMarginBasisPoints(margin.Day(365)) > GrossMarginBasisPoints(turnover.Day(365)),
+            $"turnover={turnover.Day(365)}; margin={margin.Day(365)}");
+        Assert.All(
+            new[] { turnover, margin, preservation },
+            scenario => Assert.True(scenario.Day(365).NetProfitCents > 0));
+    }
+
+    [Fact]
+    public void CashPreservation_IsStrictlyDeterministicForOneHundredEightyDays()
+    {
+        var first = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.CashPreservation,
+            days: 180);
+        var second = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.CashPreservation,
+            days: 180);
+
+        Assert.Equivalent(first.Checkpoints, second.Checkpoints, strict: true);
+    }
+
+    [Theory]
+    [InlineData(LongTermProgressionPolicy.HighTurnover)]
+    [InlineData(LongTermProgressionPolicy.HighMargin)]
+    [InlineData(LongTermProgressionPolicy.CashPreservation)]
     public void NinetyDayPolicies_RemainSolventAndRetainCapitalChoices(
         LongTermProgressionPolicy policy)
     {
