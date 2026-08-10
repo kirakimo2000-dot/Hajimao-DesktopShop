@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
@@ -29,9 +30,12 @@ public static class DesktopBusinessSessionFactory
                 DesktopGameContent.Shops,
                 DesktopGameContent.LevelCurve,
                 DesktopGameContent.StarterStoreId,
-                openingCashCents: 50_000,
+                DesktopGameContent.OpeningCashCents,
                 DesktopGameContent.CreateStarterAssignments(),
-                random);
+                random,
+                DesktopGameContent.SimulationOptions,
+                experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold);
+            ConfigureStarterShifts(newSession);
             return new DesktopBusinessSessionStartResult(
                 newSession,
                 IsNewGame: true,
@@ -45,7 +49,9 @@ public static class DesktopBusinessSessionFactory
                 DesktopGameContent.StarterStoreId,
                 save,
                 DesktopGameContent.CreateStarterAssignments(),
-                random);
+                random,
+                DesktopGameContent.SimulationOptions,
+                experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold);
         var settlement = OfflineSettlementService.Settle(
             restoredSession.Simulation,
             save.SavedAtUtc,
@@ -55,5 +61,21 @@ public static class DesktopBusinessSessionFactory
             restoredSession,
             IsNewGame: false,
             settlement);
+    }
+
+    private static void ConfigureStarterShifts(BusinessSession session)
+    {
+        foreach (var employee in session.Simulation.GetSnapshot().Employees.Employees)
+        {
+            var result = session.Simulation.Employees.SetShift(
+                employee.EmployeeId,
+                DesktopGameContent.StarterShiftStartMinute,
+                DesktopGameContent.StarterShiftEndMinute);
+            if (result.Status != EmployeeCommandStatus.Success)
+            {
+                throw new InvalidOperationException(
+                    $"Starter shift configuration failed for '{employee.EmployeeId}': {result.Status}.");
+            }
+        }
     }
 }

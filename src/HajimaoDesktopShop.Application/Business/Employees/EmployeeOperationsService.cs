@@ -407,11 +407,11 @@ public sealed class EmployeeOperationsService
         var efficiency = 800 + (NextCandidateInt(21) * 25);
         var roleWage = role switch
         {
-            EmployeeRole.Manager => 2_800,
-            EmployeeRole.Buyer => 2_500,
-            EmployeeRole.Restocker => 2_100,
-            EmployeeRole.Cleaner => 1_900,
-            _ => 2_000
+            EmployeeRole.Manager => 900,
+            EmployeeRole.Buyer => 800,
+            EmployeeRole.Restocker => 700,
+            EmployeeRole.Cleaner => 600,
+            _ => 650
         };
         var hourlyWage = new Money(roleWage + ((efficiency - 800) / 25 * 25L));
         return new EmployeeCandidate(
