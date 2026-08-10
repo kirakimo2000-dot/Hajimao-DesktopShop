@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business.Procurement;
+using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Domain.Shops;
 
 namespace HajimaoDesktopShop.Application.Business.Strategy;
@@ -58,6 +59,15 @@ public sealed class StoreStrategyService
         }
 
         return new StoreStrategyCommandResult(StoreStrategyCommandStatus.Success, plan);
+    }
+
+    public StoreStrategyCommandResult ApplyRecovery(StoreRecoveryRecommendation recommendation)
+    {
+        ArgumentNullException.ThrowIfNull(recommendation);
+        return Apply(
+            recommendation.StoreId,
+            recommendation.Pricing,
+            recommendation.Stocking);
     }
 
     public StoreStrategyPlan? GetAppliedPlan(string storeId)

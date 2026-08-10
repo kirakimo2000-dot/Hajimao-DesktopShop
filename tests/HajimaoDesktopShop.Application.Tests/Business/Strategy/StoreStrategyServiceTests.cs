@@ -1,4 +1,6 @@
 using HajimaoDesktopShop.Application.Business.Strategy;
+using HajimaoDesktopShop.Application.Business.Analysis;
+using HajimaoDesktopShop.Application.Business.Progression;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Strategy;
 
@@ -83,5 +85,35 @@ public sealed class StoreStrategyServiceTests
         var applied = session.Strategy.GetAppliedPlan("store-1");
 
         Assert.Null(applied);
+    }
+
+    [Fact]
+    public void ApplyRecovery_UsesNormalStrategyCompilerWithoutCreditingCash()
+    {
+        var session = BusinessTestSessionFactory.Create();
+        var cashBefore = session.Game.GetSnapshot().CashCents;
+        var recommendation = new StoreRecoveryRecommendation(
+            "store-1",
+            StoreBottleneck.Stock,
+            StorePricingPreset.HighTurnover,
+            StoreStockingPreset.Lean,
+            "negative-profit");
+
+        var result = session.Strategy.ApplyRecovery(recommendation);
+
+        Assert.Equal(StoreStrategyCommandStatus.Success, result.Status);
+        Assert.Equal(cashBefore, session.Game.GetSnapshot().CashCents);
+        Assert.All(
+            session.Game.GetSnapshot().Stores.Single().Products,
+            product => Assert.True(product.SalePriceCents < product.ReferenceSalePriceCents));
+        Assert.All(
+            session.Game.GetProcurementSnapshot().AutoRestockPolicies,
+            policy =>
+            {
+                var product = session.Game.GetSnapshot().Stores.Single().Products
+                    .Single(item => item.Id == policy.ProductId);
+                Assert.Equal(Math.Max(1, product.Capacity * 200 / 1_000), policy.ReorderPoint);
+                Assert.Equal(Math.Max(1, product.Capacity * 550 / 1_000), policy.TargetQuantity);
+            });
     }
 }

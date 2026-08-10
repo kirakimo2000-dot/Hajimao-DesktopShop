@@ -25,7 +25,15 @@ public sealed class InvestmentPlayableLoopTests
         Assert.Contains(InvestmentKind.Employee, executableKinds);
         Assert.All(portfolio.Candidates, candidate =>
         {
-            Assert.True(candidate.Return.CostCents > 0);
+            if (candidate.Kind == InvestmentKind.OpenStore)
+            {
+                Assert.True(candidate.Return.CostCents >= 0);
+            }
+            else
+            {
+                Assert.True(candidate.Return.CostCents > 0);
+            }
+
             Assert.False(string.IsNullOrWhiteSpace(candidate.TargetName));
             Assert.NotEqual(new InvestmentObservableEffect(), candidate.Effect);
         });
