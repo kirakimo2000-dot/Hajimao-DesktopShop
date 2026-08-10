@@ -9,7 +9,8 @@ public sealed record InvestmentObservableEffect(
     int InventoryCapacityChangePermille = 0,
     int AttractionChangeBasisPoints = 0,
     EmployeeRole? AddedRole = null,
-    int AddedEfficiencyPermille = 0);
+    int AddedEfficiencyPermille = 0,
+    int StoreCountChange = 0);
 
 public sealed record InvestmentCandidate(
     string Id,
@@ -21,7 +22,8 @@ public sealed record InvestmentCandidate(
     InvestmentObservableEffect Effect,
     StoreBottleneck AddressedBottleneck,
     InvestmentEstimateCondition EstimateCondition,
-    InvestmentAvailability Availability)
+    InvestmentAvailability Availability,
+    int RequiredPlayerLevel = 0)
 {
     public bool IsExecutable => Availability == InvestmentAvailability.Available;
 }

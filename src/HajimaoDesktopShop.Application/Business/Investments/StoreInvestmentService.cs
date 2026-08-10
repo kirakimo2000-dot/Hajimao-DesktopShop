@@ -38,12 +38,23 @@ public sealed class StoreInvestmentService
 
         var snapshot = _simulation.GetSnapshot();
         var economy = StoreEconomyAnalysisService.Calculate(snapshot, normalizedStoreId);
-        return economy is null
-            ? null
-            : StoreInvestmentAdvisor.Create(
-                snapshot,
-                _game.GetStoreGrowthSnapshot(normalizedStoreId),
-                economy);
+        if (economy is null)
+        {
+            return null;
+        }
+
+        var storePortfolio = StoreInvestmentAdvisor.Create(
+            snapshot,
+            _game.GetStoreGrowthSnapshot(normalizedStoreId),
+            economy);
+        var openingCandidates = StoreOpeningInvestmentAdvisor.Create(
+            snapshot,
+            _game.GetStoreCatalogSnapshot(),
+            economy);
+        return new StoreInvestmentPortfolio(
+            normalizedStoreId,
+            economy,
+            Array.AsReadOnly(storePortfolio.Candidates.Concat(openingCandidates).ToArray()));
     }
 
     public bool HasAnyInvestment => _tracker.HasAnyInvestment;
@@ -86,9 +97,12 @@ public sealed class StoreInvestmentService
         }
 
         var before = _simulation.GetSnapshot();
-        var result = candidate.Kind == InvestmentKind.Employee
-            ? ExecuteEmployee(candidate)
-            : ExecuteGrowth(candidate);
+        var result = candidate.Kind switch
+        {
+            InvestmentKind.OpenStore => ExecuteOpenStore(candidate),
+            InvestmentKind.Employee => ExecuteEmployee(candidate),
+            _ => ExecuteGrowth(candidate)
+        };
         if (result.Status == InvestmentCommandStatus.Success)
         {
             _tracker.Record(candidate, before.GameMinute, before.LastCompletedDay);
@@ -119,6 +133,23 @@ public sealed class StoreInvestmentService
         };
         return Result(status, status == InvestmentCommandStatus.Success ? candidate : null,
             result.Cost.Cents, result.EmployeeId);
+    }
+
+    private InvestmentCommandResult ExecuteOpenStore(InvestmentCandidate candidate)
+    {
+        var result = _game.OpenStore(candidate.TargetId);
+        var status = result.Status switch
+        {
+            OpenShopStatus.Success => InvestmentCommandStatus.Success,
+            OpenShopStatus.InsufficientFunds => InvestmentCommandStatus.InsufficientFunds,
+            OpenShopStatus.LevelLocked or OpenShopStatus.AlreadyOpen => InvestmentCommandStatus.NotAvailable,
+            OpenShopStatus.UnknownDefinition => InvestmentCommandStatus.UnknownStore,
+            _ => InvestmentCommandStatus.CommandRejected
+        };
+        return Result(
+            status,
+            status == InvestmentCommandStatus.Success ? candidate : null,
+            result.OpeningCost.Cents);
     }
 
     private InvestmentCommandResult ExecuteGrowth(InvestmentCandidate candidate)

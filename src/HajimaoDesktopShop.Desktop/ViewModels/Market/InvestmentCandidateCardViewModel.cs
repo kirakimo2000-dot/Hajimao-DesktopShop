@@ -27,19 +27,24 @@ public sealed class InvestmentCandidateCardViewModel
         InvestmentKind.Shelf => "升级货架",
         InvestmentKind.Decoration => "店铺装修",
         InvestmentKind.Employee => $"{Candidate.TargetName} · {RoleText(Candidate.Effect.AddedRole)}",
+        InvestmentKind.OpenStore => $"开设 {Candidate.TargetName}",
         _ => Candidate.Kind.ToString()
     };
 
     public string CostText => $"投入 {FormatMoney(Candidate.Return.CostCents)}";
 
-    public string ExpectedBenefitText => Candidate.Return.ExpectedDailyNetBenefitCents switch
-    {
-        > 0 => $"保守估计 +{FormatMoney(Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
-        < 0 => $"保守估计 -{FormatMoney(-Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
-        _ => "暂无足够数据"
-    };
+    public string ExpectedBenefitText => Candidate.Kind == InvestmentKind.OpenStore
+        ? "新店尚无完整经营数据"
+        : Candidate.Return.ExpectedDailyNetBenefitCents switch
+        {
+            > 0 => $"保守估计 +{FormatMoney(Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
+            < 0 => $"保守估计 -{FormatMoney(-Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
+            _ => "暂无足够数据"
+        };
 
-    public string PaybackText => Candidate.Return.PaybackDaysTenths is { } payback
+    public string PaybackText => Candidate.Kind == InvestmentKind.OpenStore
+        ? "新店日结后评估回本"
+        : Candidate.Return.PaybackDaysTenths is { } payback
         ? string.Format(CultureInfo.InvariantCulture, "预计 {0:0.0} 天回本", payback / 10m)
         : "等待经营证据";
 
@@ -94,6 +99,11 @@ public sealed class InvestmentCandidateCardViewModel
                     Candidate.Effect.AddedEfficiencyPermille / 10m));
             }
 
+            if (Candidate.Effect.StoreCountChange != 0)
+            {
+                effects.Add($"新增店铺 +{Candidate.Effect.StoreCountChange}");
+            }
+
             return string.Join(" · ", effects);
         }
     }
@@ -104,6 +114,8 @@ public sealed class InvestmentCandidateCardViewModel
         InvestmentEstimateCondition.StockLossesRepeat => "前提：缺货流失在后续经营日重复出现",
         InvestmentEstimateCondition.TrafficConversionStaysStable => "前提：当前进店转化率保持稳定",
         InvestmentEstimateCondition.RoleBottleneckPersists => "前提：当前岗位瓶颈持续存在",
+        InvestmentEstimateCondition.NewStoreNeedsCompletedDay =>
+            "新店需完成一个经营日后再评估回报",
         _ => "当前数据不足，暂不估算收益"
     };
 
@@ -111,6 +123,7 @@ public sealed class InvestmentCandidateCardViewModel
     {
         InvestmentAvailability.InsufficientFunds => "资金不足",
         InvestmentAvailability.PrerequisiteNotMet => "需先扩建",
+        InvestmentAvailability.LevelLocked => $"需要 Lv.{Candidate.RequiredPlayerLevel}",
         _ => "可投资"
     };
 

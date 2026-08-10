@@ -28,7 +28,13 @@ public sealed class DesktopBusinessSessionFactoryTests
         Assert.Equal(
             [EmployeeRole.Cashier, EmployeeRole.Restocker],
             snapshot.Employees.Employees.Select(employee => employee.Role));
-        Assert.Equal(50_000, snapshot.Business.CashCents);
+        Assert.Equal(DesktopGameContent.OpeningCashCents, snapshot.Business.CashCents);
+        Assert.All(snapshot.Employees.Employees, employee =>
+        {
+            Assert.False(employee.IsAlwaysOn);
+            Assert.Equal(DesktopGameContent.StarterShiftStartMinute, employee.ShiftStartMinute);
+            Assert.Equal(DesktopGameContent.StarterShiftEndMinute, employee.ShiftEndMinute);
+        });
     }
 
     [Fact]

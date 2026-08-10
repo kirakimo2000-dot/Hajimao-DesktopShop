@@ -2,7 +2,7 @@
 
 Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家负责判断经营状态、选择整店策略并进行低频投资。
 
-## 当前版本：0.1.18 投资与回报
+## 当前版本：0.1.19 长期成长与平衡
 
 - 管理窗口只保留经营概览、经营策略和投资决策三个界面；内部模块不再直接变成玩家的操作菜单。
 - 全店定价提供高周转、均衡和高毛利定位；库存投入提供精益、均衡和充足备货，应用后由自动运营持续执行。
@@ -13,6 +13,10 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 回报估算只使用当前经营快照与最近完整日结；缺少有效证据时明确标记“等待经营证据”，不会显示无法解释的综合评分。
 - 投资后保留最近一笔基线；再挂机到下一份完整日结后，可比较净利润、成交和流失变化，存档恢复后仍会继续跟踪。
 - 员工候选池按经营日自动更新，玩家不需要手动刷新候选人。
+- 右侧长期目标从真实日结、玩家等级、共享现金、已开店铺与各店成长快照推导；目标会从盈利、首次投资延伸到第二/第三家店、完整街区和持续强化最弱店铺。
+- 开新店已经并入同一投资列表，与招聘、货架、扩建和装修直接比较成本与现金压力；新店没有完整日结前不会伪造收益或回本期。
+- 亏损或现金跑道不足时只提供一个可选保守方案，复用现有整店定价和精益库存命令，不赠送现金、不跳过工资，也不增加恢复任务页。
+- 新档起始员工使用 08:00～16:00 的真实 8 小时班次；开局现金、基础客流、起始工资和招聘市场工资已按 1/7/30 经营日情景重新校准。
 
 - 桌面常态现在是任务栏上方的横向街区；初始一家店时窗口只有一个店面的 248×180 逻辑尺寸。
 - 街区内容横向不设上限；每开一家店都会追加店面，超出当前显示器工作区后用鼠标滚轮浏览。
@@ -57,9 +61,9 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 桌面窗口按真实显示器工作区恢复和吸附，支持负坐标、显示器空隙、拔除屏幕、纵向排列与 PerMonitorV2 DPI。
 - 仓库提供 win-x64 自包含便携 ZIP、WiX MSI、SHA-256 和机器可读发布清单的统一构建/验收脚本。
 
-0.1.18 已建立可解释的投资与实际回报闭环，同时保持单文件便携入口、schema v6、离线同管线与固定现实 1x。0.1.19 将调整目标、节奏与失败恢复，0.1.20 才是经过陌生玩家盲测的 Playable Demo 1，不提前扩充资源或跳到 1.0。
+0.1.19 已建立跨日、多次回归、多店与完整街区的长期成长标尺，并以三条策略的 1/7/30 经营日情景防止首日破产和短期毕业。30～60 分钟仍只用于观察早期理解度，不代表游戏寿命；0.1.20 才是同时通过首次接触盲测和长期挂机门禁的 Demo 1。
 
-已验证发布物见 [GitHub Release v0.1.18](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.18)。
+已验证发布物见 [GitHub Release v0.1.19](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.19)。
 
 ## 运行
 
@@ -75,11 +79,11 @@ dotnet run --project src/HajimaoDesktopShop.Desktop
 发布包生成后，可解压便携 ZIP 直接运行唯一的 `Hajimao DesktopShop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.18
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.18
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.19
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.19
 ```
 
-0.1.18 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
+0.1.19 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
 
 ## 操作提示
 
@@ -87,7 +91,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Ve
 - 街区宽于当前显示器时使用鼠标滚轮左右浏览。
 - 在“经营概览”查看收入、利润率、现金续航和主要瓶颈。
 - 在“经营策略”为当前店选择全店定价定位与库存投入；系统会自动落实到商品价格和补货规则。
-- 在“投资决策”比较招聘、扩建、货架和装修的成本、回收期与现金压力，再执行低频长期投入。
+- 在“投资决策”统一比较招聘、扩建、货架、装修和开设新店的成本、回收期与现金压力，再执行低频长期投入。
 - 投资后保持游戏运行或离开一段时间；下一份完整日结会在同一页显示实际净利润、成交与流失变化。
 - 右键桌面小店可快速打开管理、锁定位置、切换鼠标穿透或静音。
 - 开启鼠标穿透前会先展开管理窗，避免失去恢复入口。

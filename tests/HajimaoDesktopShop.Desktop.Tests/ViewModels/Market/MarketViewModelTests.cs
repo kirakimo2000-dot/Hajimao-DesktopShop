@@ -195,7 +195,7 @@ public sealed class MarketViewModelTests
         Assert.Equal("小葵", viewModel.SelectedShopObject.Title);
         Assert.Equal("收银员", viewModel.SelectedShopObject.CategoryText);
         Assert.Contains("效率 96%", viewModel.SelectedShopObject.SummaryText);
-        Assert.Contains("工资 ¥60.00/小时", viewModel.SelectedShopObject.SummaryText);
+        Assert.Contains("工资 ¥4.00/小时", viewModel.SelectedShopObject.SummaryText);
         Assert.Contains("体力 100%", viewModel.SelectedShopObject.StatusText);
         Assert.Contains("满意度 70%", viewModel.SelectedShopObject.StatusText);
         Assert.Contains("班次", viewModel.SelectedShopObject.StatusText);

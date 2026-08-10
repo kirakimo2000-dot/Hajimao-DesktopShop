@@ -61,4 +61,25 @@ public sealed class InvestmentPortfolioViewModelTests
         Assert.Equal("资金不足", shelf.AvailabilityText);
         Assert.Equal("无法支付", shelf.CashPressureText);
     }
+
+    [Fact]
+    public void Refresh_FormatsStoreOpeningAsAUnifiedLevelGatedInvestment()
+    {
+        var viewModel = new InvestmentPortfolioViewModel(
+            MarketTestSession.Create(),
+            () => "corner-store",
+            refreshMarket: () => { });
+
+        var opening = viewModel.Candidates.Single(candidate =>
+            candidate.Id == "store:open:station-store");
+
+        Assert.Equal("开设 车站便利店", opening.TitleText);
+        Assert.Equal("投入 ¥800.00", opening.CostText);
+        Assert.Equal("新店尚无完整经营数据", opening.ExpectedBenefitText);
+        Assert.Equal("新店日结后评估回本", opening.PaybackText);
+        Assert.Equal("新增店铺 +1", opening.EffectText);
+        Assert.Equal("新店需完成一个经营日后再评估回报", opening.EstimateConditionText);
+        Assert.Equal("需要 Lv.3", opening.AvailabilityText);
+        Assert.False(opening.InvestCommand.CanExecute(null));
+    }
 }
