@@ -2,11 +2,10 @@ namespace HajimaoDesktopShop.Application.Business.Onboarding;
 
 public enum OnboardingTaskId
 {
-    RestockProduct,
-    AdjustPrice,
-    EnableAutoRestock,
+    ReviewEconomy,
+    ChooseStoreStrategy,
     CompleteFirstSale,
-    TrainEmployee,
-    UpgradeStore,
+    ReachPositiveDay,
+    MakeFirstInvestment,
     OpenSecondStore
 }

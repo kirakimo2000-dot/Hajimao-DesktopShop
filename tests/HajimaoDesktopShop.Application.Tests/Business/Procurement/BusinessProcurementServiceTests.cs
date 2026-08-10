@@ -132,13 +132,24 @@ public sealed class BusinessProcurementServiceTests
     private static int GetWaterQuantity(BusinessGameService service) =>
         Assert.Single(service.GetSnapshot().Stores).Products.Single(product => product.Id == "water").Quantity;
 
-    private static BusinessGameService CreateService() =>
-        new(
+    private static BusinessGameService CreateService()
+    {
+        var service = new BusinessGameService(
             [new ProductDefinition("water", "矿泉水", 100, 200, 20, "ambient")],
             [new ShopDefinition(new ShopId("corner-store"), "街角店", 1, Money.Zero)],
             new LevelCurve([0, 100]),
             starterShopId: "corner-store",
             openingCashCents: 5_000);
+        service.ConfigureAutoRestock(new AutoRestockPolicy(
+            "corner-store",
+            "water",
+            IsEnabled: false,
+            ReorderPoint: 6,
+            TargetQuantity: 15,
+            PreferredChannelId: "regional-distributor",
+            UseEmergencySupplierWhenOutOfStock: true));
+        return service;
+    }
 
     private static BusinessGameService CreateService(BusinessSaveData save) =>
         new(

@@ -12,6 +12,21 @@ namespace HajimaoDesktopShop.Application.Tests.Business.Procurement;
 public sealed class AutoRestockTests
 {
     [Fact]
+    public void DefaultPolicies_WaitForNormalProcurementMinuteBeforeOrdering()
+    {
+        var game = BusinessTestSessionFactory.Create().Game;
+
+        Assert.Empty(game.GetProcurementSnapshot().PendingOrders);
+
+        game.AdvanceProcurementMinute();
+
+        Assert.NotEmpty(game.GetProcurementSnapshot().PendingOrders);
+        Assert.All(
+            game.GetProcurementSnapshot().PendingOrders,
+            order => Assert.True(order.IsAutomatic));
+    }
+
+    [Fact]
     public void SimulationTick_OrdersToTargetUsingOnHandPlusInbound()
     {
         var service = CreateService();

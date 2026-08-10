@@ -5,7 +5,7 @@ namespace HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 public sealed class ProductManagementViewModelTests
 {
     [Fact]
-    public void ProductCommands_AdjustPricePlaceDocumentedOrdersAndToggleAutoRestock()
+    public void LegacyProductCommands_AdjustPricePlaceOrderAndCanDisableDefaultPolicy()
     {
         var session = MarketTestSession.Create(openingCashCents: 1_000_000);
         var page = new ProductManagementViewModel(session, () => "corner-store");
@@ -21,7 +21,7 @@ public sealed class ProductManagementViewModelTests
         Assert.Contains(
             page.PendingOrders,
             order => order.ChannelName == "区域配送" && order.Quantity == 6);
-        Assert.True(water.IsAutoRestockEnabled);
+        Assert.False(water.IsAutoRestockEnabled);
         Assert.Equal(5, water.ReorderPoint);
         Assert.Equal(16, water.TargetQuantity);
     }

@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -69,7 +70,7 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void ManagementWindow_HasSevenNavigationTargetsPersistentSceneAndNoSpeedControls()
+    public void ManagementWindow_HasThreeInvestorNavigationTargetsPersistentSceneAndNoSpeedControls()
     {
         RunOnSta(() =>
         {
@@ -83,13 +84,11 @@ public sealed class ManagementWindowTests
 
                 Assert.False(window.ShowInTaskbar);
                 Assert.Equal(
-                    7,
+                    3,
                     FindLogicalChildren<Button>(window)
                         .Count(button => Equals(button.Tag, "management-navigation")));
                 var scene = Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
                 Assert.Equal("实时像素店铺场景", AutomationProperties.GetName(scene));
-                var street = Assert.IsType<CommercialStreetSceneControl>(window.FindName("StreetScene"));
-                Assert.Equal("共享客流像素商业街", AutomationProperties.GetName(street));
                 Assert.Single(
                     FindLogicalChildren<Button>(window),
                     button => Equals(button.Tag, "status-toggle"));
@@ -105,7 +104,7 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void SelectShopObject_ShowsAccessibleDetailCardInMatchingSection()
+    public void SelectShopObject_ShowsAccessibleReadOnlyDetailCardInOverview()
     {
         RunOnSta(() =>
         {
@@ -122,7 +121,7 @@ public sealed class ManagementWindowTests
                 window.Arrange(new Rect(0, 0, 1180, 720));
                 window.UpdateLayout();
 
-                Assert.Equal(ManagementSection.Employees, viewModel.SelectedSection);
+                Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
                 var card = Assert.IsType<Border>(window.FindName("SelectedObjectCard"));
                 Assert.Equal(Visibility.Visible, card.Visibility);
                 Assert.Equal("当前店铺对象详情", AutomationProperties.GetName(card));
@@ -144,64 +143,20 @@ public sealed class ManagementWindowTests
         });
     }
 
-    [Fact]
-    public void SelectedObjectCard_ExposesCommandsForTheCurrentObjectKind()
+    [Theory]
+    [InlineData("快速进货")]
+    [InlineData("区域 ×6")]
+    [InlineData("刷新候选人")]
+    [InlineData("白班")]
+    [InlineData("夜班")]
+    [InlineData("培训")]
+    [InlineData("自动补货")]
+    public void ManagementWindow_DoesNotExposeRoutineMaintenance(string forbiddenText)
     {
-        RunOnSta(() =>
-        {
-            var viewModel = new MarketViewModel(MarketTestSession.Create(openingCashCents: 2_000_000));
-            var window = new ManagementWindow(viewModel);
-            try
-            {
-                window.SelectShopObject(new BusinessShopInteractionTarget(
-                    BusinessShopInteractionKind.Shelf,
-                    "ambient",
-                    new LogicalPixelRect(0, 0, 1, 1)));
-                window.ApplyTemplate();
-                window.Measure(new Size(1180, 720));
-                window.Arrange(new Rect(0, 0, 1180, 720));
-                window.UpdateLayout();
-
-                var quickRestock = Assert.IsType<Button>(window.FindName("SelectedShelfQuickRestock"));
-                var autoRestock = Assert.IsType<Button>(window.FindName("SelectedShelfAutoRestock"));
-                var train = Assert.IsType<Button>(window.FindName("SelectedEmployeeTrain"));
-                var dayShift = Assert.IsType<Button>(window.FindName("SelectedEmployeeDayShift"));
-                var nightShift = Assert.IsType<Button>(window.FindName("SelectedEmployeeNightShift"));
-                UpdateButtonBindings(quickRestock, autoRestock, train, dayShift, nightShift);
-
-                Assert.True(viewModel.IsShelfObjectSelected);
-                Assert.False(viewModel.IsEmployeeObjectSelected);
-                AssertVisibilityBinding(quickRestock, nameof(MarketViewModel.IsShelfObjectSelected));
-                AssertVisibilityBinding(autoRestock, nameof(MarketViewModel.IsShelfObjectSelected));
-                AssertVisibilityBinding(train, nameof(MarketViewModel.IsEmployeeObjectSelected));
-                AssertCommandBinding(quickRestock, nameof(MarketViewModel.QuickRestockSelectedShelfCommand));
-                AssertCommandBinding(autoRestock, nameof(MarketViewModel.ToggleAutoRestockSelectedShelfCommand));
-                Assert.Equal("为货架最紧缺商品快速进货", AutomationProperties.GetName(quickRestock));
-                Assert.Equal("切换货架最紧缺商品自动补货", AutomationProperties.GetName(autoRestock));
-
-                window.SelectShopObject(new BusinessShopInteractionTarget(
-                    BusinessShopInteractionKind.Employee,
-                    "starter-cashier",
-                    new LogicalPixelRect(0, 0, 1, 1)));
-                UpdateButtonBindings(quickRestock, autoRestock, train, dayShift, nightShift);
-                window.UpdateLayout();
-
-                Assert.False(viewModel.IsShelfObjectSelected);
-                Assert.True(viewModel.IsEmployeeObjectSelected);
-                AssertVisibilityBinding(dayShift, nameof(MarketViewModel.IsEmployeeObjectSelected));
-                AssertVisibilityBinding(nightShift, nameof(MarketViewModel.IsEmployeeObjectSelected));
-                AssertCommandBinding(train, nameof(MarketViewModel.TrainSelectedEmployeeCommand));
-                AssertCommandBinding(dayShift, nameof(MarketViewModel.SetSelectedEmployeeDayShiftCommand));
-                AssertCommandBinding(nightShift, nameof(MarketViewModel.SetSelectedEmployeeNightShiftCommand));
-                Assert.Equal("培训当前员工", AutomationProperties.GetName(train));
-                Assert.Equal("将当前员工设为白班", AutomationProperties.GetName(dayShift));
-                Assert.Equal("将当前员工设为夜班", AutomationProperties.GetName(nightShift));
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
+        Assert.DoesNotContain(
+            forbiddenText,
+            File.ReadAllText(FindManagementWindowPath()),
+            StringComparison.Ordinal);
     }
 
     private static IEnumerable<T> FindLogicalChildren<T>(DependencyObject parent)
@@ -221,28 +176,21 @@ public sealed class ManagementWindowTests
         }
     }
 
-    private static void UpdateButtonBindings(params Button[] buttons)
+    private static string FindManagementWindowPath()
     {
-        foreach (var button in buttons)
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
         {
-            button.GetBindingExpression(UIElement.VisibilityProperty)?.UpdateTarget();
-            button.GetBindingExpression(Button.CommandProperty)?.UpdateTarget();
-            button.GetBindingExpression(ContentControl.ContentProperty)?.UpdateTarget();
+            directory = directory.Parent;
         }
-    }
 
-    private static void AssertVisibilityBinding(Button button, string expectedPath)
-    {
-        var binding = BindingOperations.GetBindingExpression(button, UIElement.VisibilityProperty);
-        Assert.NotNull(binding);
-        Assert.Equal(expectedPath, binding.ParentBinding.Path.Path);
-    }
-
-    private static void AssertCommandBinding(Button button, string expectedPath)
-    {
-        var binding = BindingOperations.GetBindingExpression(button, Button.CommandProperty);
-        Assert.NotNull(binding);
-        Assert.Equal(expectedPath, binding.ParentBinding.Path.Path);
+        Assert.NotNull(directory);
+        return Path.Combine(
+            directory.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "Windows",
+            "ManagementWindow.xaml");
     }
 
     private static void RunOnSta(Action action)

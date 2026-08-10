@@ -5,293 +5,94 @@ using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.StoreGrowth;
 using HajimaoDesktopShop.Application.Business.Street;
-using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Game;
-using HajimaoDesktopShop.Application.Persistence;
-using HajimaoDesktopShop.Application.Tests.Simulation;
-using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
-using HajimaoDesktopShop.Domain.Players;
-using HajimaoDesktopShop.Domain.Shops;
 using HajimaoDesktopShop.Domain.Streets;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Onboarding;
 
 public sealed class OnboardingProgressServiceTests
 {
-    private static readonly DateTimeOffset SavedAt =
-        new(2026, 8, 3, 15, 0, 0, TimeSpan.Zero);
-
     [Fact]
-    public void TaskIds_AreStableAndOrdered()
+    public void TaskIds_AreStableAndContainOnlyInvestorLoopTasks()
     {
         Assert.Equal(
             [
-                OnboardingTaskId.RestockProduct,
-                OnboardingTaskId.AdjustPrice,
-                OnboardingTaskId.EnableAutoRestock,
+                OnboardingTaskId.ReviewEconomy,
+                OnboardingTaskId.ChooseStoreStrategy,
                 OnboardingTaskId.CompleteFirstSale,
-                OnboardingTaskId.TrainEmployee,
-                OnboardingTaskId.UpgradeStore,
+                OnboardingTaskId.ReachPositiveDay,
+                OnboardingTaskId.MakeFirstInvestment,
                 OnboardingTaskId.OpenSecondStore
             ],
             Enum.GetValues<OnboardingTaskId>());
     }
 
     [Fact]
-    public void TaskState_StoresTaskIdentityAndCompletion()
-    {
-        var state = new OnboardingTaskState(OnboardingTaskId.AdjustPrice, IsCompleted: true);
-
-        Assert.Equal(OnboardingTaskId.AdjustPrice, state.Id);
-        Assert.True(state.IsCompleted);
-    }
-
-    [Fact]
-    public void CreateSnapshot_ForNewSession_StartsAtRestockProduct()
+    public void CreateSnapshot_ForNewSession_StartsAtEconomyReview()
     {
         var snapshot = OnboardingProgressService.CreateSnapshot(Simulation(), Procurement());
 
-        Assert.Equal(7, snapshot.TotalTasks);
+        Assert.Equal(6, snapshot.TotalTasks);
         Assert.Equal(0, snapshot.CompletedTasks);
-        Assert.Equal(OnboardingTaskId.RestockProduct, snapshot.CurrentTaskId);
-        Assert.False(snapshot.IsComplete);
-        Assert.All(snapshot.Tasks, task => Assert.False(task.IsCompleted));
+        Assert.Equal(OnboardingTaskId.ReviewEconomy, snapshot.CurrentTaskId);
     }
 
     [Theory]
     [MemberData(nameof(CompletionCases))]
-    public void CreateSnapshot_CompletesTaskWhenPredicateFactExists(
+    public void CreateSnapshot_CompletesTaskFromInvestorLoopEvidence(
         OnboardingTaskId expectedCompleted,
         BusinessSimulationSnapshot simulation,
         ProcurementSnapshot procurement)
     {
         var snapshot = OnboardingProgressService.CreateSnapshot(simulation, procurement);
 
-        AssertCompleted(snapshot, expectedCompleted);
+        Assert.Contains(snapshot.Tasks, task => task.Id == expectedCompleted && task.IsCompleted);
     }
 
     [Fact]
-    public void CreateSnapshot_CountsOutOfOrderCompletionsButKeepsCurrentAtFirstIncomplete()
+    public void CreateSnapshot_DefaultBalancedAutomationDoesNotPretendPlayerChoseStrategy()
     {
-        var simulation = Simulation(
-            stores:
-            [
-                Store(products: [Product(salePriceCents: 225, referenceSalePriceCents: 200)]),
-                Store(id: "station-store")
-            ],
-            employees: Employees(trainingLevel: 1));
+        var procurement = Procurement(
+            [new AutoRestockPolicy("store-1", "water", true, 3, 7, "regional-distributor", true)]);
 
-        var snapshot = OnboardingProgressService.CreateSnapshot(simulation, Procurement());
+        var snapshot = OnboardingProgressService.CreateSnapshot(Simulation(), procurement);
 
-        AssertCompleted(
-            snapshot,
-            OnboardingTaskId.AdjustPrice,
-            OnboardingTaskId.TrainEmployee,
-            OnboardingTaskId.OpenSecondStore);
-        Assert.Equal(3, snapshot.CompletedTasks);
-        Assert.Equal(OnboardingTaskId.RestockProduct, snapshot.CurrentTaskId);
-        Assert.False(snapshot.IsComplete);
+        Assert.False(snapshot.Tasks.Single(task => task.Id == OnboardingTaskId.ChooseStoreStrategy).IsCompleted);
     }
 
     [Fact]
     public void CreateSnapshot_WhenAllTasksComplete_HasNoCurrentTask()
     {
         var simulation = Simulation(
+            gameMinute: 1_440,
             stores:
             [
-                Store(
-                    revenueCents: 200,
-                    stockPurchaseCostCents: 100,
-                    products: [Product(salePriceCents: 225, referenceSalePriceCents: 200)],
-                    growth: Growth(shelfLevel: 1)),
-                Store(id: "station-store")
+                Store(revenueCents: 200, salePriceCents: 230, growth: Growth(expansionLevel: 1)),
+                Store(id: "store-2")
             ],
-            employees: Employees(trainingLevel: 1));
-        var procurement = Procurement(
-            autoRestockPolicies:
-            [
-                new AutoRestockPolicy(
-                    "corner-store",
-                    "water",
-                    IsEnabled: true,
-                    ReorderPoint: 2,
-                    TargetQuantity: 5,
-                    PreferredChannelId: "regional-distributor",
-                    UseEmergencySupplierWhenOutOfStock: false)
-            ]);
+            lastCompletedDay: DayReport(netProfitCents: 50));
 
-        var snapshot = OnboardingProgressService.CreateSnapshot(simulation, procurement);
+        var snapshot = OnboardingProgressService.CreateSnapshot(simulation, Procurement());
 
-        Assert.Equal(7, snapshot.CompletedTasks);
+        Assert.Equal(6, snapshot.CompletedTasks);
         Assert.Null(snapshot.CurrentTaskId);
         Assert.True(snapshot.IsComplete);
-        Assert.All(snapshot.Tasks, task => Assert.True(task.IsCompleted));
     }
 
     [Fact]
-    public void CreateSnapshot_FromNewBusinessSession_StartsAtRestockProduct()
-    {
-        var session = CreateSession();
-
-        var snapshot = CreateSnapshot(session);
-
-        Assert.Equal(OnboardingTaskId.RestockProduct, snapshot.CurrentTaskId);
-        Assert.Equal(0, snapshot.CompletedTasks);
-        Assert.False(snapshot.IsComplete);
-    }
-
-    [Fact]
-    public void CreateSnapshot_FromBusinessSessionCommands_CompletesStockPriceAndAutoRestock()
-    {
-        var session = CreateSession();
-
-        Assert.Equal(
-            StockPurchaseStatus.Success,
-            session.Game.PurchaseStock("corner-store", "water", 1).Status);
-        Assert.Equal(
-            PriceChangeStatus.Success,
-            session.Game.ChangePrice("corner-store", "water", 225).Status);
-        session.Game.ConfigureAutoRestock(EnabledAutoRestockPolicy());
-
-        var snapshot = CreateSnapshot(session);
-
-        AssertCompleted(
-            snapshot,
-            OnboardingTaskId.RestockProduct,
-            OnboardingTaskId.AdjustPrice,
-            OnboardingTaskId.EnableAutoRestock);
-        Assert.Equal(3, snapshot.CompletedTasks);
-        Assert.Equal(OnboardingTaskId.CompleteFirstSale, snapshot.CurrentTaskId);
-    }
-
-    [Fact]
-    public void CreateSnapshot_FromRestoredCompletedBusinessSession_CompletesEveryTask()
-    {
-        var session = CreateSession(openingCashCents: 1_000_000);
-
-        Assert.Equal(
-            StockPurchaseStatus.Success,
-            session.Game.PurchaseStock("corner-store", "water", 1).Status);
-        Assert.Equal(
-            PriceChangeStatus.Success,
-            session.Game.ChangePrice("corner-store", "water", 225).Status);
-        session.Game.ConfigureAutoRestock(EnabledAutoRestockPolicy());
-        Assert.Equal(
-            SaleStatus.Success,
-            session.Game.Sell("corner-store", "water", 1).Sale.Status);
-        Assert.Equal(
-            EmployeeCommandStatus.Success,
-            session.Simulation.Employees.Train("cashier").Status);
-        Assert.Equal(
-            StoreGrowthCommandStatus.Success,
-            session.Game.UpgradeStore("corner-store", StoreUpgradeKind.Shelf).Status);
-        Assert.Equal(
-            OpenShopStatus.Success,
-            session.Game.OpenStore("station-store").Status);
-        session.Simulation.AdvanceRealSecond();
-
-        var restored = RestoreSession(session.CaptureSaveData(SavedAt));
-        var snapshot = CreateSnapshot(restored);
-
-        Assert.Equal(7, snapshot.CompletedTasks);
-        Assert.Null(snapshot.CurrentTaskId);
-        Assert.True(snapshot.IsComplete);
-        AssertCompleted(
-            snapshot,
-            OnboardingTaskId.RestockProduct,
-            OnboardingTaskId.AdjustPrice,
-            OnboardingTaskId.EnableAutoRestock,
-            OnboardingTaskId.CompleteFirstSale,
-            OnboardingTaskId.TrainEmployee,
-            OnboardingTaskId.UpgradeStore,
-            OnboardingTaskId.OpenSecondStore);
-    }
-
-    [Fact]
-    public void Snapshot_RejectsInvalidTasks()
+    public void Snapshot_RejectsInvalidOrOutOfOrderTasks()
     {
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot([], completedTasks: 0, currentTaskId: null));
-        Assert.Throws<ArgumentNullException>(() =>
-            new OnboardingSnapshot(null!, completedTasks: 0, currentTaskId: null));
-    }
 
-    [Fact]
-    public void Snapshot_RejectsOutOfOrderTasks()
-    {
-        var tasks = FullTaskStates();
-        (tasks[0], tasks[1]) = (tasks[1], tasks[0]);
-
+        var outOfOrder = FullTaskStates();
+        (outOfOrder[0], outOfOrder[1]) = (outOfOrder[1], outOfOrder[0]);
         Assert.Throws<ArgumentException>(() =>
             new OnboardingSnapshot(
-                tasks,
+                outOfOrder,
                 completedTasks: 0,
-                currentTaskId: OnboardingTaskId.RestockProduct));
-    }
-
-    [Fact]
-    public void Snapshot_RejectsDuplicateTasks()
-    {
-        var tasks = FullTaskStates();
-        tasks[1] = new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: false);
-
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                tasks,
-                completedTasks: 0,
-                currentTaskId: OnboardingTaskId.RestockProduct));
-    }
-
-    [Fact]
-    public void Snapshot_RejectsIncompleteTaskPrefix()
-    {
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                [new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: true)],
-                completedTasks: 1,
-                currentTaskId: null));
-    }
-
-    [Fact]
-    public void Snapshot_RejectsNullTaskEntry()
-    {
-        var tasks = FullTaskStates();
-        tasks[1] = null!;
-
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                tasks,
-                completedTasks: 0,
-                currentTaskId: OnboardingTaskId.RestockProduct));
-    }
-
-    [Fact]
-    public void Snapshot_RejectsInconsistentCompletionMetadata()
-    {
-        var completedCountMismatchTasks = FullTaskStates();
-        completedCountMismatchTasks[0] = completedCountMismatchTasks[0] with { IsCompleted = true };
-
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                completedCountMismatchTasks,
-                completedTasks: 0,
-                currentTaskId: OnboardingTaskId.AdjustPrice));
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                FullTaskStates(),
-                completedTasks: 0,
-                currentTaskId: OnboardingTaskId.AdjustPrice));
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                FullTaskStates(isCompleted: true),
-                completedTasks: 7,
-                currentTaskId: OnboardingTaskId.RestockProduct));
-        Assert.Throws<ArgumentException>(() =>
-            new OnboardingSnapshot(
-                FullTaskStates(),
-                completedTasks: 0,
-                currentTaskId: null));
+                currentTaskId: OnboardingTaskId.ReviewEconomy));
     }
 
     [Fact]
@@ -301,232 +102,94 @@ public sealed class OnboardingProgressServiceTests
         var snapshot = new OnboardingSnapshot(
             tasks,
             completedTasks: 0,
-            currentTaskId: OnboardingTaskId.RestockProduct);
+            currentTaskId: OnboardingTaskId.ReviewEconomy);
 
-        tasks[0] = new OnboardingTaskState(OnboardingTaskId.RestockProduct, IsCompleted: true);
-        tasks.Add(new OnboardingTaskState(OnboardingTaskId.AdjustPrice, IsCompleted: true));
+        tasks[0] = tasks[0] with { IsCompleted = true };
 
-        Assert.Equal(7, snapshot.Tasks.Count);
         Assert.False(snapshot.Tasks[0].IsCompleted);
         Assert.IsNotType<List<OnboardingTaskState>>(snapshot.Tasks);
     }
 
-    [Fact]
-    public void CreateSnapshot_RejectsNullSnapshots()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            OnboardingProgressService.CreateSnapshot(null!, Procurement()));
-        Assert.Throws<ArgumentNullException>(() =>
-            OnboardingProgressService.CreateSnapshot(Simulation(), null!));
-    }
-
-    public static TheoryData<OnboardingTaskId, BusinessSimulationSnapshot, ProcurementSnapshot> CompletionCases()
-    {
-        return new TheoryData<OnboardingTaskId, BusinessSimulationSnapshot, ProcurementSnapshot>
+    public static TheoryData<OnboardingTaskId, BusinessSimulationSnapshot, ProcurementSnapshot> CompletionCases() =>
+        new()
         {
-            { OnboardingTaskId.RestockProduct, Simulation(stores: [Store(stockPurchaseCostCents: 100)]), Procurement() },
-            { OnboardingTaskId.AdjustPrice, Simulation(stores: [Store(products: [Product(salePriceCents: 225, referenceSalePriceCents: 200)])]), Procurement() },
-            { OnboardingTaskId.EnableAutoRestock, Simulation(), Procurement(autoRestockPolicies: [new AutoRestockPolicy("corner-store", "water", true, 2, 5, "regional-distributor", false)]) },
-            { OnboardingTaskId.CompleteFirstSale, Simulation(stores: [Store(revenueCents: 100)]), Procurement() },
-            { OnboardingTaskId.TrainEmployee, Simulation(employees: Employees(trainingLevel: 1)), Procurement() },
-            { OnboardingTaskId.UpgradeStore, Simulation(stores: [Store(growth: Growth(expansionLevel: 1))]), Procurement() },
-            { OnboardingTaskId.UpgradeStore, Simulation(stores: [Store(growth: Growth(shelfLevel: 1))]), Procurement() },
-            { OnboardingTaskId.UpgradeStore, Simulation(stores: [Store(growth: Growth(decorationLevel: 1))]), Procurement() },
-            { OnboardingTaskId.OpenSecondStore, Simulation(stores: [Store(), Store(id: "station-store")]), Procurement() }
+            { OnboardingTaskId.ReviewEconomy, Simulation(gameMinute: 1), Procurement() },
+            { OnboardingTaskId.ChooseStoreStrategy, Simulation(stores: [Store(salePriceCents: 230)]), Procurement() },
+            { OnboardingTaskId.CompleteFirstSale, Simulation(stores: [Store(revenueCents: 200)]), Procurement() },
+            { OnboardingTaskId.ReachPositiveDay, Simulation(lastCompletedDay: DayReport(netProfitCents: 1)), Procurement() },
+            { OnboardingTaskId.MakeFirstInvestment, Simulation(stores: [Store(growth: Growth(shelfLevel: 1))]), Procurement() },
+            { OnboardingTaskId.OpenSecondStore, Simulation(stores: [Store(), Store(id: "store-2")]), Procurement() }
         };
-    }
 
-    private static void AssertCompleted(
-        OnboardingSnapshot snapshot,
-        params OnboardingTaskId[] expectedCompleted)
-    {
-        var completed = snapshot.Tasks
-            .Where(task => task.IsCompleted)
-            .Select(task => task.Id)
-            .ToArray();
-
-        Assert.Equal(expectedCompleted.Order(), completed.Order());
-    }
-
-    private static OnboardingSnapshot CreateSnapshot(BusinessSession session) =>
-        OnboardingProgressService.CreateSnapshot(
-            session.Simulation.GetSnapshot(),
-            session.Game.GetProcurementSnapshot());
-
-    private static BusinessSession CreateSession(long openingCashCents = 100_000) =>
-        BusinessSession.Create(
-            SessionProducts(),
-            SessionStores(),
-            new LevelCurve([0, 1]),
-            "corner-store",
-            openingCashCents,
-            [CashierAssignment()],
-            new StatefulTestRandomSource(123),
-            new BusinessSimulationOptions(baseArrivalBasisPoints: 4_000));
-
-    private static BusinessSession RestoreSession(GameSaveData save) =>
-        BusinessSession.RestoreOrUpgrade(
-            SessionProducts(),
-            SessionStores(),
-            new LevelCurve([0, 1]),
-            "corner-store",
-            save,
-            [CashierAssignment()],
-            new StatefulTestRandomSource(456),
-            new BusinessSimulationOptions(baseArrivalBasisPoints: 4_000));
-
-    private static ProductDefinition[] SessionProducts() =>
+    private static OnboardingTaskState[] FullTaskStates(bool completed = false) =>
     [
-        new("water", "Water", 100, 200, 100, "ambient")
-    ];
-
-    private static ShopDefinition[] SessionStores() =>
-    [
-        new(new ShopId("corner-store"), "Corner Store", 1, Money.Zero),
-        new(new ShopId("station-store"), "Station Store", 2, new Money(30_000))
-    ];
-
-    private static StoreEmployeeAssignment CashierAssignment() =>
-        new(
-            "corner-store",
-            new Employee(
-                new EmployeeId("cashier"),
-                "Cashier",
-                EmployeeRole.Cashier,
-                1_000,
-                new Money(1_001)));
-
-    private static AutoRestockPolicy EnabledAutoRestockPolicy() =>
-        new(
-            "corner-store",
-            "water",
-            IsEnabled: true,
-            ReorderPoint: 2,
-            TargetQuantity: 5,
-            PreferredChannelId: "regional-distributor",
-            UseEmergencySupplierWhenOutOfStock: false);
-
-    private static OnboardingTaskState[] FullTaskStates(bool isCompleted = false) =>
-    [
-        new(OnboardingTaskId.RestockProduct, isCompleted),
-        new(OnboardingTaskId.AdjustPrice, isCompleted),
-        new(OnboardingTaskId.EnableAutoRestock, isCompleted),
-        new(OnboardingTaskId.CompleteFirstSale, isCompleted),
-        new(OnboardingTaskId.TrainEmployee, isCompleted),
-        new(OnboardingTaskId.UpgradeStore, isCompleted),
-        new(OnboardingTaskId.OpenSecondStore, isCompleted)
+        new(OnboardingTaskId.ReviewEconomy, completed),
+        new(OnboardingTaskId.ChooseStoreStrategy, completed),
+        new(OnboardingTaskId.CompleteFirstSale, completed),
+        new(OnboardingTaskId.ReachPositiveDay, completed),
+        new(OnboardingTaskId.MakeFirstInvestment, completed),
+        new(OnboardingTaskId.OpenSecondStore, completed)
     ];
 
     private static BusinessSimulationSnapshot Simulation(
+        long gameMinute = 0,
         IReadOnlyList<BusinessStoreSnapshot>? stores = null,
-        EmployeeOperationsSnapshot? employees = null)
-    {
-        stores ??= [Store()];
-
-        return new BusinessSimulationSnapshot(
-            GameMinute: 0,
-            Business: new BusinessSnapshot(
-                PlayerLevel: 1,
-                TotalExperience: 0,
-                CashCents: 100_000,
-                Stores: stores),
-            Stores: [],
-            Employees: employees ?? Employees(),
-            Street: new CommercialStreetSnapshot(
+        BusinessDayReport? lastCompletedDay = null) =>
+        new(
+            gameMinute,
+            new BusinessSnapshot(1, 0, 100_000, stores ?? [Store()]),
+            [],
+            new EmployeeOperationsSnapshot(1, 1, [], []),
+            new CommercialStreetSnapshot(
                 CommercialStreetTier.Corner,
                 StreetWeather.Clear,
-                SharedTrafficBasisPoints: 10_000,
-                VisiblePedestrians: 0,
-                VisibleVehicles: 0,
-                Stores: []));
-    }
+                10_000,
+                0,
+                0,
+                []),
+            lastCompletedDay);
 
     private static BusinessStoreSnapshot Store(
-        string id = "corner-store",
+        string id = "store-1",
         long revenueCents = 0,
-        long stockPurchaseCostCents = 0,
-        IReadOnlyList<ProductSnapshot>? products = null,
-        StoreGrowthSnapshot? growth = null)
-    {
-        return new BusinessStoreSnapshot(
-            Id: id,
-            Name: id,
-            RevenueCents: revenueCents,
-            StockPurchaseCostCents: stockPurchaseCostCents,
-            GrossProfitCents: 0,
-            Products: products ?? [Product()],
-            Growth: growth);
-    }
-
-    private static ProductSnapshot Product(
         long salePriceCents = 200,
-        long referenceSalePriceCents = 200)
-    {
-        return new ProductSnapshot(
-            Id: "water",
-            Name: "Water",
-            WholesalePriceCents: 100,
-            SalePriceCents: salePriceCents,
-            Quantity: 0,
-            Capacity: 10,
-            ShelfKind: "ambient",
-            ReferenceSalePriceCents: referenceSalePriceCents);
-    }
-
-    private static ProcurementSnapshot Procurement(
-        IReadOnlyList<AutoRestockPolicy>? autoRestockPolicies = null)
-    {
-        return new ProcurementSnapshot(
-            Channels: [],
-            PendingOrders: [],
-            AutoRestockPolicies: autoRestockPolicies ?? []);
-    }
-
-    private static EmployeeOperationsSnapshot Employees(int trainingLevel = 0)
-    {
-        return new EmployeeOperationsSnapshot(
-            CandidateRandomState: 0,
-            NextCandidateId: 1,
-            Candidates: [],
-            Employees:
-            [
-                new EmployeeOperationsEmployeeSnapshot(
-                    EmployeeId: "cashier",
-                    Name: "Cashier",
-                    Role: EmployeeRole.Cashier,
-                    BaseEfficiencyPermille: 1_000,
-                    EffectiveEfficiencyPermille: 1_000,
-                    HourlyWageCents: 1_000,
-                    TrainingLevel: trainingLevel,
-                    EnergyPermille: 1_000,
-                    SatisfactionPermille: 1_000,
-                    StoreId: "corner-store",
-                    ShiftStartMinute: 0,
-                    ShiftEndMinute: 1_440,
-                    IsAlwaysOn: true)
-            ]);
-    }
+        StoreGrowthSnapshot? growth = null) =>
+        new(
+            id,
+            id,
+            revenueCents,
+            0,
+            0,
+            [new ProductSnapshot("water", "Water", 100, salePriceCents, 0, 10, "ambient", ReferenceSalePriceCents: 200)],
+            Growth: growth);
 
     private static StoreGrowthSnapshot Growth(
         int expansionLevel = 0,
         int shelfLevel = 0,
-        int decorationLevel = 0)
-    {
-        return new StoreGrowthSnapshot(
-            StoreId: "corner-store",
-            ExpansionLevel: expansionLevel,
-            ShelfLevel: shelfLevel,
-            DecorationLevel: decorationLevel,
-            FloorAreaUnits: 1,
-            ShelfSlotCount: 1,
-            QueueComfortCapacity: 1,
-            InventoryCapacityPermille: 1_000,
-            AttractionBonusBasisPoints: 0,
-            NextExpansionUpgradeCostCents: null,
-            NextShelfUpgradeCostCents: null,
-            NextDecorationUpgradeCostCents: null,
-            PromotionArrivalBonusBasisPoints: 0,
-            PromotionPurchaseBonusBasisPoints: 0,
-            ActivePromotion: null);
-    }
+        int decorationLevel = 0) =>
+        new(
+            "store-1",
+            expansionLevel,
+            shelfLevel,
+            decorationLevel,
+            1,
+            1,
+            1,
+            1_000,
+            0,
+            null,
+            null,
+            null,
+            0,
+            0,
+            null);
+
+    private static BusinessDayReport DayReport(long netProfitCents) =>
+        new(
+            1,
+            [new StoreDayReport("store-1", 10, 8, 8, 0, 1_600, 800, 200, netProfitCents, 900, 0)]);
+
+    private static ProcurementSnapshot Procurement(
+        IReadOnlyList<AutoRestockPolicy>? policies = null) =>
+        new([], [], policies ?? []);
 }

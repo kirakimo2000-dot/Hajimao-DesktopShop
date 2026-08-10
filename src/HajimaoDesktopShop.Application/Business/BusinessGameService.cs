@@ -2,6 +2,7 @@ using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.StoreGrowth;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
@@ -85,6 +86,7 @@ public sealed class BusinessGameService :
         RegisterUnlockedProducts(_business.GetShop(starterDefinition.Id));
         _procurement = new BusinessProcurementService(this);
         _storeGrowth = new StoreGrowthService(this);
+        ConfigureDefaultAutomaticStocking(starterDefinition.Id.Value);
     }
 
     public BusinessGameService(
@@ -352,6 +354,7 @@ public sealed class BusinessGameService :
             if (result.Status == OpenShopStatus.Success)
             {
                 RegisterUnlockedProducts(_business.GetShop(id));
+                ConfigureDefaultAutomaticStocking(id.Value);
             }
 
             return result;
@@ -568,6 +571,26 @@ public sealed class BusinessGameService :
             shop.TotalNetProfit.Cents,
             shop.TotalOperatingCost.Cents,
             _storeGrowth.GetSnapshot(shopId.Value));
+    }
+
+    private void ConfigureDefaultAutomaticStocking(string storeId)
+    {
+        var store = CreateStoreSnapshot(new ShopId(storeId));
+        var plan = StoreStrategyPlanner.Create(
+            store,
+            StorePricingPreset.Balanced,
+            StoreStockingPreset.Balanced);
+        foreach (var product in plan.Products)
+        {
+            _procurement.ConfigureAutoRestock(new AutoRestockPolicy(
+                storeId,
+                product.ProductId,
+                IsEnabled: true,
+                product.ReorderPoint,
+                product.TargetQuantity,
+                product.PreferredChannelId,
+                product.UseEmergencySupplierWhenOutOfStock));
+        }
     }
 
     private static ProductSnapshot CreateProductSnapshot(Shop shop, ProductDefinition definition)

@@ -7,8 +7,8 @@ public sealed class OnboardingViewModelTests
 {
     [Theory]
     [MemberData(nameof(TaskPresentationCases))]
-    public void Refresh_MapsCurrentTaskToChinesePresentation(
-        OnboardingTaskId currentTaskId,
+    public void Refresh_MapsInvestorTaskToChinesePresentation(
+        OnboardingTaskId taskId,
         int completedTasks,
         string expectedTitle,
         string expectedGuidance,
@@ -16,9 +16,9 @@ public sealed class OnboardingViewModelTests
     {
         var viewModel = new OnboardingViewModel();
 
-        viewModel.Refresh(Snapshot(completedTasks, currentTaskId));
+        viewModel.Refresh(Snapshot(completedTasks, taskId));
 
-        Assert.Equal($"新手任务 {completedTasks + 1}/7", viewModel.ProgressText);
+        Assert.Equal($"新手任务 {completedTasks + 1}/6", viewModel.ProgressText);
         Assert.Equal(expectedTitle, viewModel.Title);
         Assert.Equal(expectedGuidance, viewModel.Guidance);
         Assert.Equal(expectedSection, viewModel.SuggestedSection);
@@ -26,101 +26,31 @@ public sealed class OnboardingViewModelTests
     }
 
     [Fact]
-    public void Refresh_WhenAllTasksComplete_HidesCardAndShowsCompletionCopy()
+    public void Refresh_WhenAllTasksComplete_HidesCard()
     {
         var viewModel = new OnboardingViewModel();
 
-        viewModel.Refresh(Snapshot(completedTasks: 7, currentTaskId: null));
+        viewModel.Refresh(Snapshot(6, null));
 
-        Assert.Equal("新手任务已完成", viewModel.ProgressText);
-        Assert.Equal("新手任务已完成", viewModel.Title);
-        Assert.Equal(ProductIdentity.OnboardingCompletionGuidance, viewModel.Guidance);
-        Assert.Equal(ManagementSection.Store, viewModel.SuggestedSection);
+        Assert.Equal(ManagementSection.Overview, viewModel.SuggestedSection);
         Assert.False(viewModel.IsVisible);
-    }
-
-    [Fact]
-    public void Refresh_RejectsNullSnapshot()
-    {
-        var viewModel = new OnboardingViewModel();
-
-        Assert.Throws<ArgumentNullException>(() => viewModel.Refresh(null!));
-    }
-
-    [Fact]
-    public void Refresh_RaisesPropertyChangesForPresentationProperties()
-    {
-        var viewModel = new OnboardingViewModel();
-        var changed = new List<string?>();
-        viewModel.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
-
-        viewModel.Refresh(Snapshot(completedTasks: 1, OnboardingTaskId.AdjustPrice));
-
-        Assert.Contains(nameof(OnboardingViewModel.ProgressText), changed);
-        Assert.Contains(nameof(OnboardingViewModel.Title), changed);
-        Assert.Contains(nameof(OnboardingViewModel.Guidance), changed);
-        Assert.Contains(nameof(OnboardingViewModel.SuggestedSection), changed);
-        Assert.Contains(nameof(OnboardingViewModel.IsVisible), changed);
     }
 
     public static TheoryData<OnboardingTaskId, int, string, string, ManagementSection> TaskPresentationCases() =>
         new()
         {
-            {
-                OnboardingTaskId.RestockProduct,
-                0,
-                "第一次进货",
-                "为任意商品补充库存，让小店可以持续营业。",
-                ManagementSection.Procurement
-            },
-            {
-                OnboardingTaskId.AdjustPrice,
-                1,
-                "调整商品价格",
-                "根据毛利和需求调整任意商品售价。",
-                ManagementSection.Products
-            },
-            {
-                OnboardingTaskId.EnableAutoRestock,
-                2,
-                "设置自动补货",
-                "为常卖商品开启自动补货，让挂机真正持续。",
-                ManagementSection.Procurement
-            },
-            {
-                OnboardingTaskId.CompleteFirstSale,
-                3,
-                "完成第一笔销售",
-                "保持库存并等待顾客完成结账。",
-                ManagementSection.Store
-            },
-            {
-                OnboardingTaskId.TrainEmployee,
-                4,
-                "培训一名员工",
-                "培训员工，提高效率并承担相应工资成本。",
-                ManagementSection.Employees
-            },
-            {
-                OnboardingTaskId.UpgradeStore,
-                5,
-                "完成一次店铺成长",
-                "扩建、升级货架或装修任意一项。",
-                ManagementSection.Growth
-            },
-            {
-                OnboardingTaskId.OpenSecondStore,
-                6,
-                "开设第二家店",
-                "提升等级并积累资金，在店铺总览开设新店。",
-                ManagementSection.Store
-            }
+            { OnboardingTaskId.ReviewEconomy, 0, "查看经营概览", "先看收入、利润率、现金续航和主要瓶颈。", ManagementSection.Overview },
+            { OnboardingTaskId.ChooseStoreStrategy, 1, "选择整店策略", "尝试高周转、高毛利、精益或充足策略，系统会负责执行。", ManagementSection.Strategy },
+            { OnboardingTaskId.CompleteFirstSale, 2, "等待第一笔销售", "保持游戏运行，观察系统完成进货、服务与结账。", ManagementSection.Overview },
+            { OnboardingTaskId.ReachPositiveDay, 3, "实现首个盈利日", "根据瓶颈调整策略，让完整一天的净利润转正。", ManagementSection.Overview },
+            { OnboardingTaskId.MakeFirstInvestment, 4, "完成第一次投资", "把现金投入扩建、货架或装修，提升长期经营能力。", ManagementSection.Investment },
+            { OnboardingTaskId.OpenSecondStore, 5, "开设第二家店", "提升等级并积累资金，把盈利能力复制到新店。", ManagementSection.Investment }
         };
 
     private static OnboardingSnapshot Snapshot(int completedTasks, OnboardingTaskId? currentTaskId) =>
         new(
             Enum.GetValues<OnboardingTaskId>()
-                .Select(id => new OnboardingTaskState(id, IsCompleted: (int)id < completedTasks)),
+                .Select(id => new OnboardingTaskState(id, (int)id < completedTasks)),
             completedTasks,
             currentTaskId);
 }

@@ -15,24 +15,19 @@ public static class OnboardingProgressService
         var tasks = new[]
         {
             new OnboardingTaskState(
-                OnboardingTaskId.RestockProduct,
-                simulation.Business.Stores.Any(store => store.StockPurchaseCostCents > 0)),
+                OnboardingTaskId.ReviewEconomy,
+                simulation.GameMinute > 0),
             new OnboardingTaskState(
-                OnboardingTaskId.AdjustPrice,
-                simulation.Business.Stores
-                    .SelectMany(store => store.Products)
-                    .Any(product => product.SalePriceCents != product.ReferenceSalePriceCents)),
-            new OnboardingTaskState(
-                OnboardingTaskId.EnableAutoRestock,
-                procurement.AutoRestockPolicies.Any(policy => policy.IsEnabled)),
+                OnboardingTaskId.ChooseStoreStrategy,
+                HasChosenNonDefaultStrategy(simulation, procurement)),
             new OnboardingTaskState(
                 OnboardingTaskId.CompleteFirstSale,
                 simulation.Business.Stores.Any(store => store.RevenueCents > 0)),
             new OnboardingTaskState(
-                OnboardingTaskId.TrainEmployee,
-                simulation.Employees.Employees.Any(employee => employee.TrainingLevel > 0)),
+                OnboardingTaskId.ReachPositiveDay,
+                simulation.LastCompletedDay?.Stores.Any(store => store.NetProfitCents > 0) == true),
             new OnboardingTaskState(
-                OnboardingTaskId.UpgradeStore,
+                OnboardingTaskId.MakeFirstInvestment,
                 simulation.Business.Stores.Any(store =>
                     store.Growth is not null
                     && (store.Growth.ExpansionLevel > 0
@@ -46,5 +41,40 @@ public static class OnboardingProgressService
         var currentTaskId = tasks.FirstOrDefault(task => !task.IsCompleted)?.Id;
 
         return new OnboardingSnapshot(tasks, completedTasks, currentTaskId);
+    }
+
+    private static bool HasChosenNonDefaultStrategy(
+        BusinessSimulationSnapshot simulation,
+        ProcurementSnapshot procurement)
+    {
+        var policies = procurement.AutoRestockPolicies.ToDictionary(
+            policy => (policy.StoreId, policy.ProductId));
+        foreach (var store in simulation.Business.Stores)
+        {
+            foreach (var product in store.Products)
+            {
+                if (product.SalePriceCents != product.ReferenceSalePriceCents)
+                {
+                    return true;
+                }
+
+                var balancedReorderPoint = Math.Max(1, product.Capacity * 300 / 1_000);
+                var balancedTargetQuantity = Math.Max(1, product.Capacity * 750 / 1_000);
+                if (policies.TryGetValue((store.Id, product.Id), out var policy)
+                    && (!policy.IsEnabled
+                        || policy.ReorderPoint != balancedReorderPoint
+                        || policy.TargetQuantity != balancedTargetQuantity
+                        || !string.Equals(
+                            policy.PreferredChannelId,
+                            "regional-distributor",
+                            StringComparison.Ordinal)
+                        || !policy.UseEmergencySupplierWhenOutOfStock))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

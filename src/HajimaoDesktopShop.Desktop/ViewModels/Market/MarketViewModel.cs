@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Analysis;
 using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
@@ -16,7 +17,7 @@ public sealed class MarketViewModel : ObservableObject
 {
     private readonly BusinessSession _session;
     private readonly Func<bool> _reduceMotion;
-    private ManagementSection _selectedSection = ManagementSection.Store;
+    private ManagementSection _selectedSection = ManagementSection.Overview;
     private string _selectedStoreId = string.Empty;
     private string _selectedStoreName = string.Empty;
     private string _cashText = "¥0.00";
@@ -52,18 +53,12 @@ public sealed class MarketViewModel : ObservableObject
         DesktopNavigation = new DesktopNavigationViewModel(SelectStoreById);
         Onboarding = new OnboardingViewModel();
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
-        ProductManagement = new ProductManagementViewModel(session, () => SelectedStoreId);
+        Economy = new StoreEconomyViewModel();
+        Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
         EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
-        _shopObjectActions = new ShopObjectActionsViewModel(
-            () => SelectedShopObject,
-            () => SelectedStoreId,
-            ProductManagement,
-            EmployeeManagement,
-            Refresh);
         StoreGrowth = new StoreGrowthManagementViewModel(session, () => SelectedStoreId);
-        Finance = new FinanceViewModel(session, () => SelectedStoreId);
         CommercialStreet = new CommercialStreetViewModel();
-        ProductManagement.FeedbackRaised += RelayFeedback;
+        Strategy.FeedbackRaised += RelayFeedback;
         EmployeeManagement.FeedbackRaised += RelayFeedback;
         StoreGrowth.FeedbackRaised += RelayFeedback;
         Refresh();
@@ -73,13 +68,13 @@ public sealed class MarketViewModel : ObservableObject
 
     public MarketOverviewViewModel Overview { get; }
 
-    public ProductManagementViewModel ProductManagement { get; }
+    public StoreEconomyViewModel Economy { get; }
+
+    public StoreStrategyViewModel Strategy { get; }
 
     public EmployeeManagementViewModel EmployeeManagement { get; }
 
     public StoreGrowthManagementViewModel StoreGrowth { get; }
-
-    public FinanceViewModel Finance { get; }
 
     public CommercialStreetViewModel CommercialStreet { get; }
 
@@ -94,18 +89,6 @@ public sealed class MarketViewModel : ObservableObject
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
 
     public IRelayCommand<BusinessShopInteractionTarget> SelectShopObjectCommand { get; }
-
-    private readonly ShopObjectActionsViewModel _shopObjectActions;
-
-    public IRelayCommand QuickRestockSelectedShelfCommand => _shopObjectActions.QuickRestockCommand;
-
-    public IRelayCommand ToggleAutoRestockSelectedShelfCommand => _shopObjectActions.ToggleAutoRestockCommand;
-
-    public IRelayCommand TrainSelectedEmployeeCommand => _shopObjectActions.TrainEmployeeCommand;
-
-    public IRelayCommand SetSelectedEmployeeDayShiftCommand => _shopObjectActions.SetDayShiftCommand;
-
-    public IRelayCommand SetSelectedEmployeeNightShiftCommand => _shopObjectActions.SetNightShiftCommand;
 
     public IRelayCommand ToggleLockCommand { get; }
 
@@ -129,23 +112,15 @@ public sealed class MarketViewModel : ObservableObject
                 return;
             }
 
-            OnPropertyChanged(nameof(IsStoreSection));
-            OnPropertyChanged(nameof(IsProductsSection));
-            OnPropertyChanged(nameof(IsProcurementSection));
-            OnPropertyChanged(nameof(IsEmployeesSection));
-            OnPropertyChanged(nameof(IsGrowthSection));
-            OnPropertyChanged(nameof(IsFinanceSection));
-            OnPropertyChanged(nameof(IsCommercialStreetSection));
+            OnPropertyChanged(nameof(IsOverviewSection));
+            OnPropertyChanged(nameof(IsStrategySection));
+            OnPropertyChanged(nameof(IsInvestmentSection));
         }
     }
 
-    public bool IsStoreSection => SelectedSection == ManagementSection.Store;
-    public bool IsProductsSection => SelectedSection == ManagementSection.Products;
-    public bool IsProcurementSection => SelectedSection == ManagementSection.Procurement;
-    public bool IsEmployeesSection => SelectedSection == ManagementSection.Employees;
-    public bool IsGrowthSection => SelectedSection == ManagementSection.Growth;
-    public bool IsFinanceSection => SelectedSection == ManagementSection.Finance;
-    public bool IsCommercialStreetSection => SelectedSection == ManagementSection.CommercialStreet;
+    public bool IsOverviewSection => SelectedSection == ManagementSection.Overview;
+    public bool IsStrategySection => SelectedSection == ManagementSection.Strategy;
+    public bool IsInvestmentSection => SelectedSection == ManagementSection.Investment;
 
     public string SelectedStoreId
     {
@@ -258,22 +233,11 @@ public sealed class MarketViewModel : ObservableObject
             if (SetProperty(ref _selectedShopObject, value))
             {
                 OnPropertyChanged(nameof(HasSelectedShopObject));
-                OnPropertyChanged(nameof(IsShelfObjectSelected));
-                OnPropertyChanged(nameof(IsEmployeeObjectSelected));
-                OnPropertyChanged(nameof(SelectedShelfAutoRestockActionText));
-                _shopObjectActions.NotifySelectionChanged();
             }
         }
     }
 
     public bool HasSelectedShopObject => SelectedShopObject is not null;
-
-    public bool IsShelfObjectSelected => SelectedShopObject?.IsShelf == true;
-
-    public bool IsEmployeeObjectSelected => SelectedShopObject?.IsEmployee == true;
-
-    public string SelectedShelfAutoRestockActionText =>
-        _shopObjectActions.AutoRestockActionText;
 
     public void Refresh()
     {
@@ -332,10 +296,15 @@ public sealed class MarketViewModel : ObservableObject
             IsClickThrough);
         RefreshSelectedShopObject(snapshot);
         Overview.Synchronize(Stores);
-        ProductManagement.Refresh();
+        var analysis = CreateEconomyAnalysis(snapshot, SelectedStoreId);
+        if (analysis is not null)
+        {
+            Economy.Update(analysis);
+        }
+
+        Strategy.Refresh();
         EmployeeManagement.Refresh();
         StoreGrowth.Refresh();
-        Finance.Refresh();
     }
 
     public void RestoreDesktopState(bool isLocked)
@@ -404,9 +373,7 @@ public sealed class MarketViewModel : ObservableObject
         }
 
         _selectedShopTarget = target;
-        SelectedSection = target.Kind == BusinessShopInteractionKind.Shelf
-            ? ManagementSection.Products
-            : ManagementSection.Employees;
+        SelectedSection = ManagementSection.Overview;
         RefreshSelectedShopObject(SceneFrame.Snapshot);
     }
 
@@ -476,7 +443,7 @@ public sealed class MarketViewModel : ObservableObject
             actionTarget?.Id ?? string.Empty,
             actionTarget is null
                 ? "当前货架没有可经营商品"
-                : $"优先商品 {actionTarget.Name} {actionTarget.Quantity}/{actionTarget.Capacity}",
+                : $"系统按整店策略管理 {actionTarget.Name} · 当前 {actionTarget.Quantity}/{actionTarget.Capacity}",
             isAutoRestockEnabled);
     }
 
@@ -512,8 +479,38 @@ public sealed class MarketViewModel : ObservableObject
             $"效率 {FormatPermille(employee.EffectiveEfficiencyPermille)} · 工资 {FormatMoney(employee.HourlyWageCents)}/小时",
             $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift} · 任务 {EmployeeTaskTextFormatter.FormatTask(employee.CurrentTask)}",
             employee.EmployeeId,
-            $"培训 Lv.{employee.TrainingLevel} · {EmployeeTaskTextFormatter.FormatPriorities(employee.TaskPriorities)}",
+            $"系统自动排班与分配任务 · {EmployeeTaskTextFormatter.FormatPriorities(employee.TaskPriorities)}",
             IsAutoRestockEnabled: false);
+    }
+
+    private static StoreEconomyAnalysis? CreateEconomyAnalysis(
+        BusinessSimulationSnapshot snapshot,
+        string storeId)
+    {
+        var store = snapshot.Business.Stores.SingleOrDefault(item => item.Id == storeId);
+        var operations = snapshot.Stores.SingleOrDefault(item => item.StoreId == storeId);
+        if (store is null || operations is null)
+        {
+            return null;
+        }
+
+        var report = snapshot.LastCompletedDay?.Stores.SingleOrDefault(item => item.StoreId == storeId);
+        var input = new StoreEconomyAnalysisInput(
+            storeId,
+            snapshot.Business.CashCents,
+            report?.RevenueCents ?? store.RevenueCents,
+            report?.GrossProfitCents ?? store.GrossProfitCents,
+            report?.WageCostCents ?? store.WageCostCents,
+            report?.OperatingCostCents ?? store.OperatingCostCents,
+            report?.NetProfitCents ?? store.NetProfitCents,
+            report?.Visitors ?? operations.Visitors,
+            report?.CompletedSales ?? operations.CompletedSales,
+            report?.LostSales ?? operations.LostSales,
+            store.Products.Count(product => product.Quantity == 0),
+            operations.CheckoutQueueLength,
+            operations.ServicePermille,
+            IsCompletedDay: report is not null);
+        return StoreEconomyAnalysisService.Calculate(input);
     }
 
     private void SelectStoreById(string storeId) =>
