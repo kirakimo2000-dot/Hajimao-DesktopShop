@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Analysis;
+using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Simulation;
@@ -245,7 +246,8 @@ public sealed class MarketViewModel : ObservableObject
         Onboarding.Refresh(OnboardingProgressService.CreateSnapshot(
             snapshot,
             _session.Game.GetProcurementSnapshot(),
-            _session.Investments.HasAnyInvestment));
+            _session.Investments.HasAnyInvestment,
+            HasComparableInvestmentReturn()));
         var completedSales = snapshot.Stores.Sum(item => item.CompletedSales);
         if (completedSales > _lastCompletedSales)
         {
@@ -498,6 +500,11 @@ public sealed class MarketViewModel : ObservableObject
 
     private void SelectStoreById(string storeId) =>
         SelectStore(Stores.Single(store => store.Id == storeId));
+
+    private bool HasComparableInvestmentReturn() =>
+        _session.Investments.CaptureTrackingSaveData().LatestInvestments.Any(investment =>
+            _session.Investments.GetLatestComparison(investment.StoreId)?.Status
+                == InvestmentComparisonStatus.Compared);
 
     private void SynchronizeStores(IReadOnlyList<StoreCatalogItemSnapshot> snapshots)
     {

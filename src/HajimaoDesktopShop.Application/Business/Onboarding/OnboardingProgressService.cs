@@ -8,7 +8,8 @@ public static class OnboardingProgressService
     public static OnboardingSnapshot CreateSnapshot(
         BusinessSimulationSnapshot simulation,
         ProcurementSnapshot procurement,
-        bool hasRecordedInvestment = false)
+        bool hasRecordedInvestment = false,
+        bool hasComparableInvestmentReturn = false)
     {
         ArgumentNullException.ThrowIfNull(simulation);
         ArgumentNullException.ThrowIfNull(procurement);
@@ -22,12 +23,6 @@ public static class OnboardingProgressService
                 OnboardingTaskId.ChooseStoreStrategy,
                 HasChosenNonDefaultStrategy(simulation, procurement)),
             new OnboardingTaskState(
-                OnboardingTaskId.CompleteFirstSale,
-                simulation.Business.Stores.Any(store => store.RevenueCents > 0)),
-            new OnboardingTaskState(
-                OnboardingTaskId.ReachPositiveDay,
-                simulation.LastCompletedDay?.Stores.Any(store => store.NetProfitCents > 0) == true),
-            new OnboardingTaskState(
                 OnboardingTaskId.MakeFirstInvestment,
                 hasRecordedInvestment || simulation.Business.Stores.Any(store =>
                     store.Growth is not null
@@ -35,8 +30,8 @@ public static class OnboardingProgressService
                         || store.Growth.ShelfLevel > 0
                         || store.Growth.DecorationLevel > 0))),
             new OnboardingTaskState(
-                OnboardingTaskId.OpenSecondStore,
-                simulation.Business.Stores.Count > 1)
+                OnboardingTaskId.ReviewInvestmentReturn,
+                hasRecordedInvestment && hasComparableInvestmentReturn)
         };
         var completedTasks = tasks.Count(task => task.IsCompleted);
         var currentTaskId = tasks.FirstOrDefault(task => !task.IsCompleted)?.Id;

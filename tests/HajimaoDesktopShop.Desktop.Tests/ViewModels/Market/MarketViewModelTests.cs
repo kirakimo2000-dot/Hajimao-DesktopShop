@@ -1,4 +1,6 @@
 using HajimaoDesktopShop.Application.Business.Onboarding;
+using HajimaoDesktopShop.Application.Business.Investments;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Rendering;
 using HajimaoDesktopShop.Rendering.Interactions;
@@ -90,6 +92,32 @@ public sealed class MarketViewModelTests
 
         Assert.True(onboarding.Tasks.Single(task =>
             task.Id == OnboardingTaskId.MakeFirstInvestment).IsCompleted);
+    }
+
+    [Fact]
+    public void Refresh_HidesOnboardingAfterALaterDayCanCompareTheInvestment()
+    {
+        var session = MarketTestSession.Create(openingCashCents: 500_000);
+        Assert.Equal(
+            StoreStrategyCommandStatus.Success,
+            session.Strategy.Apply(
+                "corner-store",
+                StorePricingPreset.HighMargin,
+                StoreStockingPreset.Lean).Status);
+        session.Simulation.AdvanceRealSeconds(1_440);
+        var shelf = session.Investments.GetPortfolio("corner-store")!.Candidates
+            .Single(candidate => candidate.Kind == InvestmentKind.Shelf);
+        Assert.Equal(
+            InvestmentCommandStatus.Success,
+            session.Investments.Execute("corner-store", shelf.Id).Status);
+        session.Simulation.AdvanceRealSeconds(1_440);
+
+        var viewModel = new MarketViewModel(session);
+
+        Assert.Equal(
+            InvestmentComparisonStatus.Compared,
+            session.Investments.GetLatestComparison("corner-store")?.Status);
+        Assert.False(viewModel.Onboarding.IsVisible);
     }
 
     [Fact]

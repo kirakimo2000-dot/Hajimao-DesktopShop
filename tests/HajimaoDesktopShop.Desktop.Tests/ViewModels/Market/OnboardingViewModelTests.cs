@@ -18,7 +18,7 @@ public sealed class OnboardingViewModelTests
 
         viewModel.Refresh(Snapshot(completedTasks, taskId));
 
-        Assert.Equal($"新手任务 {completedTasks + 1}/6", viewModel.ProgressText);
+        Assert.Equal($"新手任务 {completedTasks + 1}/4", viewModel.ProgressText);
         Assert.Equal(expectedTitle, viewModel.Title);
         Assert.Equal(expectedGuidance, viewModel.Guidance);
         Assert.Equal(expectedSection, viewModel.SuggestedSection);
@@ -30,7 +30,7 @@ public sealed class OnboardingViewModelTests
     {
         var viewModel = new OnboardingViewModel();
 
-        viewModel.Refresh(Snapshot(6, null));
+        viewModel.Refresh(Snapshot(4, null));
 
         Assert.Equal(ManagementSection.Overview, viewModel.SuggestedSection);
         Assert.False(viewModel.IsVisible);
@@ -41,10 +41,8 @@ public sealed class OnboardingViewModelTests
         {
             { OnboardingTaskId.ReviewEconomy, 0, "查看经营概览", "先看收入、利润率、现金续航和主要瓶颈。", ManagementSection.Overview },
             { OnboardingTaskId.ChooseStoreStrategy, 1, "选择整店策略", "尝试高周转、高毛利、精益或充足策略，系统会负责执行。", ManagementSection.Strategy },
-            { OnboardingTaskId.CompleteFirstSale, 2, "等待第一笔销售", "保持游戏运行，观察系统完成进货、服务与结账。", ManagementSection.Overview },
-            { OnboardingTaskId.ReachPositiveDay, 3, "实现首个盈利日", "根据瓶颈调整策略，让完整一天的净利润转正。", ManagementSection.Overview },
-            { OnboardingTaskId.MakeFirstInvestment, 4, "完成第一次投资", "把现金投入扩建、货架或装修，提升长期经营能力。", ManagementSection.Investment },
-            { OnboardingTaskId.OpenSecondStore, 5, "开设第二家店", "提升等级并积累资金，把盈利能力复制到新店。", ManagementSection.Investment }
+            { OnboardingTaskId.MakeFirstInvestment, 2, "完成第一次投资", "选择一个能改变现金流或经营能力的方案，不需要逐项维护。", ManagementSection.Investment },
+            { OnboardingTaskId.ReviewInvestmentReturn, 3, "查看投资回报", "等待下一份完整日结，对比净利润、成交与流失变化。", ManagementSection.Investment }
         };
 
     private static OnboardingSnapshot Snapshot(int completedTasks, OnboardingTaskId? currentTaskId) =>
