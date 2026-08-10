@@ -77,14 +77,14 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
-    public void EmployeeInvestment_CompletesInvestorTaskThroughRecordedEvidence()
+    public void RecommendedInvestment_CompletesInvestorTaskThroughRecordedEvidence()
     {
         var session = MarketTestSession.Create(openingCashCents: 500_000);
         var viewModel = new MarketViewModel(session);
-        var employee = viewModel.Investment.Candidates.First(candidate =>
-            candidate.Id.StartsWith("employee:", StringComparison.Ordinal));
+        var recommendation = viewModel.Investment.Candidates.First(candidate =>
+            candidate.InvestCommand.CanExecute(null));
 
-        employee.InvestCommand.Execute(null);
+        recommendation.InvestCommand.Execute(null);
         var onboarding = OnboardingProgressService.CreateSnapshot(
             session.Simulation.GetSnapshot(),
             session.Game.GetProcurementSnapshot(),

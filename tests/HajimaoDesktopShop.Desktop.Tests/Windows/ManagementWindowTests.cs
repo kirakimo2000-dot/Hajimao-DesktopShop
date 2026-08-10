@@ -130,6 +130,8 @@ public sealed class ManagementWindowTests
                 Assert.Contains("Command=\"{Binding InvestCommand}\"", xaml, StringComparison.Ordinal);
                 foreach (var property in new[]
                          {
+                             nameof(InvestmentCandidateCardViewModel.ThesisText),
+                             nameof(InvestmentCandidateCardViewModel.StoreContextText),
                              nameof(InvestmentCandidateCardViewModel.TitleText),
                              nameof(InvestmentCandidateCardViewModel.CostText),
                              nameof(InvestmentCandidateCardViewModel.ExpectedBenefitText),
@@ -142,6 +144,10 @@ public sealed class ManagementWindowTests
                 }
 
                 Assert.IsType<Border>(window.FindName("LatestInvestmentPanel"));
+                Assert.Contains(
+                    "每次只比较稳住弱店、提高回报、扩张街区三种资本用途。",
+                    xaml,
+                    StringComparison.Ordinal);
                 Assert.DoesNotContain("StoreGrowth.Upgrade", xaml, StringComparison.Ordinal);
                 Assert.DoesNotContain("EmployeeManagement.Candidates", xaml, StringComparison.Ordinal);
                 Assert.DoesNotContain("Overview.OpenStoreCommand", xaml, StringComparison.Ordinal);
