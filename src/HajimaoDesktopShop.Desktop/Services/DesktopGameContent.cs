@@ -19,7 +19,7 @@ public static class DesktopGameContent
         new(baseArrivalBasisPoints: BaseArrivalBasisPoints);
 
     public static IReadOnlyList<long> ShopOpeningCostsCents { get; } =
-        Array.AsReadOnly(new long[] { 0, 80_000, 200_000 });
+        Array.AsReadOnly(new long[] { 0, 80_000, 120_000 });
 
     public static IReadOnlyList<long> LevelThresholds { get; } =
         Array.AsReadOnly(new long[] { 0, 40, 120, 300, 650, 1_200, 2_000, 3_200, 5_000, 7_500 });

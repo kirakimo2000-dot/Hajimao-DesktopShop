@@ -17,7 +17,7 @@ public sealed class DesktopGameContentTests
         Assert.True(DesktopGameContent.OpeningCashCents > 0);
         Assert.True(DesktopGameContent.ExperiencePerItemSold > 0);
         Assert.InRange(DesktopGameContent.BaseArrivalBasisPoints, 1, 10_000);
-        Assert.Equal(3, DesktopGameContent.ShopOpeningCostsCents.Count);
+        Assert.Equal([0, 80_000, 120_000], DesktopGameContent.ShopOpeningCostsCents);
         Assert.Equal(10, DesktopGameContent.LevelThresholds.Count);
     }
 }

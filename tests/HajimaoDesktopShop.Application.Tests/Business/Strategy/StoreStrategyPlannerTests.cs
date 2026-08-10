@@ -9,7 +9,7 @@ public sealed class StoreStrategyPlannerTests
     [Theory]
     [InlineData(StorePricingPreset.HighTurnover, 9_000, 180)]
     [InlineData(StorePricingPreset.Balanced, 10_000, 200)]
-    [InlineData(StorePricingPreset.HighMargin, 11_500, 230)]
+    [InlineData(StorePricingPreset.HighMargin, 10_800, 216)]
     public void Create_AppliesWholeStoreReferencePriceMultiplier(
         StorePricingPreset preset,
         int expectedMultiplierBasisPoints,
@@ -68,7 +68,7 @@ public sealed class StoreStrategyPlannerTests
             StorePricingPreset.HighMargin,
             StoreStockingPreset.Balanced);
 
-        Assert.Equal(229, Assert.Single(plan.Products).SalePriceCents);
+        Assert.Equal(215, Assert.Single(plan.Products).SalePriceCents);
     }
 
     [Fact]
