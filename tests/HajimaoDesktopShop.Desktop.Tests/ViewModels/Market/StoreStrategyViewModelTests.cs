@@ -38,4 +38,23 @@ public sealed class StoreStrategyViewModelTests
         Assert.Equal(StoreStockingPreset.Lean, applied.Stocking);
         Assert.Contains("整店策略已应用", viewModel.StatusMessage);
     }
+
+    [Fact]
+    public void RecoveryCommand_AppearsOnlyForFinancialDangerAndUsesExistingStrategy()
+    {
+        var session = MarketTestSession.Create();
+        session.Simulation.AdvanceRealSeconds(1_440);
+        var cashBefore = session.Game.GetSnapshot().CashCents;
+        var viewModel = new StoreStrategyViewModel(session, () => "corner-store");
+
+        Assert.True(viewModel.HasRecoveryRecommendation);
+        Assert.Contains("亏损", viewModel.RecoveryGuidanceText);
+        Assert.True(viewModel.ApplyRecoveryCommand.CanExecute(null));
+
+        viewModel.ApplyRecoveryCommand.Execute(null);
+
+        Assert.Equal(cashBefore, session.Game.GetSnapshot().CashCents);
+        Assert.Equal(StoreStockingPreset.Lean, session.Strategy.GetAppliedPlan("corner-store")?.Stocking);
+        Assert.Contains("保守方案已应用", viewModel.StatusMessage);
+    }
 }

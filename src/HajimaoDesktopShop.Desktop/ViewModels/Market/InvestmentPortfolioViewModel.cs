@@ -130,6 +130,7 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
         InvestmentKind.Shelf => "升级货架",
         InvestmentKind.Decoration => "店铺装修",
         InvestmentKind.Employee => "招聘员工",
+        InvestmentKind.OpenStore => "开设新店",
         _ => kind.ToString()
     };
 

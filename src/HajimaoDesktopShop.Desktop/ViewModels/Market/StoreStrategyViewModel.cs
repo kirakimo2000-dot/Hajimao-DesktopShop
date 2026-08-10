@@ -3,6 +3,8 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Analysis;
+using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Desktop.ViewModels;
 
@@ -15,6 +17,10 @@ public sealed class StoreStrategyViewModel : ObservableObject
     private string _currentPricingText = "均衡";
     private string _currentStockingText = "均衡备货";
     private string _statusMessage = "选择整店策略，日常运营由系统完成";
+    private string _recoveryGuidanceText = string.Empty;
+    private bool _hasRecoveryRecommendation;
+    private StoreRecoveryRecommendation? _recoveryRecommendation;
+    private readonly RelayCommand _applyRecoveryCommand;
 
     public StoreStrategyViewModel(BusinessSession session, Func<string> selectedStoreId)
     {
@@ -26,6 +32,9 @@ public sealed class StoreStrategyViewModel : ObservableObject
         UseLeanStockingCommand = new RelayCommand(() => ApplyStocking(StoreStockingPreset.Lean));
         UseBalancedStockingCommand = new RelayCommand(() => ApplyStocking(StoreStockingPreset.Balanced));
         UseFullShelvesStockingCommand = new RelayCommand(() => ApplyStocking(StoreStockingPreset.FullShelves));
+        _applyRecoveryCommand = new RelayCommand(
+            ApplyRecovery,
+            () => _recoveryRecommendation is not null);
         Refresh();
     }
 
@@ -39,6 +48,7 @@ public sealed class StoreStrategyViewModel : ObservableObject
     public IRelayCommand UseLeanStockingCommand { get; }
     public IRelayCommand UseBalancedStockingCommand { get; }
     public IRelayCommand UseFullShelvesStockingCommand { get; }
+    public IRelayCommand ApplyRecoveryCommand => _applyRecoveryCommand;
 
     public string CurrentPricingText
     {
@@ -58,6 +68,18 @@ public sealed class StoreStrategyViewModel : ObservableObject
         private set => SetProperty(ref _statusMessage, value);
     }
 
+    public bool HasRecoveryRecommendation
+    {
+        get => _hasRecoveryRecommendation;
+        private set => SetProperty(ref _hasRecoveryRecommendation, value);
+    }
+
+    public string RecoveryGuidanceText
+    {
+        get => _recoveryGuidanceText;
+        private set => SetProperty(ref _recoveryGuidanceText, value);
+    }
+
     public void Refresh()
     {
         var storeId = _selectedStoreId();
@@ -65,6 +87,7 @@ public sealed class StoreStrategyViewModel : ObservableObject
         if (store is null)
         {
             Products.Clear();
+            SetRecoveryRecommendation(null);
             return;
         }
 
@@ -85,6 +108,13 @@ public sealed class StoreStrategyViewModel : ObservableObject
                 FormatMoney(productPlan.SalePriceCents),
                 $"库存 ≤ {productPlan.ReorderPoint} 时补至 {productPlan.TargetQuantity}"));
         }
+
+        var analysis = StoreEconomyAnalysisService.Calculate(
+            _session.Simulation.GetSnapshot(),
+            storeId);
+        SetRecoveryRecommendation(analysis is null
+            ? null
+            : StoreRecoveryAdvisor.Create(analysis));
     }
 
     private void ApplyPricing(StorePricingPreset pricing)
@@ -111,6 +141,38 @@ public sealed class StoreStrategyViewModel : ObservableObject
         }
 
         Refresh();
+    }
+
+    private void ApplyRecovery()
+    {
+        if (_recoveryRecommendation is null)
+        {
+            return;
+        }
+
+        var result = _session.Strategy.ApplyRecovery(_recoveryRecommendation);
+        StatusMessage = result.Status == StoreStrategyCommandStatus.Success
+            ? "保守方案已应用：降低库存占用并优先修复现金流"
+            : $"保守方案应用失败：{result.Status}";
+        if (result.Status == StoreStrategyCommandStatus.Success)
+        {
+            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.PriceChanged));
+        }
+
+        Refresh();
+    }
+
+    private void SetRecoveryRecommendation(StoreRecoveryRecommendation? recommendation)
+    {
+        _recoveryRecommendation = recommendation;
+        HasRecoveryRecommendation = recommendation is not null;
+        RecoveryGuidanceText = recommendation?.EvidenceCode switch
+        {
+            "negative-profit" => "最近经营出现亏损；可采用精益库存并按瓶颈调整定价。",
+            "critical-cash-runway" => "现金跑道不足一个经营日；可先降低库存占用。",
+            _ => string.Empty
+        };
+        _applyRecoveryCommand.NotifyCanExecuteChanged();
     }
 
     private static string FormatPricing(StorePricingPreset preset) => preset switch

@@ -44,7 +44,8 @@ public static class StoreOpeningInvestmentAdvisor
                 new InvestmentObservableEffect(StoreCountChange: 1),
                 StoreBottleneck.Demand,
                 InvestmentEstimateCondition.NewStoreNeedsCompletedDay,
-                availability));
+                availability,
+                store.RequiredPlayerLevel));
         }
 
         return new ReadOnlyCollection<InvestmentCandidate>(candidates);

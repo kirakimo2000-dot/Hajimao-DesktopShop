@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Analysis;
 using HajimaoDesktopShop.Application.Business.Onboarding;
+using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Desktop.ViewModels;
 using HajimaoDesktopShop.Domain.Employees;
@@ -52,8 +53,9 @@ public sealed class MarketViewModel : ObservableObject
         ToggleStatusBarCommand = new RelayCommand(ToggleStatusBar);
         DesktopNavigation = new DesktopNavigationViewModel(SelectStoreById);
         Onboarding = new OnboardingViewModel();
-        Overview = new MarketOverviewViewModel(session.Game, Refresh);
+        Overview = new MarketOverviewViewModel();
         Economy = new StoreEconomyViewModel();
+        Progression = new LongTermProgressionViewModel();
         Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
         Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
         CommercialStreet = new CommercialStreetViewModel();
@@ -67,6 +69,8 @@ public sealed class MarketViewModel : ObservableObject
     public MarketOverviewViewModel Overview { get; }
 
     public StoreEconomyViewModel Economy { get; }
+
+    public LongTermProgressionViewModel Progression { get; }
 
     public StoreStrategyViewModel Strategy { get; }
 
@@ -248,7 +252,8 @@ public sealed class MarketViewModel : ObservableObject
             _lastCompletedSales = completedSales;
             FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.SaleCompleted));
         }
-        SynchronizeStores(_session.Game.GetStoreCatalogSnapshot());
+        var storeCatalog = _session.Game.GetStoreCatalogSnapshot();
+        SynchronizeStores(storeCatalog);
 
         if (string.IsNullOrEmpty(SelectedStoreId))
         {
@@ -300,6 +305,16 @@ public sealed class MarketViewModel : ObservableObject
         {
             Economy.Update(analysis);
         }
+
+        Progression.Update(
+            LongTermProgressionService.Create(
+                snapshot,
+                storeCatalog,
+                snapshot.Business.Stores
+                    .Select(store => _session.Game.GetStoreGrowthSnapshot(store.Id))
+                    .ToArray(),
+                _session.Investments.HasAnyInvestment),
+            storeCatalog);
 
         Strategy.Refresh();
         Investment.Refresh();

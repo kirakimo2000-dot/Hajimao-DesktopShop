@@ -22,7 +22,8 @@ public sealed record InvestmentCandidate(
     InvestmentObservableEffect Effect,
     StoreBottleneck AddressedBottleneck,
     InvestmentEstimateCondition EstimateCondition,
-    InvestmentAvailability Availability)
+    InvestmentAvailability Availability,
+    int RequiredPlayerLevel = 0)
 {
     public bool IsExecutable => Availability == InvestmentAvailability.Available;
 }

@@ -43,6 +43,7 @@ public sealed class StoreOpeningInvestmentAdvisorTests
         Assert.Equal(0, candidate.Return.ExpectedDailyNetBenefitCents);
         Assert.Null(candidate.Return.PaybackDaysTenths);
         Assert.Equal(1, candidate.Effect.StoreCountChange);
+        Assert.Equal(3, candidate.RequiredPlayerLevel);
         Assert.Equal(InvestmentEstimateCondition.NewStoreNeedsCompletedDay, candidate.EstimateCondition);
         Assert.Equal(expectedAvailability, candidate.Availability);
     }

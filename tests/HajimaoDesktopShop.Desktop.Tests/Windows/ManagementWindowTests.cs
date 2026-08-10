@@ -144,6 +144,58 @@ public sealed class ManagementWindowTests
                 Assert.IsType<Border>(window.FindName("LatestInvestmentPanel"));
                 Assert.DoesNotContain("StoreGrowth.Upgrade", xaml, StringComparison.Ordinal);
                 Assert.DoesNotContain("EmployeeManagement.Candidates", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("Overview.OpenStoreCommand", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("Content=\"投资开店\"", xaml, StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ManagementWindow_ShowsOneLongTermGoalAndConditionalRecoveryAction()
+    {
+        RunOnSta(() =>
+        {
+            var session = MarketTestSession.Create();
+            session.Simulation.AdvanceRealSeconds(1_440);
+            var viewModel = new MarketViewModel(session);
+            viewModel.NavigateCommand.Execute(ManagementSection.Strategy);
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                window.ApplyTemplate();
+                window.Measure(new Size(1180, 720));
+                window.Arrange(new Rect(0, 0, 1180, 720));
+                window.UpdateLayout();
+
+                var goal = Assert.IsType<Border>(window.FindName("LongTermGoalPanel"));
+                foreach (var property in new[]
+                         {
+                             nameof(LongTermProgressionViewModel.TitleText),
+                             nameof(LongTermProgressionViewModel.ProgressText),
+                             nameof(LongTermProgressionViewModel.GuidanceText)
+                         })
+                {
+                    Assert.Contains(
+                        FindLogicalChildren<TextBlock>(goal),
+                        textBlock => BindingOperations.GetBindingExpression(
+                            textBlock,
+                            TextBlock.TextProperty)?.ParentBinding.Path.Path
+                            == $"{nameof(MarketViewModel.Progression)}.{property}");
+                }
+
+                var recovery = Assert.IsType<Button>(window.FindName("ApplyRecoveryAction"));
+                Assert.Equal("采用保守方案", recovery.Content);
+                Assert.Equal(
+                    $"{nameof(MarketViewModel.Strategy)}.{nameof(StoreStrategyViewModel.ApplyRecoveryCommand)}",
+                    BindingOperations.GetBindingExpression(
+                        recovery,
+                        Button.CommandProperty)?.ParentBinding.Path.Path);
+                var recoveryPanel = Assert.IsType<Border>(window.FindName("RecoveryPanel"));
+                Assert.Equal(Visibility.Visible, recoveryPanel.Visibility);
             }
             finally
             {
