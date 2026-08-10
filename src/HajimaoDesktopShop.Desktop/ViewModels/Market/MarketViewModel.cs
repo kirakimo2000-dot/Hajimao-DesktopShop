@@ -55,12 +55,10 @@ public sealed class MarketViewModel : ObservableObject
         Overview = new MarketOverviewViewModel(session.Game, Refresh);
         Economy = new StoreEconomyViewModel();
         Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
-        EmployeeManagement = new EmployeeManagementViewModel(session, () => SelectedStoreId);
-        StoreGrowth = new StoreGrowthManagementViewModel(session, () => SelectedStoreId);
+        Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
         CommercialStreet = new CommercialStreetViewModel();
         Strategy.FeedbackRaised += RelayFeedback;
-        EmployeeManagement.FeedbackRaised += RelayFeedback;
-        StoreGrowth.FeedbackRaised += RelayFeedback;
+        Investment.FeedbackRaised += RelayFeedback;
         Refresh();
     }
 
@@ -72,9 +70,7 @@ public sealed class MarketViewModel : ObservableObject
 
     public StoreStrategyViewModel Strategy { get; }
 
-    public EmployeeManagementViewModel EmployeeManagement { get; }
-
-    public StoreGrowthManagementViewModel StoreGrowth { get; }
+    public InvestmentPortfolioViewModel Investment { get; }
 
     public CommercialStreetViewModel CommercialStreet { get; }
 
@@ -242,7 +238,10 @@ public sealed class MarketViewModel : ObservableObject
     public void Refresh()
     {
         var snapshot = _session.Simulation.GetSnapshot();
-        Onboarding.Refresh(OnboardingProgressService.CreateSnapshot(snapshot, _session.Game.GetProcurementSnapshot()));
+        Onboarding.Refresh(OnboardingProgressService.CreateSnapshot(
+            snapshot,
+            _session.Game.GetProcurementSnapshot(),
+            _session.Investments.HasAnyInvestment));
         var completedSales = snapshot.Stores.Sum(item => item.CompletedSales);
         if (completedSales > _lastCompletedSales)
         {
@@ -296,15 +295,14 @@ public sealed class MarketViewModel : ObservableObject
             IsClickThrough);
         RefreshSelectedShopObject(snapshot);
         Overview.Synchronize(Stores);
-        var analysis = CreateEconomyAnalysis(snapshot, SelectedStoreId);
+        var analysis = StoreEconomyAnalysisService.Calculate(snapshot, SelectedStoreId);
         if (analysis is not null)
         {
             Economy.Update(analysis);
         }
 
         Strategy.Refresh();
-        EmployeeManagement.Refresh();
-        StoreGrowth.Refresh();
+        Investment.Refresh();
     }
 
     public void RestoreDesktopState(bool isLocked)
@@ -481,36 +479,6 @@ public sealed class MarketViewModel : ObservableObject
             employee.EmployeeId,
             $"系统自动排班与分配任务 · {EmployeeTaskTextFormatter.FormatPriorities(employee.TaskPriorities)}",
             IsAutoRestockEnabled: false);
-    }
-
-    private static StoreEconomyAnalysis? CreateEconomyAnalysis(
-        BusinessSimulationSnapshot snapshot,
-        string storeId)
-    {
-        var store = snapshot.Business.Stores.SingleOrDefault(item => item.Id == storeId);
-        var operations = snapshot.Stores.SingleOrDefault(item => item.StoreId == storeId);
-        if (store is null || operations is null)
-        {
-            return null;
-        }
-
-        var report = snapshot.LastCompletedDay?.Stores.SingleOrDefault(item => item.StoreId == storeId);
-        var input = new StoreEconomyAnalysisInput(
-            storeId,
-            snapshot.Business.CashCents,
-            report?.RevenueCents ?? store.RevenueCents,
-            report?.GrossProfitCents ?? store.GrossProfitCents,
-            report?.WageCostCents ?? store.WageCostCents,
-            report?.OperatingCostCents ?? store.OperatingCostCents,
-            report?.NetProfitCents ?? store.NetProfitCents,
-            report?.Visitors ?? operations.Visitors,
-            report?.CompletedSales ?? operations.CompletedSales,
-            report?.LostSales ?? operations.LostSales,
-            store.Products.Count(product => product.Quantity == 0),
-            operations.CheckoutQueueLength,
-            operations.ServicePermille,
-            IsCompletedDay: report is not null);
-        return StoreEconomyAnalysisService.Calculate(input);
     }
 
     private void SelectStoreById(string storeId) =>

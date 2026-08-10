@@ -7,7 +7,8 @@ public static class OnboardingProgressService
 {
     public static OnboardingSnapshot CreateSnapshot(
         BusinessSimulationSnapshot simulation,
-        ProcurementSnapshot procurement)
+        ProcurementSnapshot procurement,
+        bool hasRecordedInvestment = false)
     {
         ArgumentNullException.ThrowIfNull(simulation);
         ArgumentNullException.ThrowIfNull(procurement);
@@ -28,7 +29,7 @@ public static class OnboardingProgressService
                 simulation.LastCompletedDay?.Stores.Any(store => store.NetProfitCents > 0) == true),
             new OnboardingTaskState(
                 OnboardingTaskId.MakeFirstInvestment,
-                simulation.Business.Stores.Any(store =>
+                hasRecordedInvestment || simulation.Business.Stores.Any(store =>
                     store.Growth is not null
                     && (store.Growth.ExpansionLevel > 0
                         || store.Growth.ShelfLevel > 0

@@ -1,3 +1,4 @@
+using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Rendering;
 using HajimaoDesktopShop.Rendering.Interactions;
@@ -70,6 +71,25 @@ public sealed class MarketViewModelTests
         Assert.Equal("街角便利店", viewModel.SelectedStoreName);
         Assert.Equal("固定现实 1x", viewModel.TimeModeText);
         Assert.Equal("查看经营概览", viewModel.Onboarding.Title);
+        Assert.NotEmpty(viewModel.Investment.Candidates);
+    }
+
+    [Fact]
+    public void EmployeeInvestment_CompletesInvestorTaskThroughRecordedEvidence()
+    {
+        var session = MarketTestSession.Create(openingCashCents: 500_000);
+        var viewModel = new MarketViewModel(session);
+        var employee = viewModel.Investment.Candidates.First(candidate =>
+            candidate.Id.StartsWith("employee:", StringComparison.Ordinal));
+
+        employee.InvestCommand.Execute(null);
+        var onboarding = OnboardingProgressService.CreateSnapshot(
+            session.Simulation.GetSnapshot(),
+            session.Game.GetProcurementSnapshot(),
+            session.Investments.HasAnyInvestment);
+
+        Assert.True(onboarding.Tasks.Single(task =>
+            task.Id == OnboardingTaskId.MakeFirstInvestment).IsCompleted);
     }
 
     [Fact]

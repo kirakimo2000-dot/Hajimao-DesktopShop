@@ -16,6 +16,7 @@ public sealed class StoreEconomyViewModelTests
             WageCostCents: 15_000,
             OperatingCostCents: 5_000,
             NetProfitCents: 20_000,
+            NecessaryOutflowCents: 80_000,
             GrossMarginBasisPoints: 4_000,
             NetMarginBasisPoints: 2_000,
             CashRunwayTenthsOfDay: 15,

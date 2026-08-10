@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Application.Simulation.Customers;
+using HajimaoDesktopShop.Application.Business.Investments;
 
 namespace HajimaoDesktopShop.Application.Persistence;
 
@@ -14,7 +15,23 @@ public sealed record GameSaveData(
     ShopSaveData Shop,
     SimulationSaveData Simulation,
     BusinessSaveData? Business = null,
-    BusinessSimulationSaveData? BusinessSimulation = null);
+    BusinessSimulationSaveData? BusinessSimulation = null,
+    InvestmentTrackingSaveData? InvestmentTracking = null);
+
+public sealed record InvestmentTrackingSaveData(
+    IReadOnlyList<LatestInvestmentSaveData> LatestInvestments);
+
+public sealed record LatestInvestmentSaveData(
+    string StoreId,
+    string CandidateId,
+    InvestmentKind Kind,
+    long CostCents,
+    long ExpectedDailyNetBenefitCents,
+    long GameMinute,
+    int? BaselineDayNumber,
+    long? BaselineNetProfitCents,
+    int? BaselineCompletedSales,
+    int? BaselineLostSales);
 
 public sealed record ShopSaveData(
     long CashCents,

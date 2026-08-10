@@ -441,6 +441,7 @@ public sealed class BusinessSimulation
             })
             .ToArray();
         _lastCompletedDay = new BusinessDayReport(dayNumber, Array.AsReadOnly(reports));
+        _employeeOperations.RefreshCandidates();
     }
 
     private void ProcessStoreOperations(StoreRuntime runtime)

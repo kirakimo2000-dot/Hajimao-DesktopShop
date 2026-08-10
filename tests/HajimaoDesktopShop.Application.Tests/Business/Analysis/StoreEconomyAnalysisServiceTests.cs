@@ -1,4 +1,6 @@
 using HajimaoDesktopShop.Application.Business.Analysis;
+using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Tests.Business;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Analysis;
 
@@ -24,7 +26,50 @@ public sealed class StoreEconomyAnalysisServiceTests
         Assert.Equal(4_000, analysis.GrossMarginBasisPoints);
         Assert.Equal(2_000, analysis.NetMarginBasisPoints);
         Assert.Equal(15, analysis.CashRunwayTenthsOfDay);
+        Assert.Equal(80_000, analysis.NecessaryOutflowCents);
         Assert.Equal(StoreBottleneck.None, analysis.Bottleneck);
+    }
+
+    [Fact]
+    public void Calculate_FromSimulationSnapshot_PrefersLatestCompletedDay()
+    {
+        var session = BusinessTestSessionFactory.Create();
+        var snapshot = session.Simulation.GetSnapshot() with
+        {
+            LastCompletedDay = new BusinessDayReport(
+                3,
+                [new StoreDayReport(
+                    "store-1",
+                    Visitors: 50,
+                    AcceptedPurchases: 30,
+                    CompletedSales: 20,
+                    LostSales: 5,
+                    RevenueCents: 10_000,
+                    GrossProfitCents: 4_000,
+                    WageCostCents: 1_000,
+                    NetProfitCents: 2_500,
+                    ClosingCleanlinessPermille: 900,
+                    AverageQueueLengthBasisPoints: 0,
+                    OperatingCostCents: 500)])
+        };
+
+        var analysis = StoreEconomyAnalysisService.Calculate(snapshot, "store-1");
+
+        Assert.NotNull(analysis);
+        Assert.Equal("CompletedDay", analysis.Period);
+        Assert.Equal(7_500, analysis.NecessaryOutflowCents);
+        Assert.Equal(20, analysis.CompletedSales);
+        Assert.Equal(5, analysis.LostSales);
+    }
+
+    [Fact]
+    public void Calculate_FromSimulationSnapshot_ReturnsNullForUnknownStore()
+    {
+        var snapshot = BusinessTestSessionFactory.Create().Simulation.GetSnapshot();
+
+        var analysis = StoreEconomyAnalysisService.Calculate(snapshot, "missing-store");
+
+        Assert.Null(analysis);
     }
 
     [Fact]
