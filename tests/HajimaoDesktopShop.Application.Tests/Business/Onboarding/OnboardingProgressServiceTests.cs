@@ -62,6 +62,17 @@ public sealed class OnboardingProgressServiceTests
     }
 
     [Fact]
+    public void CreateSnapshot_RecordedEmployeeInvestmentCompletesInvestmentTask()
+    {
+        var snapshot = OnboardingProgressService.CreateSnapshot(
+            Simulation(),
+            Procurement(),
+            hasRecordedInvestment: true);
+
+        Assert.True(snapshot.Tasks.Single(task => task.Id == OnboardingTaskId.MakeFirstInvestment).IsCompleted);
+    }
+
+    [Fact]
     public void CreateSnapshot_WhenAllTasksComplete_HasNoCurrentTask()
     {
         var simulation = Simulation(

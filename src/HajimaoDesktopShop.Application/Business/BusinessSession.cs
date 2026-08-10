@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
@@ -11,11 +12,15 @@ namespace HajimaoDesktopShop.Application.Business;
 
 public sealed class BusinessSession
 {
-    private BusinessSession(BusinessGameService game, BusinessSimulation simulation)
+    private BusinessSession(
+        BusinessGameService game,
+        BusinessSimulation simulation,
+        InvestmentTrackingSaveData? investmentTracking = null)
     {
         Game = game;
         Simulation = simulation;
         Strategy = new StoreStrategyService(game);
+        Investments = new StoreInvestmentService(game, simulation, investmentTracking);
     }
 
     public BusinessGameService Game { get; }
@@ -23,6 +28,8 @@ public sealed class BusinessSession
     public BusinessSimulation Simulation { get; }
 
     public StoreStrategyService Strategy { get; }
+
+    public StoreInvestmentService Investments { get; }
 
     public static BusinessSession Create(
         IEnumerable<ProductDefinition> productDefinitions,
@@ -94,7 +101,8 @@ public sealed class BusinessSession
                 experiencePerItemSold);
             return new BusinessSession(
                 restoredGame,
-                new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options));
+                new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options),
+                save.InvestmentTracking);
         }
 
         var upgradedBusiness = UpgradeLegacyBusiness(save, starterShopId);
@@ -113,7 +121,8 @@ public sealed class BusinessSession
             options ?? new BusinessSimulationOptions());
         return new BusinessSession(
             game,
-            new BusinessSimulation(game, simulationState, random, options));
+            new BusinessSimulation(game, simulationState, random, options),
+            save.InvestmentTracking);
     }
 
     public GameSaveData CaptureSaveData(DateTimeOffset? savedAtUtc = null)
@@ -149,7 +158,8 @@ public sealed class BusinessSession
                 null,
                 null),
             business,
-            simulation);
+            simulation,
+            Investments.CaptureTrackingSaveData());
     }
 
     private static BusinessSaveData UpgradeLegacyBusiness(GameSaveData save, string starterShopId)

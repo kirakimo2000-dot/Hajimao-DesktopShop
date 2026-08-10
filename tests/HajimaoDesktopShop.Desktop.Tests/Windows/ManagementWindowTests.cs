@@ -104,6 +104,55 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
+    public void InvestmentSection_UsesComparableUnifiedCandidateCards()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            viewModel.NavigateCommand.Execute(ManagementSection.Investment);
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                window.ApplyTemplate();
+                window.Measure(new Size(1180, 720));
+                window.Arrange(new Rect(0, 0, 1180, 720));
+                window.UpdateLayout();
+
+                var list = Assert.IsType<ItemsControl>(window.FindName("InvestmentCandidateList"));
+                var itemsBinding = BindingOperations.GetBindingExpression(
+                    list,
+                    ItemsControl.ItemsSourceProperty);
+                Assert.Equal(
+                    $"{nameof(MarketViewModel.Investment)}.{nameof(InvestmentPortfolioViewModel.Candidates)}",
+                    itemsBinding?.ParentBinding.Path.Path);
+                var xaml = File.ReadAllText(FindManagementWindowPath());
+                Assert.Contains("Tag=\"investment-action\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Command=\"{Binding InvestCommand}\"", xaml, StringComparison.Ordinal);
+                foreach (var property in new[]
+                         {
+                             nameof(InvestmentCandidateCardViewModel.TitleText),
+                             nameof(InvestmentCandidateCardViewModel.CostText),
+                             nameof(InvestmentCandidateCardViewModel.ExpectedBenefitText),
+                             nameof(InvestmentCandidateCardViewModel.PaybackText),
+                             nameof(InvestmentCandidateCardViewModel.CashPressureText),
+                             nameof(InvestmentCandidateCardViewModel.EstimateConditionText)
+                         })
+                {
+                    Assert.Contains($"Text=\"{{Binding {property}}}\"", xaml, StringComparison.Ordinal);
+                }
+
+                Assert.IsType<Border>(window.FindName("LatestInvestmentPanel"));
+                Assert.DoesNotContain("StoreGrowth.Upgrade", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("EmployeeManagement.Candidates", xaml, StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void SelectShopObject_ShowsAccessibleReadOnlyDetailCardInOverview()
     {
         RunOnSta(() =>

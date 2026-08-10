@@ -8,6 +8,7 @@ public sealed record StoreEconomyAnalysis(
     long WageCostCents,
     long OperatingCostCents,
     long NetProfitCents,
+    long NecessaryOutflowCents,
     int GrossMarginBasisPoints,
     int NetMarginBasisPoints,
     int CashRunwayTenthsOfDay,

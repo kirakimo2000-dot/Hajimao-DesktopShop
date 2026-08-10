@@ -3,6 +3,7 @@ using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Catalog;
+using HajimaoDesktopShop.Application.Tests.Business;
 using HajimaoDesktopShop.Application.Tests.Simulation;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
@@ -455,6 +456,28 @@ public sealed class BusinessSimulationTests
             restored.Employees.GetSnapshot(),
             strict: true);
         Assert.Equivalent(original.CaptureSaveData(), restored.CaptureSaveData(), strict: true);
+    }
+
+    [Fact]
+    public void CompletedDay_RefreshesCandidatePoolOnceWithoutPlayerMaintenance()
+    {
+        var session = BusinessTestSessionFactory.Create(openingCashCents: 1_000_000);
+        var initialIds = session.Simulation.GetSnapshot().Employees.Candidates
+            .Select(candidate => candidate.CandidateId)
+            .ToArray();
+
+        session.Simulation.AdvanceRealSeconds(1_439);
+        var beforeBoundaryIds = session.Simulation.GetSnapshot().Employees.Candidates
+            .Select(candidate => candidate.CandidateId)
+            .ToArray();
+        session.Simulation.AdvanceRealSecond();
+        var afterBoundaryIds = session.Simulation.GetSnapshot().Employees.Candidates
+            .Select(candidate => candidate.CandidateId)
+            .ToArray();
+
+        Assert.Equal(initialIds, beforeBoundaryIds);
+        Assert.NotEqual(initialIds, afterBoundaryIds);
+        Assert.Equal(3, afterBoundaryIds.Length);
     }
 
     [Fact]

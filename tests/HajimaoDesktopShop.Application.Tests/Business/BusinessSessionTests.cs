@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
+using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Catalog;
@@ -36,6 +37,9 @@ public sealed class BusinessSessionTests
             "regional-distributor",
             6);
         session.Simulation.AdvanceRealSeconds(90);
+        Assert.Equal(
+            InvestmentCommandStatus.Success,
+            session.Investments.Execute("corner-store", "growth:shelf").Status);
 
         var save = session.CaptureSaveData(SavedAt);
         var restored = RestoreSession(save);
@@ -44,6 +48,7 @@ public sealed class BusinessSessionTests
         Assert.NotNull(save.Business);
         Assert.NotNull(save.Business.Procurement);
         Assert.NotNull(save.BusinessSimulation);
+        Assert.NotNull(save.InvestmentTracking);
         Assert.Equal(save.Business.CashCents, save.Shop.CashCents);
         Assert.Equal(save.BusinessSimulation.GameMinute, save.Simulation.GameMinute);
         Assert.Equivalent(session.Simulation.GetSnapshot(), restored.Simulation.GetSnapshot(), strict: true);
@@ -52,6 +57,10 @@ public sealed class BusinessSessionTests
             restored.Game.GetProcurementSnapshot(),
             strict: true);
         Assert.Equivalent(save, restored.CaptureSaveData(SavedAt), strict: true);
+        Assert.Equivalent(
+            session.Investments.GetLatestComparison("corner-store"),
+            restored.Investments.GetLatestComparison("corner-store"),
+            strict: true);
     }
 
     [Fact]
@@ -76,6 +85,7 @@ public sealed class BusinessSessionTests
         var water = Assert.Single(Assert.Single(snapshot.Business.Stores).Products);
         Assert.Equal(275, water.SalePriceCents);
         Assert.Equal(7, water.Quantity);
+        Assert.Null(restored.Investments.GetLatestComparison("corner-store"));
     }
 
     private static BusinessSession CreateSession() =>
