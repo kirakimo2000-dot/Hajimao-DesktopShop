@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Employees;
+using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Tests.Simulation;
@@ -349,6 +350,14 @@ public sealed class BusinessSimulationTests
     public void Restocker_TracksNearestInboundProductAndRealRemainingTime()
     {
         var service = CreateService();
+        service.ConfigureAutoRestock(new AutoRestockPolicy(
+            "zeta-store",
+            "water",
+            IsEnabled: false,
+            ReorderPoint: 30,
+            TargetQuantity: 75,
+            PreferredChannelId: "regional-distributor",
+            UseEmergencySupplierWhenOutOfStock: true));
         var placed = service.PlaceProcurementOrder(
             "zeta-store",
             "water",

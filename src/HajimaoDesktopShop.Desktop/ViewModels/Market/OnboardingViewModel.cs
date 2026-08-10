@@ -72,7 +72,7 @@ public sealed class OnboardingViewModel : ObservableObject
                 ManagementSection.Overview),
             OnboardingTaskId.ChooseStoreStrategy => new(
                 "选择整店策略",
-                "在定价和备货中各选一项，系统会负责执行。",
+                "尝试高周转、高毛利、精益或充足策略，系统会负责执行。",
                 ManagementSection.Strategy),
             OnboardingTaskId.CompleteFirstSale => new(
                 "等待第一笔销售",
@@ -84,7 +84,7 @@ public sealed class OnboardingViewModel : ObservableObject
                 ManagementSection.Overview),
             OnboardingTaskId.MakeFirstInvestment => new(
                 "完成第一次投资",
-                "把现金投入扩建、货架、装修或关键员工。",
+                "把现金投入扩建、货架或装修，提升长期经营能力。",
                 ManagementSection.Investment),
             OnboardingTaskId.OpenSecondStore => new(
                 "开设第二家店",

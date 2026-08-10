@@ -27,9 +27,9 @@ public sealed class StoreStrategyServiceTests
             beforeOther.Products.Select(product => product.SalePriceCents),
             session.Game.GetSnapshot().Stores.Single(store => store.Id == "store-2")
                 .Products.Select(product => product.SalePriceCents));
-        Assert.DoesNotContain(
-            session.Game.GetProcurementSnapshot().AutoRestockPolicies,
-            policy => policy.StoreId == "store-2");
+        Assert.Equal(
+            StoreStockingPreset.Balanced,
+            session.Strategy.GetAppliedPlan("store-2")?.Stocking);
     }
 
     [Fact]
@@ -37,6 +37,7 @@ public sealed class StoreStrategyServiceTests
     {
         var session = BusinessTestSessionFactory.Create(openSecondStore: true);
         var before = session.Game.GetSnapshot();
+        var beforeProcurement = session.Game.GetProcurementSnapshot();
 
         var result = session.Strategy.Apply(
             "missing-store",
@@ -46,7 +47,10 @@ public sealed class StoreStrategyServiceTests
         Assert.Equal(StoreStrategyCommandStatus.UnknownStore, result.Status);
         Assert.Null(result.AppliedPlan);
         Assert.Equivalent(before, session.Game.GetSnapshot(), strict: true);
-        Assert.Empty(session.Game.GetProcurementSnapshot().AutoRestockPolicies);
+        Assert.Equivalent(
+            beforeProcurement,
+            session.Game.GetProcurementSnapshot(),
+            strict: true);
     }
 
     [Fact]
@@ -72,6 +76,9 @@ public sealed class StoreStrategyServiceTests
     public void GetAppliedPlan_ReturnsNullWhenStoreDoesNotMatchACompletePreset()
     {
         var session = BusinessTestSessionFactory.Create();
+        var water = session.Game.GetSnapshot().Stores.Single().Products
+            .Single(product => product.Id == "water");
+        session.Game.ChangePrice("store-1", "water", water.SalePriceCents + 1);
 
         var applied = session.Strategy.GetAppliedPlan("store-1");
 
