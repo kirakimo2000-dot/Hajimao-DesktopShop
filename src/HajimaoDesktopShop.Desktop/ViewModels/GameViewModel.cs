@@ -26,8 +26,6 @@ public sealed class GameViewModel : ObservableObject
     private bool _isLocked;
     private bool _isClickThrough;
     private SimulationSnapshot _sceneSnapshot;
-    private int _lastCompletedSales;
-    private bool _isMuted;
     private DesktopShopFrame _desktopFrame;
 
     public GameViewModel(ShopGameService game, ShopSimulation simulation)
@@ -37,7 +35,6 @@ public sealed class GameViewModel : ObservableObject
         _game = game;
         _simulation = simulation;
         _sceneSnapshot = simulation.GetSnapshot();
-        _lastCompletedSales = _sceneSnapshot.CompletedSales;
         _desktopFrame = CreateDesktopFrame();
 
         QueueRestockCommand = new RelayCommand<ProductItemViewModel>(QueueRestock);
@@ -45,11 +42,8 @@ public sealed class GameViewModel : ObservableObject
         DecreasePriceCommand = new RelayCommand<ProductItemViewModel>(DecreasePrice);
         ToggleLockCommand = new RelayCommand(ToggleLock);
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
-        ToggleMuteCommand = new RelayCommand(ToggleMute);
         Refresh();
     }
-
-    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
 
     public ObservableCollection<ProductItemViewModel> Products { get; } = [];
 
@@ -66,8 +60,6 @@ public sealed class GameViewModel : ObservableObject
     public IRelayCommand ToggleLockCommand { get; }
 
     public IRelayCommand ToggleClickThroughCommand { get; }
-
-    public IRelayCommand ToggleMuteCommand { get; }
 
     public string CashText
     {
@@ -147,20 +139,6 @@ public sealed class GameViewModel : ObservableObject
         private set => SetProperty(ref _sceneSnapshot, value);
     }
 
-    public bool IsMuted
-    {
-        get => _isMuted;
-        private set
-        {
-            if (SetProperty(ref _isMuted, value))
-            {
-                OnPropertyChanged(nameof(SoundToggleText));
-            }
-        }
-    }
-
-    public string SoundToggleText => IsMuted ? "开启音效" : "静音";
-
     public DesktopShopFrame DesktopFrame
     {
         get => _desktopFrame;
@@ -171,11 +149,6 @@ public sealed class GameViewModel : ObservableObject
     {
         var snapshot = _simulation.GetSnapshot();
         SceneSnapshot = snapshot;
-        if (snapshot.CompletedSales > _lastCompletedSales)
-        {
-            _lastCompletedSales = snapshot.CompletedSales;
-            RaiseFeedback(GameFeedbackKind.SaleCompleted);
-        }
         CashText = FormatMoney(snapshot.Shop.CashCents);
         RevenueText = FormatMoney(snapshot.Shop.RevenueCents);
         ExpenseText = FormatMoney(snapshot.Shop.StockPurchaseCostCents);
@@ -222,7 +195,6 @@ public sealed class GameViewModel : ObservableObject
 
         _simulation.QueueRestock(product.Id, 5);
         StatusMessage = $"{product.Name} 已排入补货 ×5";
-        RaiseFeedback(GameFeedbackKind.RestockQueued);
     }
 
     private void IncreasePrice(ProductItemViewModel? product) => ChangePrice(product, 10);
@@ -240,10 +212,6 @@ public sealed class GameViewModel : ObservableObject
         StatusMessage = result.Status == PriceChangeStatus.Success
             ? $"{product.Name} 售价已调整为 {FormatMoney(result.SalePrice.Cents)}"
             : $"调价失败：{result.Status}";
-        if (result.Status == PriceChangeStatus.Success)
-        {
-            RaiseFeedback(GameFeedbackKind.PriceChanged);
-        }
     }
 
     private void ToggleLock()
@@ -257,15 +225,6 @@ public sealed class GameViewModel : ObservableObject
         IsClickThrough = !IsClickThrough;
         StatusMessage = IsClickThrough ? "鼠标穿透已开启" : "鼠标穿透已关闭";
     }
-
-    private void ToggleMute()
-    {
-        IsMuted = !IsMuted;
-        StatusMessage = IsMuted ? "音效已静音" : "音效已开启";
-    }
-
-    private void RaiseFeedback(GameFeedbackKind kind) =>
-        FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(kind));
 
     private void UpdateDesktopFrame() => DesktopFrame = CreateDesktopFrame();
 

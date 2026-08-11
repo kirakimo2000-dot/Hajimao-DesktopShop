@@ -40,6 +40,7 @@ public sealed class DesktopShopWindowRenderingTests
 
         Assert.Contains("Topmost=\"True\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("_desktopWindow.Topmost = false", appSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToggleMuteCommand", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public sealed class DesktopShopWindowRenderingTests
                 var window = new DesktopShopWindow(viewModel);
                 Assert.Equal(ProductIdentity.DesktopWindowTitle, window.Title);
                 var root = Assert.IsType<Grid>(window.Content);
-                Assert.Equal(4, root.ContextMenu?.Items.Count);
+                Assert.Equal(3, root.ContextMenu?.Items.Count);
                 Assert.Equal(248, window.Width);
                 Assert.Equal(180, window.Height);
 

@@ -48,10 +48,10 @@
                         <TextBlock Text="{Binding GameTimeText}" FontFamily="Consolas" />
                     </StackPanel>
                 </StackPanel>
-                <Border Grid.Column="2" Style="{DynamicResource PixelPanel}" Padding="10,6">
-                    <TextBlock Text="{Binding TimeModeText}" Foreground="{DynamicResource Brush.TextMuted}"
-                               AutomationProperties.Name="固定现实一倍速" />
-                </Border>
+                <Button Grid.Column="2" Tag="desktop-control" Content="切换鼠标穿透"
+                        Style="{DynamicResource PixelButton}"
+                        Command="{Binding ToggleClickThroughCommand}"
+                        AutomationProperties.Name="切换桌面挂机鼠标穿透" />
             </Grid>
         </Border>
 
@@ -208,7 +208,6 @@
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
-                                                        <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition />
@@ -319,25 +318,5 @@
             </Border>
         </Grid>
 
-        <Border x:Name="StatusBar" Grid.Row="2" Height="{Binding StatusBarHeight}"
-                Background="{DynamicResource Brush.SurfaceElevated}"
-                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,2,0,0">
-            <Grid Margin="12,4">
-                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                           Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           AutomationProperties.LiveSetting="Polite"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="{Binding SoundToggleText}" Style="{DynamicResource PixelButton}" Command="{Binding ToggleMuteCommand}"
-                            Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <Button Content="锁定桌面小店" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleLockCommand}"
-                            Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <Button Content="切换鼠标穿透" Style="{DynamicResource PixelButton}" Margin="8,0,0,0" Command="{Binding ToggleClickThroughCommand}"
-                            Visibility="{Binding IsStatusBarExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <Button Tag="status-toggle" Content="{Binding StatusBarToggleText}" Style="{DynamicResource PixelButton}" Margin="8,0,0,0"
-                            Command="{Binding ToggleStatusBarCommand}" AutomationProperties.Name="收起或展开底部状态栏"/>
-                </StackPanel>
-            </Grid>
-        </Border>
     </Grid>
 </Window>

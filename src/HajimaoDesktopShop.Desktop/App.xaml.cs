@@ -24,8 +24,6 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _autosaveTimer;
     private AutosaveCoordinator? _autosaveCoordinator;
     private BusinessSession? _session;
-    private GameSoundService? _soundService;
-    private PixelGameSoundOutput? _soundOutput;
     private TrayIconService? _trayIconService;
     private MarketViewModel? _viewModel;
     private DesktopShopWindow? _desktopWindow;
@@ -78,8 +76,6 @@ public partial class App : System.Windows.Application
             _viewModel = new MarketViewModel(
                 _session,
                 reduceMotion: () => !SystemParameters.ClientAreaAnimation);
-            _soundOutput = new PixelGameSoundOutput();
-            _soundService = new GameSoundService(_viewModel, _soundOutput);
             if (savedPlacement is not null)
             {
                 _viewModel.RestoreDesktopState(savedPlacement.IsLocked);
@@ -171,8 +167,6 @@ public partial class App : System.Windows.Application
                 exception: exception);
         }
 
-        _soundService?.Dispose();
-        _soundOutput?.Dispose();
         if (_trayIconService is not null)
         {
             _trayIconService.OpenShopRequested -= OnTrayOpenShopRequested;
@@ -237,7 +231,6 @@ public partial class App : System.Windows.Application
                 GameDiagnosticLevel.Error,
                 "Autosave failed.",
                 exception: exception);
-            _viewModel?.ReportSystemMessage($"自动存档失败：{exception.Message}");
         }
     }
 
@@ -270,7 +263,6 @@ public partial class App : System.Windows.Application
 
         e.Cancel = true;
         window.Hide();
-        _viewModel?.ReportSystemMessage("小店已隐藏到通知区域，经营仍在继续");
     }
 
     private void OnTrayOpenShopRequested(object? sender, EventArgs e)

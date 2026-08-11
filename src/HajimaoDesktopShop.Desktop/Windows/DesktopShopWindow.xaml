@@ -46,8 +46,6 @@
                           Command="{Binding PlacementTarget.DataContext.ToggleLockCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                 <MenuItem Header="切换鼠标穿透"
                           Command="{Binding PlacementTarget.DataContext.ToggleClickThroughCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                <MenuItem Header="静音 / 开启音效"
-                          Command="{Binding PlacementTarget.DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
             </ContextMenu>
         </Grid.ContextMenu>
 

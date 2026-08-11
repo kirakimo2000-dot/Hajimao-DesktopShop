@@ -70,11 +70,12 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void ManagementWindow_HasThreeInvestorNavigationTargetsPersistentSceneAndNoSpeedControls()
+    public void ManagementWindow_HasOnlyTheRequiredDesktopControlAndNoStatusOrSpeedText()
     {
         RunOnSta(() =>
         {
-            var window = new ManagementWindow(new MarketViewModel(MarketTestSession.Create()));
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
             try
             {
                 window.ApplyTemplate();
@@ -89,12 +90,26 @@ public sealed class ManagementWindowTests
                         .Count(button => Equals(button.Tag, "management-navigation")));
                 var scene = Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
                 Assert.Equal("实时像素店铺场景", AutomationProperties.GetName(scene));
-                Assert.Single(
+                Assert.DoesNotContain(
                     FindLogicalChildren<Button>(window),
                     button => Equals(button.Tag, "status-toggle"));
+                var desktopControl = Assert.Single(
+                    FindLogicalChildren<Button>(window),
+                    button => Equals(button.Tag, "desktop-control"));
+                Assert.Equal("切换鼠标穿透", desktopControl.Content);
+                Assert.Equal(
+                    nameof(MarketViewModel.ToggleClickThroughCommand),
+                    BindingOperations.GetBindingExpression(
+                        desktopControl,
+                        Button.CommandProperty)?.ParentBinding.Path.Path);
                 Assert.DoesNotContain(
                     FindLogicalChildren<Button>(window),
                     button => button.Content?.ToString() is "2x" or "4x" or "暂停" or "动画" or "特效" or "倍速");
+                var xaml = File.ReadAllText(FindManagementWindowPath());
+                Assert.DoesNotContain("TimeModeText", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("Text=\"{Binding StatusMessage}\"", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("ToggleMuteCommand", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("SoundToggleText", xaml, StringComparison.Ordinal);
             }
             finally
             {

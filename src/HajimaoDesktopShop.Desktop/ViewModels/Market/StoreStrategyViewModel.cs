@@ -38,8 +38,6 @@ public sealed class StoreStrategyViewModel : ObservableObject
         Refresh();
     }
 
-    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
-
     public ObservableCollection<StoreStrategyProductViewModel> Products { get; } = [];
 
     public IRelayCommand UseHighTurnoverPricingCommand { get; }
@@ -135,11 +133,6 @@ public sealed class StoreStrategyViewModel : ObservableObject
         StatusMessage = result.Status == StoreStrategyCommandStatus.Success
             ? "整店策略已应用，采购与补货会自动执行"
             : $"策略应用失败：{result.Status}";
-        if (result.Status == StoreStrategyCommandStatus.Success)
-        {
-            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.PriceChanged));
-        }
-
         Refresh();
     }
 
@@ -154,11 +147,6 @@ public sealed class StoreStrategyViewModel : ObservableObject
         StatusMessage = result.Status == StoreStrategyCommandStatus.Success
             ? "保守方案已应用：降低库存占用并优先修复现金流"
             : $"保守方案应用失败：{result.Status}";
-        if (result.Status == StoreStrategyCommandStatus.Success)
-        {
-            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.PriceChanged));
-        }
-
         Refresh();
     }
 

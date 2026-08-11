@@ -23,8 +23,6 @@ public sealed class ProductManagementViewModel : ObservableObject
         _selectedStoreId = selectedStoreId;
     }
 
-    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
-
     public ObservableCollection<ProductManagementItemViewModel> Products { get; } = [];
 
     public ObservableCollection<ProcurementOrderItemViewModel> PendingOrders { get; } = [];
@@ -89,11 +87,6 @@ public sealed class ProductManagementViewModel : ObservableObject
         StatusMessage = result.Status == PriceChangeStatus.Success
             ? $"{product.Name} 售价已调整"
             : $"调价失败：{result.Status}";
-        if (result.Status == PriceChangeStatus.Success)
-        {
-            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.PriceChanged));
-        }
-
         Refresh();
     }
 
@@ -107,11 +100,6 @@ public sealed class ProductManagementViewModel : ObservableObject
         StatusMessage = result.Status == ProcurementOrderPlacementStatus.Success
             ? $"{product.Name} 采购单已创建"
             : $"采购失败：{result.Status}";
-        if (result.Status == ProcurementOrderPlacementStatus.Success)
-        {
-            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.ProcurementOrdered));
-        }
-
         Refresh();
     }
 
@@ -126,7 +114,6 @@ public sealed class ProductManagementViewModel : ObservableObject
             "regional-distributor",
             UseEmergencySupplierWhenOutOfStock: true));
         StatusMessage = product.IsAutoRestockEnabled ? "自动补货已关闭" : "自动补货已开启";
-        FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.AutoRestockChanged));
         Refresh();
     }
 }
