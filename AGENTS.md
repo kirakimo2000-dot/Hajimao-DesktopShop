@@ -25,3 +25,14 @@
 - Do not silently change product rules, visual direction, save compatibility, simulation timing, window behavior, or the active milestone. Ask the user before implementation when these requirements are missing or ambiguous.
 - At the end of each stage, remove generated build outputs, temporary captures, unused assets, obsolete plans, local databases, and logs. Never delete source or user assets as cleanup.
 - Before handoff, verify no unintended `bin/`, `obj/`, `TestResults/`, `logs/`, temporary files, or generated databases remain in the workspace.
+
+## Lean execution workflow
+
+- Work in the primary agent by default. Do not spawn subagents unless the user explicitly requests them or one bounded, independent task has a clear wall-clock advantage.
+- Unless the user explicitly requests a larger team, a version may use at most one implementation agent and one combined reviewer. Do not run separate specification, quality, fix, and final-review agents for each module.
+- During implementation, run only the smallest relevant tests. A subagent or reviewer must not run the full solution unless it is the single designated release verifier.
+- Run the full solution once on the unchanged release candidate immediately before publication. Treat GitHub CI as the independent second gate; do not repeat the same local full suite while CI is evaluating that commit.
+- If no code or build input changed after a passing verification, reuse that evidence instead of rerunning it. Documentation-only link fixes require only their focused checks.
+- Produce one changelog/progress update, one stage review, one GitHub publication, and one cleanup pass per version.
+- Plans must default to direct execution or `executing-plans`; they must not require `subagent-driven-development` for ordinary iteration.
+- Extra review rounds require a concrete high-risk reason such as save migration, destructive cleanup, security/privacy boundaries, or a reproduced runtime failure. State that reason before starting the extra review.
