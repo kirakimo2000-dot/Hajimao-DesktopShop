@@ -2,7 +2,7 @@
 
 Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经营增量游戏。小店会持续迎接顾客、选货、排队和结账；玩家负责判断经营状态、选择整店策略并进行低频投资。
 
-## 当前版本：0.1.20 Playable Demo Candidate 1
+## 当前版本：0.1.21 Playable Demo Candidate 1
 
 - 管理窗口只保留经营概览、经营策略和投资决策三个界面；内部模块不再直接变成玩家的操作菜单。
 - 全店定价提供高周转、均衡和高毛利定位；库存投入提供精益、均衡和充足备货，应用后由自动运营持续执行。
@@ -19,7 +19,8 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 新档起始员工使用 08:00～16:00 的真实 8 小时班次；开局现金、基础客流、起始工资和招聘市场工资已按 1/7/30 经营日情景重新校准。
 - 投资页不再倾倒单店完整候选清单；每次最多比较“稳住弱店、提高回报、扩张街区”三个跨店资本方向，并在正确店铺执行。
 - 离线返回后显示只读“本次回归”简报，直接说明推进时长、现金/成交/净利润变化和当前关注店铺，不提供领取或倍率按钮。
-- 店铺扩建/货架/装修成长上限延长到 8/9/9；三条策略通过 1/7/30/90 经营日门禁，第 90 日仍有三家店和真实资本选择。
+- 店铺扩建/货架/装修成长上限延长到 20/21/21；三条策略通过 1/7/30/90/180/365 经营日门禁，第 365 日仍有三家店、未封顶店铺和真实资本选择。
+- 通知区域右键菜单提供 `生成测试反馈包`；测试者可把桌面 ZIP 和观察笔记一并回传，ZIP 只包含聚合经营快照与脱敏事件头。
 - 自动门禁全部通过后版本仍只称 Candidate；三轮真实陌生玩家盲测未完成前不宣称已经达到 Playable Demo 1。
 
 - 桌面常态现在是任务栏上方的横向街区；初始一家店时窗口只有一个店面的 248×180 逻辑尺寸。
@@ -49,7 +50,7 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - SQLite schema v6 逐级兼容迁移旧 v1～v5 存档，并完整保存采购、员工、成长与活动状态。
 - 关闭期间默认最多结算 8 小时；离线与在线复用同一逐秒 Tick 管线，没有倍速捷径。
 - 系统时间倒退时不补算并返回异常标记；超出上限时明确报告封顶。
-- 通知区域图标提供显示小店、打开管理和退出；桌面与管理窗口不显示普通任务栏按钮。
+- 通知区域图标提供显示小店、打开管理、生成测试反馈包和退出；桌面与管理窗口不显示普通任务栏按钮。
 - 管理窗口提供经营概览、经营策略和投资决策三个单一导航页面，实时小店场景始终可见。
 - 桌面右键可打开管理、锁定位置、切换鼠标穿透和静音；管理窗没有暂停或倍速入口。
 - 正式 WPF 运行完整 `BusinessSession`，旧单店渲染与模拟代码只保留为存档和测试兼容层。
@@ -63,11 +64,11 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 - 四步无状态新手任务直接从真实经营、策略、投资和回报证据推导，保存/恢复后不会产生第二套教程状态。
 - 启动、离线结算、模拟与存档故障写入滚动结构化日志；日志不可用不会阻止经营。
 - 桌面窗口按真实显示器工作区恢复和吸附，支持负坐标、显示器空隙、拔除屏幕、纵向排列与 PerMonitorV2 DPI。
-- 仓库提供 win-x64 自包含便携 ZIP、WiX MSI、SHA-256 和机器可读发布清单的统一构建/验收脚本。
+- 仓库提供 win-x64 自包含便携 ZIP、SHA-256 和机器可读发布清单的统一构建/验收脚本；当前面向测试者只分发便携 ZIP。
 
-0.1.20 已把首次投资回报、跨店资本配置、离线回归解释和 90 日长期成长接成一个生产链路，因此达到 Playable Demo Candidate 1。自动策略和端到端测试不能替代人类理解证据；完成三轮真实陌生玩家测试前，项目不会把 Candidate 写成正式 Demo 1。
+0.1.21 已把首次投资回报、跨店资本配置、离线回归解释、反馈 ZIP 和 365 日长期成长接成一个生产链路，因此保持 Playable Demo Candidate 1。自动策略和端到端测试不能替代人类理解证据；完成三轮真实陌生玩家测试前，项目不会把 Candidate 写成正式 Demo 1。
 
-已验证发布物见 [GitHub Release v0.1.20](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.20)。
+拟发布物见 [GitHub Release v0.1.21](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.21)；公开测试资产只应列出便携 ZIP、校验和与发布 JSON。
 
 ## 运行
 
@@ -80,14 +81,14 @@ dotnet test HajimaoDesktopShop.slnx
 dotnet run --project src/HajimaoDesktopShop.Desktop
 ```
 
-发布包生成后，可解压便携 ZIP 直接运行唯一的 `Hajimao DesktopShop.exe`，或以管理员权限使用 MSI 安装到 Program Files。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`，卸载 MSI 不会删除存档与日志。
+发布包生成后，可解压便携 ZIP 直接运行唯一的 `Hajimao DesktopShop.exe`。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`；测试者不需要安装 MSI。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.20
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.20
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -Version 0.1.21
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Version 0.1.21
 ```
 
-0.1.20 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
+0.1.21 的发布物仍为未签名构建。下载后请使用同版 `.sha256.txt` 或发布 JSON 核对 SHA-256；签名证书接入延后到正式发布准备阶段。
 
 ## 操作提示
 
@@ -98,6 +99,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release.ps1 -Ve
 - 在“投资决策”比较稳住弱店、提高回报、扩张街区三个资本方向的成本、回收期与现金压力，再执行低频长期投入。
 - 投资后保持游戏运行或离开一段时间；下一份完整日结会在同一页显示实际净利润、成交与流失变化。
 - 右键桌面小店可快速打开管理、锁定位置、切换鼠标穿透或静音。
+- 盲测结束后，右键通知区域图标选择 `生成测试反馈包`，把桌面生成的 ZIP 和观察笔记一起回传；ZIP 包含聚合经营快照和脱敏事件头，不包含存档数据库、原始日志、个人路径或机器路径。
 - 开启鼠标穿透前会先展开管理窗，避免失去恢复入口。
 - 关闭桌面小店只会隐藏窗口，经营模拟和自动存档继续运行；需要从通知区域菜单明确退出程序。
 
