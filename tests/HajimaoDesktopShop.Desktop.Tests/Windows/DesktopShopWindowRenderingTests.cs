@@ -28,6 +28,7 @@ public sealed class DesktopShopWindowRenderingTests
         Assert.True(nextHandlerStart > handlerStart);
         var dragHandler = source[handlerStart..nextHandlerStart];
         Assert.Contains("DragMove();", dragHandler, StringComparison.Ordinal);
+        Assert.Contains("SnapAboveTaskbarIfNear();", dragHandler, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplySurfaceLayout", dragHandler, StringComparison.Ordinal);
     }
 

@@ -81,6 +81,41 @@ public static class DesktopWindowPlacementPolicy
         return true;
     }
 
+    public static bool TrySnapAboveWorkAreaBottom(
+        DesktopRect currentWindow,
+        DesktopRect workArea,
+        double threshold,
+        double margin,
+        out DesktopPoint snapped)
+    {
+        if (!double.IsFinite(threshold) || threshold < 0d)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(threshold),
+                threshold,
+                "Threshold must be non-negative and finite.");
+        }
+
+        if (!double.IsFinite(margin) || margin < 0d)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(margin),
+                margin,
+                "Margin must be non-negative and finite.");
+        }
+
+        if (Math.Abs(currentWindow.Bottom - workArea.Bottom) > threshold)
+        {
+            snapped = default;
+            return false;
+        }
+
+        snapped = new DesktopPoint(
+            currentWindow.X,
+            workArea.Bottom - currentWindow.Height - margin);
+        return true;
+    }
+
     private static double SquaredDistance(DesktopPoint point, DesktopRect rectangle)
     {
         var horizontal = point.X < rectangle.X
