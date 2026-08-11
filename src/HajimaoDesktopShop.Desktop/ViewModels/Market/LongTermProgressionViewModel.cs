@@ -10,6 +10,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
     private string _titleText = "建立第一家盈利店铺";
     private string _progressText = "等待第一份完整日结";
     private string _guidanceText = "先观察收入、毛利与工资能否形成正向现金流。";
+    private ManagementSection _suggestedSection = ManagementSection.Strategy;
 
     public string TitleText
     {
@@ -27,6 +28,12 @@ public sealed class LongTermProgressionViewModel : ObservableObject
     {
         get => _guidanceText;
         private set => SetProperty(ref _guidanceText, value);
+    }
+
+    public ManagementSection SuggestedSection
+    {
+        get => _suggestedSection;
+        private set => SetProperty(ref _suggestedSection, value);
     }
 
     public void Update(
@@ -80,6 +87,9 @@ public sealed class LongTermProgressionViewModel : ObservableObject
                 "长期比较各店回报，把下一笔资本投向最弱环节。"),
             _ => throw new ArgumentOutOfRangeException(nameof(snapshot))
         };
+        SuggestedSection = goal.Id == ProgressionGoalId.ReachProfitableDay
+            ? ManagementSection.Strategy
+            : ManagementSection.Investment;
     }
 
     private static string CapitalProgress(

@@ -16,7 +16,7 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class ManagementWindowTests
 {
     [Fact]
-    public void ManagementWindow_ContainsAccessibleOnboardingPanel()
+    public void ManagementWindow_ContainsOneScrollableAccessibleNextActionRail()
     {
         RunOnSta(() =>
         {
@@ -35,32 +35,33 @@ public sealed class ManagementWindowTests
                     FindLogicalChildren<TextBlock>(window),
                     textBlock => textBlock.Text == ProductIdentity.BrandHeader);
 
-                var panel = Assert.IsType<Border>(window.FindName("OnboardingPanel"));
+                var scrollViewer = Assert.IsType<ScrollViewer>(window.FindName("RightRailScrollViewer"));
+                Assert.Equal(ScrollBarVisibility.Auto, scrollViewer.VerticalScrollBarVisibility);
+                Assert.Equal(ScrollBarVisibility.Disabled, scrollViewer.HorizontalScrollBarVisibility);
+
+                var panel = Assert.IsType<Border>(window.FindName("NextActionPanel"));
                 Assert.Equal(Visibility.Visible, panel.Visibility);
-                var visibilityBinding = BindingOperations.GetBindingExpression(panel, UIElement.VisibilityProperty);
-                Assert.NotNull(visibilityBinding);
+
+                var action = Assert.IsType<Button>(window.FindName("NextActionButton"));
+                Assert.Equal("前往当前建议", AutomationProperties.GetName(action));
+                Assert.Equal("前往", viewModel.NextAction.ActionText);
                 Assert.Equal(
-                    $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.IsVisible)}",
-                    visibilityBinding.ParentBinding.Path.Path);
+                    "NextAction.ActionText",
+                    BindingOperations.GetBindingExpression(
+                        action,
+                        ContentControl.ContentProperty)?.ParentBinding.Path.Path);
+                Assert.Equal(
+                    "GoToNextActionCommand",
+                    BindingOperations.GetBindingExpression(
+                        action,
+                        Button.CommandProperty)?.ParentBinding.Path.Path);
 
-                var action = Assert.IsType<Button>(window.FindName("OnboardingAction"));
-                Assert.Equal("前往当前新手任务", AutomationProperties.GetName(action));
-                Assert.Equal("前往", action.Content);
-                Assert.Same(viewModel.GoToOnboardingTaskCommand, action.Command);
-
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(panel),
-                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                        == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.ProgressText)}");
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(panel),
-                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                        == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.Title)}");
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(panel),
-                    textBlock => textBlock.TextWrapping == TextWrapping.Wrap
-                        && BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                            == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.Guidance)}");
+                var xaml = File.ReadAllText(FindManagementWindowPath());
+                Assert.Contains("Text=\"{Binding NextAction.ContextText}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"{Binding NextAction.Title}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"{Binding NextAction.DetailText}\"", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("x:Name=\"OnboardingPanel\"", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("x:Name=\"LongTermGoalPanel\"", xaml, StringComparison.Ordinal);
             }
             finally
             {
@@ -176,7 +177,7 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void ManagementWindow_ShowsOneLongTermGoalAndConditionalRecoveryAction()
+    public void StrategySection_ShowsConditionalRecoveryAction()
     {
         RunOnSta(() =>
         {
@@ -191,22 +192,6 @@ public sealed class ManagementWindowTests
                 window.Measure(new Size(1180, 720));
                 window.Arrange(new Rect(0, 0, 1180, 720));
                 window.UpdateLayout();
-
-                var goal = Assert.IsType<Border>(window.FindName("LongTermGoalPanel"));
-                foreach (var property in new[]
-                         {
-                             nameof(LongTermProgressionViewModel.TitleText),
-                             nameof(LongTermProgressionViewModel.ProgressText),
-                             nameof(LongTermProgressionViewModel.GuidanceText)
-                         })
-                {
-                    Assert.Contains(
-                        FindLogicalChildren<TextBlock>(goal),
-                        textBlock => BindingOperations.GetBindingExpression(
-                            textBlock,
-                            TextBlock.TextProperty)?.ParentBinding.Path.Path
-                            == $"{nameof(MarketViewModel.Progression)}.{property}");
-                }
 
                 var recovery = Assert.IsType<Button>(window.FindName("ApplyRecoveryAction"));
                 Assert.Equal("采用保守方案", recovery.Content);

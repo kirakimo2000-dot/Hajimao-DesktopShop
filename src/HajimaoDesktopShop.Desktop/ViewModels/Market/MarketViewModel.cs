@@ -43,7 +43,7 @@ public sealed class MarketViewModel : ObservableObject
         _session = session;
         _reduceMotion = reduceMotion ?? (() => false);
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
-        GoToOnboardingTaskCommand = new RelayCommand(GoToOnboardingTask);
+        GoToNextActionCommand = new RelayCommand(GoToNextAction);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
         SelectShopObjectCommand = new RelayCommand<BusinessShopInteractionTarget>(SelectShopObject);
         ToggleLockCommand = new RelayCommand(ToggleLock);
@@ -53,6 +53,7 @@ public sealed class MarketViewModel : ObservableObject
         Overview = new MarketOverviewViewModel();
         Economy = new StoreEconomyViewModel();
         Progression = new LongTermProgressionViewModel();
+        NextAction = new NextActionViewModel();
         Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
         Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
         CommercialStreet = new CommercialStreetViewModel();
@@ -67,6 +68,8 @@ public sealed class MarketViewModel : ObservableObject
 
     public LongTermProgressionViewModel Progression { get; }
 
+    public NextActionViewModel NextAction { get; }
+
     public StoreStrategyViewModel Strategy { get; }
 
     public InvestmentPortfolioViewModel Investment { get; }
@@ -79,7 +82,7 @@ public sealed class MarketViewModel : ObservableObject
 
     public IRelayCommand<ManagementSection> NavigateCommand { get; }
 
-    public IRelayCommand GoToOnboardingTaskCommand { get; }
+    public IRelayCommand GoToNextActionCommand { get; }
 
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
 
@@ -260,6 +263,7 @@ public sealed class MarketViewModel : ObservableObject
                     .ToArray(),
                 _session.Investments.HasAnyInvestment),
             storeCatalog);
+        NextAction.Update(Onboarding, Progression);
 
         Strategy.Refresh();
         Investment.Refresh();
@@ -274,7 +278,7 @@ public sealed class MarketViewModel : ObservableObject
 
     private void Navigate(ManagementSection section) => SelectedSection = section;
 
-    private void GoToOnboardingTask() => Navigate(Onboarding.SuggestedSection);
+    private void GoToNextAction() => Navigate(NextAction.SuggestedSection);
 
     private void ToggleLock()
     {

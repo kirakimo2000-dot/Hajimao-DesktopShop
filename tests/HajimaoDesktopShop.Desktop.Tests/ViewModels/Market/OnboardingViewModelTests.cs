@@ -39,10 +39,10 @@ public sealed class OnboardingViewModelTests
     public static TheoryData<OnboardingTaskId, int, string, string, ManagementSection> TaskPresentationCases() =>
         new()
         {
-            { OnboardingTaskId.ReviewEconomy, 0, "查看经营概览", "先看收入、利润率、现金续航和主要瓶颈。", ManagementSection.Overview },
-            { OnboardingTaskId.ChooseStoreStrategy, 1, "选择整店策略", "尝试高周转、高毛利、精益或充足策略，系统会负责执行。", ManagementSection.Strategy },
-            { OnboardingTaskId.MakeFirstInvestment, 2, "完成第一次投资", "选择一个能改变现金流或经营能力的方案，不需要逐项维护。", ManagementSection.Investment },
-            { OnboardingTaskId.ReviewInvestmentReturn, 3, "查看投资回报", "等待下一份完整日结，对比净利润、成交与流失变化。", ManagementSection.Investment }
+            { OnboardingTaskId.ReviewEconomy, 0, "查看经营概览", "先看收入、利润和现金续航。", ManagementSection.Overview },
+            { OnboardingTaskId.ChooseStoreStrategy, 1, "选择整店策略", "选择高周转、高毛利或稳健备货。", ManagementSection.Strategy },
+            { OnboardingTaskId.MakeFirstInvestment, 2, "完成第一次投资", "比较回报与现金压力，执行一项投资。", ManagementSection.Investment },
+            { OnboardingTaskId.ReviewInvestmentReturn, 3, "查看投资回报", "等待下一次完整日结，查看投资前后变化。", ManagementSection.Investment }
         };
 
     private static OnboardingSnapshot Snapshot(int completedTasks, OnboardingTaskId? currentTaskId) =>

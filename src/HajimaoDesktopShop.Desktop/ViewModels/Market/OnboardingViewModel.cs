@@ -68,19 +68,19 @@ public sealed class OnboardingViewModel : ObservableObject
         {
             OnboardingTaskId.ReviewEconomy => new(
                 "查看经营概览",
-                "先看收入、利润率、现金续航和主要瓶颈。",
+                "先看收入、利润和现金续航。",
                 ManagementSection.Overview),
             OnboardingTaskId.ChooseStoreStrategy => new(
                 "选择整店策略",
-                "尝试高周转、高毛利、精益或充足策略，系统会负责执行。",
+                "选择高周转、高毛利或稳健备货。",
                 ManagementSection.Strategy),
             OnboardingTaskId.MakeFirstInvestment => new(
                 "完成第一次投资",
-                "选择一个能改变现金流或经营能力的方案，不需要逐项维护。",
+                "比较回报与现金压力，执行一项投资。",
                 ManagementSection.Investment),
             OnboardingTaskId.ReviewInvestmentReturn => new(
                 "查看投资回报",
-                "等待下一份完整日结，对比净利润、成交与流失变化。",
+                "等待下一次完整日结，查看投资前后变化。",
                 ManagementSection.Investment),
             _ => throw new ArgumentOutOfRangeException(nameof(taskId), taskId, null)
         };

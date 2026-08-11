@@ -133,12 +133,12 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
-    public void GoToOnboardingTask_NavigatesToSuggestedSectionWithoutChangingGameTime()
+    public void GoToNextAction_NavigatesToSuggestedSectionWithoutChangingGameTime()
     {
         var viewModel = new MarketViewModel(MarketTestSession.Create());
         var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
 
-        viewModel.GoToOnboardingTaskCommand.Execute(null);
+        viewModel.GoToNextActionCommand.Execute(null);
 
         Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
         Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
