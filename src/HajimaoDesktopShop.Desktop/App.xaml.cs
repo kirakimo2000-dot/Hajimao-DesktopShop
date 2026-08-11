@@ -216,11 +216,6 @@ public partial class App : System.Windows.Application
             _managementWindow.Closed += OnManagementWindowClosed;
         }
 
-        if (_desktopWindow is not null)
-        {
-            _desktopWindow.Topmost = false;
-        }
-
         _managementWindow.Show();
         _managementWindow.Activate();
         if (_refreshTimer is not null)
@@ -383,10 +378,6 @@ public partial class App : System.Windows.Application
             _refreshTimer.Interval = RefreshCadencePolicy.GetInterval(managementOpen: false);
         }
 
-        if (_desktopWindow is { IsLoaded: true })
-        {
-            _desktopWindow.Topmost = true;
-        }
     }
 
     private void ReportSessionStart(DesktopBusinessSessionStartResult sessionStart)

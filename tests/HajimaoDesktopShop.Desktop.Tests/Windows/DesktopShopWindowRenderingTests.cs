@@ -33,6 +33,26 @@ public sealed class DesktopShopWindowRenderingTests
     }
 
     [Fact]
+    public void DesktopSurface_RemainsTopmostWhileManagementIsOpen()
+    {
+        var xaml = File.ReadAllText(FindDesktopShopWindowPath());
+        var appSource = File.ReadAllText(FindAppCodeBehindPath());
+
+        Assert.Contains("Topmost=\"True\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("_desktopWindow.Topmost = false", appSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NavigationAndStreetGrowth_ResizeWithoutResettingTheHorizontalPosition()
+    {
+        var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
+
+        Assert.Equal(
+            2,
+            CountOccurrences(source, "ApplySurfaceLayout(reposition: false);"));
+    }
+
+    [Fact]
     public void Content_DefaultsToAOneStoreStreetAndKeepsTheShopSurfaceAvailable()
     {
         Exception? failure = null;
@@ -172,5 +192,45 @@ public sealed class DesktopShopWindowRenderingTests
             "HajimaoDesktopShop.Desktop",
             "Windows",
             "DesktopShopWindow.xaml.cs");
+    }
+
+    private static string FindDesktopShopWindowPath() =>
+        Path.Combine(
+            FindRepositoryRoot().FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "Windows",
+            "DesktopShopWindow.xaml");
+
+    private static string FindAppCodeBehindPath() =>
+        Path.Combine(
+            FindRepositoryRoot().FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs");
+
+    private static DirectoryInfo FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return Assert.IsType<DirectoryInfo>(directory);
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        var count = 0;
+        var start = 0;
+        while ((start = source.IndexOf(value, start, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            start += value.Length;
+        }
+
+        return count;
     }
 }

@@ -100,7 +100,7 @@ public partial class DesktopShopWindow : Window
             StorePage.SetCurrentValue(
                 VisibilityProperty,
                 _viewModel.DesktopNavigation.IsStore ? Visibility.Visible : Visibility.Collapsed);
-            ApplySurfaceLayout(reposition: true);
+            ApplySurfaceLayout(reposition: false);
         }
     }
 
@@ -120,7 +120,7 @@ public partial class DesktopShopWindow : Window
         _lastStreetStoreCount = storeCount;
         if (_viewModel.DesktopNavigation.IsStreet)
         {
-            ApplySurfaceLayout(reposition: true);
+            ApplySurfaceLayout(reposition: false);
         }
     }
 
@@ -150,11 +150,30 @@ public partial class DesktopShopWindow : Window
             _viewModel.DesktopNavigation.Mode,
             GetOpenedStoreCount(),
             workArea);
+        var currentWidth = ActualWidth > 0d ? ActualWidth : Width;
+        var currentHeight = ActualHeight > 0d ? ActualHeight : Height;
+        var wasTaskbarDocked = !reposition
+            && double.IsFinite(Left)
+            && double.IsFinite(Top)
+            && double.IsFinite(currentWidth)
+            && currentWidth > 0d
+            && double.IsFinite(currentHeight)
+            && currentHeight > 0d
+            && DesktopWindowPlacementPolicy.TrySnapAboveWorkAreaBottom(
+                new DesktopRect(Left, Top, currentWidth, currentHeight),
+                workArea,
+                TaskbarSnapDistance,
+                DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin,
+                out _);
         Width = layout.Size.Width;
         Height = layout.Size.Height;
         if (reposition)
         {
             Left = layout.Position.X;
+            Top = layout.Position.Y;
+        }
+        else if (wasTaskbarDocked)
+        {
             Top = layout.Position.Y;
         }
     }
