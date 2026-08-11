@@ -1,4 +1,3 @@
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Desktop.Services;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Progression;
@@ -171,48 +170,6 @@ public sealed class LongTermProgressionScenarioTests
         Assert.All(
             new[] { turnover, margin, preservation },
             scenario => Assert.True(scenario.Day(30).OpenStores >= 2));
-    }
-
-    [Fact]
-    public void SavedCheckpoint_AdvancesEquallyOnlineAndThroughRepeatedOfflineReturns()
-    {
-        var savedAt = new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
-        var source = LongTermProgressionScenarioRunner.Run(
-            LongTermProgressionPolicy.CashPreservation,
-            days: 7).Session;
-        var save = source.CaptureSaveData(savedAt);
-        var online = DesktopBusinessSessionFactory.Create(
-            LongTermProgressionScenarioRunner.ProductionProducts,
-            save,
-            seed: 99,
-            nowUtc: savedAt).Session;
-        online.Simulation.AdvanceRealSeconds(4_320);
-
-        var offlineSave = save;
-        var offlineTime = savedAt;
-        for (var day = 0; day < 3; day++)
-        {
-            var nextTime = offlineTime.AddSeconds(1_440);
-            var restored = DesktopBusinessSessionFactory.Create(
-                LongTermProgressionScenarioRunner.ProductionProducts,
-                offlineSave,
-                seed: 99,
-                nowUtc: nextTime,
-                new OfflineSettlementPolicy(maxOfflineSeconds: 1_440, batchSize: 137));
-            Assert.Equal(1_440, restored.OfflineSettlement?.AppliedSeconds);
-            offlineTime = nextTime;
-            offlineSave = restored.Session.CaptureSaveData(offlineTime);
-        }
-
-        var offline = DesktopBusinessSessionFactory.Create(
-            LongTermProgressionScenarioRunner.ProductionProducts,
-            offlineSave,
-            seed: 99,
-            nowUtc: offlineTime).Session;
-        Assert.Equivalent(
-            online.Simulation.GetSnapshot(),
-            offline.Simulation.GetSnapshot(),
-            strict: true);
     }
 
     private static int GrossMarginBasisPoints(ProgressionCheckpoint checkpoint) =>

@@ -1,6 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Employees;
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Infrastructure.Simulation;
@@ -13,8 +12,7 @@ public static class DesktopBusinessSessionFactory
         IReadOnlyList<ProductDefinition> products,
         GameSaveData? save,
         int seed,
-        DateTimeOffset nowUtc,
-        OfflineSettlementPolicy? offlinePolicy = null)
+        DateTimeOffset nowUtc)
     {
         ArgumentNullException.ThrowIfNull(products);
         if (products.Count == 0)
@@ -38,8 +36,7 @@ public static class DesktopBusinessSessionFactory
             ConfigureStarterShifts(newSession);
             return new DesktopBusinessSessionStartResult(
                 newSession,
-                IsNewGame: true,
-                OfflineSettlement: null);
+                IsNewGame: true);
         }
 
         var restoredSession = BusinessSession.RestoreOrUpgrade(
@@ -52,15 +49,9 @@ public static class DesktopBusinessSessionFactory
                 random,
                 DesktopGameContent.SimulationOptions,
                 experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold);
-        var settlement = OfflineSettlementService.Settle(
-            restoredSession.Simulation,
-            save.SavedAtUtc,
-            nowUtc,
-            offlinePolicy);
         return new DesktopBusinessSessionStartResult(
             restoredSession,
-            IsNewGame: false,
-            settlement);
+            IsNewGame: false);
     }
 
     private static void ConfigureStarterShifts(BusinessSession session)

@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Threading;
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Diagnostics.Export;
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Diagnostics;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Desktop.Services;
@@ -63,11 +62,6 @@ public partial class App : System.Windows.Application
                 startupUtc);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
-            if (sessionStart.OfflineSettlement is { AppliedSeconds: > 0 })
-            {
-                await saveStore.SaveGameAsync(_session.CaptureSaveData(startupUtc));
-            }
-
             if (savedGame is null)
             {
                 var starterStore = _session.Game.GetSnapshot().Stores.Single();
@@ -83,8 +77,7 @@ public partial class App : System.Windows.Application
 
             _viewModel = new MarketViewModel(
                 _session,
-                reduceMotion: () => !SystemParameters.ClientAreaAnimation,
-                offlineSettlement: sessionStart.OfflineSettlement);
+                reduceMotion: () => !SystemParameters.ClientAreaAnimation);
             _soundOutput = new PixelGameSoundOutput();
             _soundService = new GameSoundService(_viewModel, _soundOutput);
             if (savedPlacement is not null)
@@ -393,42 +386,6 @@ public partial class App : System.Windows.Application
                     .ToString(CultureInfo.InvariantCulture)
             });
 
-        if (sessionStart.OfflineSettlement is not { } settlement)
-        {
-            return;
-        }
-
-        var properties = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["RequestedSeconds"] = settlement.RequestedSeconds.ToString(CultureInfo.InvariantCulture),
-            ["AppliedSeconds"] = settlement.AppliedSeconds.ToString(CultureInfo.InvariantCulture),
-            ["WasCapped"] = settlement.WasCapped.ToString(CultureInfo.InvariantCulture),
-            ["CashDeltaCents"] = (settlement.After.CashCents - settlement.Before.CashCents)
-                .ToString(CultureInfo.InvariantCulture),
-            ["CompletedSalesDelta"] = (settlement.After.CompletedSales - settlement.Before.CompletedSales)
-                .ToString(CultureInfo.InvariantCulture)
-        };
-        if (settlement.Anomaly == OfflineTimeAnomaly.ClockMovedBackward)
-        {
-            ReportDiagnostic(
-                "offline.settlement.clock_moved_backward",
-                GameDiagnosticLevel.Warning,
-                "Offline settlement was skipped because the system clock moved backward.",
-                properties);
-            return;
-        }
-
-        ReportDiagnostic(
-            settlement.WasCapped
-                ? "offline.settlement.capped"
-                : "offline.settlement.completed",
-            settlement.WasCapped
-                ? GameDiagnosticLevel.Warning
-                : GameDiagnosticLevel.Information,
-            settlement.WasCapped
-                ? "Offline settlement completed at the configured limit."
-                : "Offline settlement completed.",
-            properties);
     }
 
     private void ReportSimulationFailure(Exception exception) =>

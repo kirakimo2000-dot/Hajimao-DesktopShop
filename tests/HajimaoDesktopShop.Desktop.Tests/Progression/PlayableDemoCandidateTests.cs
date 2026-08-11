@@ -1,6 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Investments;
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Simulation;
@@ -12,7 +11,7 @@ namespace HajimaoDesktopShop.Desktop.Tests.Progression;
 public sealed class PlayableDemoCandidateTests
 {
     [Fact]
-    public void ProductionLoop_ConnectsInvestmentReturnOfflineGrowthAndWeakStoreCapital()
+    public void ProductionLoop_ConnectsInvestmentReturnActiveIdleGrowthAndWeakStoreCapital()
     {
         var session = LongTermProgressionScenarioRunner.CreateSession(seed: 8_102);
         Assert.Equal(
@@ -42,23 +41,7 @@ public sealed class PlayableDemoCandidateTests
             hasComparableInvestmentReturn: true);
         Assert.True(onboarding.IsComplete);
 
-        var savedAt = new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
-        for (var returnNumber = 0; returnNumber < 3; returnNumber++)
-        {
-            var save = session.CaptureSaveData(savedAt);
-            savedAt = savedAt.AddSeconds(1_440);
-            var restored = DesktopBusinessSessionFactory.Create(
-                LongTermProgressionScenarioRunner.ProductionProducts,
-                save,
-                seed: 100 + returnNumber,
-                nowUtc: savedAt,
-                new OfflineSettlementPolicy(maxOfflineSeconds: 1_440, batchSize: 137));
-            var settlement = Assert.IsType<OfflineSettlementResult>(restored.OfflineSettlement);
-            Assert.True(ReturnBriefingService.Create(
-                settlement,
-                restored.Session.Simulation.GetSnapshot()).IsVisible);
-            session = restored.Session;
-        }
+        session.Simulation.AdvanceRealSeconds(3 * 1_440);
 
         var expansion = WaitForExecutableExpansion(session, maximumDays: 30);
         Assert.Equal(

@@ -38,9 +38,9 @@ public sealed class GameDiagnosticEventTests
         var expectedException = new InvalidOperationException("boom");
 
         var diagnosticEvent = new GameDiagnosticEvent(
-            "offline.settlement.completed",
+            "simulation.checkpoint.completed",
             GameDiagnosticLevel.Warning,
-            "Offline settlement was capped.",
+            "Simulation checkpoint completed.",
             properties,
             expectedException);
         properties["StoreCount"] = "99";

@@ -70,22 +70,6 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void ManagementWindow_ContainsReadOnlyReturnBriefingBeforeOnboarding()
-    {
-        var xaml = File.ReadAllText(FindManagementWindowPath());
-
-        Assert.Contains("x:Name=\"ReturnBriefingPanel\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Visibility=\"{Binding ReturnBriefing.IsVisible", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding ReturnBriefing.DurationText}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding ReturnBriefing.ResultText}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding ReturnBriefing.GuidanceText}\"", xaml, StringComparison.Ordinal);
-        Assert.True(
-            xaml.IndexOf("x:Name=\"ReturnBriefingPanel\"", StringComparison.Ordinal)
-                < xaml.IndexOf("x:Name=\"OnboardingPanel\"", StringComparison.Ordinal));
-        Assert.DoesNotContain("领取离线", xaml, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void ManagementWindow_HasThreeInvestorNavigationTargetsPersistentSceneAndNoSpeedControls()
     {
         RunOnSta(() =>
