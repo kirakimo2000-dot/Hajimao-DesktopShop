@@ -66,18 +66,39 @@
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,2,0" Padding="8">
                 <StackPanel>
                     <TextBlock Text="经营决策" FontWeight="Bold" Margin="8,8,8,10" />
-                    <Button Tag="management-navigation" Content="经营概览"
-                            Style="{DynamicResource PrimaryPixelButton}"
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="{x:Static market:ManagementSection.Overview}" />
-                    <Button Tag="management-navigation" Content="经营策略"
-                            Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="{x:Static market:ManagementSection.Strategy}" />
-                    <Button Tag="management-navigation" Content="投资决策"
-                            Style="{DynamicResource PixelButton}" Margin="0,7,0,0"
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="{x:Static market:ManagementSection.Investment}" />
+                    <Grid>
+                        <Button Tag="management-navigation" Content="经营概览"
+                                Style="{DynamicResource PixelButton}"
+                                Command="{Binding NavigateCommand}"
+                                CommandParameter="{x:Static market:ManagementSection.Overview}" />
+                        <Border x:Name="OverviewSelectionIndicator" Width="5"
+                                HorizontalAlignment="Left" Margin="2"
+                                Background="{DynamicResource Brush.Primary}"
+                                IsHitTestVisible="False"
+                                Visibility="{Binding IsOverviewSection, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </Grid>
+                    <Grid Margin="0,7,0,0">
+                        <Button Tag="management-navigation" Content="经营策略"
+                                Style="{DynamicResource PixelButton}"
+                                Command="{Binding NavigateCommand}"
+                                CommandParameter="{x:Static market:ManagementSection.Strategy}" />
+                        <Border x:Name="StrategySelectionIndicator" Width="5"
+                                HorizontalAlignment="Left" Margin="2"
+                                Background="{DynamicResource Brush.Primary}"
+                                IsHitTestVisible="False"
+                                Visibility="{Binding IsStrategySection, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </Grid>
+                    <Grid Margin="0,7,0,0">
+                        <Button Tag="management-navigation" Content="投资决策"
+                                Style="{DynamicResource PixelButton}"
+                                Command="{Binding NavigateCommand}"
+                                CommandParameter="{x:Static market:ManagementSection.Investment}" />
+                        <Border x:Name="InvestmentSelectionIndicator" Width="5"
+                                HorizontalAlignment="Left" Margin="2"
+                                Background="{DynamicResource Brush.Primary}"
+                                IsHitTestVisible="False"
+                                Visibility="{Binding IsInvestmentSection, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

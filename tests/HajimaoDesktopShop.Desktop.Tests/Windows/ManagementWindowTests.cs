@@ -16,6 +16,36 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class ManagementWindowTests
 {
     [Fact]
+    public void NavigationHighlight_FollowsSelectedSection()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+        Assert.Contains("x:Name=\"OverviewSelectionIndicator\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StrategySelectionIndicator\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"InvestmentSelectionIndicator\"", xaml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Visibility=\"{Binding IsOverviewSection, Converter={StaticResource BooleanToVisibilityConverter}}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Visibility=\"{Binding IsStrategySection, Converter={StaticResource BooleanToVisibilityConverter}}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Visibility=\"{Binding IsInvestmentSection, Converter={StaticResource BooleanToVisibilityConverter}}\"",
+            xaml,
+            StringComparison.Ordinal);
+
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        Assert.True(viewModel.IsOverviewSection);
+        Assert.False(viewModel.IsStrategySection);
+
+        viewModel.NavigateCommand.Execute(ManagementSection.Strategy);
+
+        Assert.False(viewModel.IsOverviewSection);
+        Assert.True(viewModel.IsStrategySection);
+    }
+
+    [Fact]
     public void ManagementWindow_ContainsOneScrollableAccessibleNextActionRail()
     {
         RunOnSta(() =>
