@@ -1,9 +1,26 @@
 using System.Reflection;
+using System.IO;
 
 namespace HajimaoDesktopShop.Desktop.Tests;
 
 public sealed class ProductIdentityTests
 {
+    [Fact]
+    public void ActiveVersion_Is_0_1_22()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "Directory.Build.props")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var props = File.ReadAllText(Path.Combine(repositoryRoot.FullName, "Directory.Build.props"));
+
+        Assert.Contains("<VersionPrefix>0.1.22</VersionPrefix>", props, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ProductIdentity_UsesOfficialDesktopShopBrandAcrossVisibleSurfaces()
     {
