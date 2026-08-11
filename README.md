@@ -68,7 +68,7 @@ Hajimao DesktopShop 是一款运行在 Windows 桌面角落的像素风放置经
 
 0.1.21 已把首次投资回报、跨店资本配置、离线回归解释、反馈 ZIP 和 365 日长期成长接成一个生产链路，因此保持 Playable Demo Candidate 1。自动策略和端到端测试不能替代人类理解证据；完成三轮真实陌生玩家测试前，项目不会把 Candidate 写成正式 Demo 1。
 
-拟发布物见 [GitHub Release v0.1.21](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases/tag/v0.1.21)；公开测试资产只应列出便携 ZIP、校验和与发布 JSON。
+v0.1.21 发布后，便携 ZIP、校验和与发布 JSON 将出现在 [GitHub Releases](https://github.com/kirakimo2000-dot/Hajimao-DesktopShop/releases)；公开测试资产只应列出这些便携资产。
 
 ## 运行
 
