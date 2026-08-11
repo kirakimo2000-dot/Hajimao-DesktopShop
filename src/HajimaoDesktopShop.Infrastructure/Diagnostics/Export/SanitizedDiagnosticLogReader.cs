@@ -36,11 +36,48 @@ public static class SanitizedDiagnosticLogReader
         }
 
         var events = new Queue<SanitizedDiagnosticEvent>(maximumEvents);
-        foreach (var logPath in Directory
-            .EnumerateFiles(logDirectory, "hajimao-*.log")
-            .OrderBy(Path.GetFileName, StringComparer.Ordinal))
+        foreach (var logPath in GetLogPaths(logDirectory))
         {
-            foreach (var line in File.ReadLines(logPath))
+            TryReadLogFile(logPath, events, maximumEvents);
+        }
+
+        return new ReadOnlyCollection<SanitizedDiagnosticEvent>(events.ToArray());
+    }
+
+    private static IReadOnlyList<string> GetLogPaths(string logDirectory)
+    {
+        try
+        {
+            return Directory
+                .EnumerateFiles(logDirectory, "hajimao-*.log")
+                .OrderBy(Path.GetFileName, StringComparer.Ordinal)
+                .ToArray();
+        }
+        catch (IOException)
+        {
+            return Array.Empty<string>();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    private static void TryReadLogFile(
+        string logPath,
+        Queue<SanitizedDiagnosticEvent> events,
+        int maximumEvents)
+    {
+        try
+        {
+            using var stream = new FileStream(
+                logPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+
+            while (reader.ReadLine() is { } line)
             {
                 var diagnosticEvent = TryReadHeader(line);
                 if (diagnosticEvent is null)
@@ -56,8 +93,12 @@ public static class SanitizedDiagnosticLogReader
                 events.Enqueue(diagnosticEvent);
             }
         }
-
-        return new ReadOnlyCollection<SanitizedDiagnosticEvent>(events.ToArray());
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private static SanitizedDiagnosticEvent? TryReadHeader(string line)

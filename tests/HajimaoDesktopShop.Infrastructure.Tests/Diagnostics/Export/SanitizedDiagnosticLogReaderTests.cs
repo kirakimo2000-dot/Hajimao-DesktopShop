@@ -1,10 +1,29 @@
 using System.Text.Json;
+using HajimaoDesktopShop.Application.Diagnostics;
 using HajimaoDesktopShop.Infrastructure.Diagnostics.Export;
+using HajimaoDesktopShop.Infrastructure.Logging;
 
 namespace HajimaoDesktopShop.Infrastructure.Tests.Diagnostics.Export;
 
 public sealed class SanitizedDiagnosticLogReaderTests
 {
+    [Fact]
+    public void Read_CanReadEventsFromActiveSerilogSink()
+    {
+        using var directory = new TemporaryDirectory();
+        using var sink = new SerilogGameDiagnosticSink(directory.Path);
+        sink.Write(new GameDiagnosticEvent(
+            "application.started",
+            GameDiagnosticLevel.Information,
+            "Application started."));
+
+        var events = SanitizedDiagnosticLogReader.Read(directory.Path);
+
+        var diagnosticEvent = Assert.Single(events);
+        Assert.Equal("INF", diagnosticEvent.Level);
+        Assert.Equal("application.started", diagnosticEvent.Name);
+    }
+
     [Fact]
     public void Read_ReturnsOnlySanitizedHeadersAndDropsContinuationDetails()
     {
@@ -62,6 +81,31 @@ public sealed class SanitizedDiagnosticLogReaderTests
 
         Assert.Throws<ArgumentOutOfRangeException>(() => SanitizedDiagnosticLogReader.Read(directory.Path, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => SanitizedDiagnosticLogReader.Read(directory.Path, -1));
+    }
+
+    [Fact]
+    public void Read_SkipsInaccessibleLogFilesAndContinues()
+    {
+        using var directory = new TemporaryDirectory();
+        var inaccessiblePath = Path.Combine(directory.Path, "hajimao-a.log");
+        using var inaccessibleStream = new FileStream(
+            inaccessiblePath,
+            FileMode.Create,
+            FileAccess.ReadWrite,
+            FileShare.None);
+        using (var writer = new StreamWriter(inaccessibleStream, leaveOpen: true))
+        {
+            writer.WriteLine("2026-08-11T07:30:00.0000000+00:00 [INF] application.locked Locked file");
+        }
+
+        File.WriteAllText(
+            Path.Combine(directory.Path, "hajimao-b.log"),
+            "2026-08-11T07:31:00.0000000+00:00 [INF] application.readable Readable file");
+
+        var events = SanitizedDiagnosticLogReader.Read(directory.Path);
+
+        var diagnosticEvent = Assert.Single(events);
+        Assert.Equal("application.readable", diagnosticEvent.Name);
     }
 
     [Fact]
