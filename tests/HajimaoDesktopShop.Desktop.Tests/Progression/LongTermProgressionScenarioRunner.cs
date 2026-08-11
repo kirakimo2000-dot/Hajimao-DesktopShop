@@ -46,6 +46,82 @@ internal sealed record LongTermProgressionScenario(
         Checkpoints.Single(checkpoint => checkpoint.Day == number);
 }
 
+internal sealed record LongTermStoreStaffingNeed(
+    int EmployeeCount,
+    bool HasCheckout,
+    bool HasRestock);
+
+internal static class LongTermStaffingPolicy
+{
+    public static bool RequiresAdditionalStaff(
+        LongTermProgressionPolicy policy,
+        LongTermStoreStaffingNeed need) => policy switch
+        {
+            LongTermProgressionPolicy.HighTurnover =>
+                need.EmployeeCount < 2 || !need.HasCheckout || !need.HasRestock,
+            LongTermProgressionPolicy.HighMargin or LongTermProgressionPolicy.CashPreservation =>
+                !need.HasCheckout || !need.HasRestock,
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
+
+    public static bool ShouldRecruit(
+        LongTermProgressionPolicy policy,
+        LongTermStoreStaffingNeed need,
+        EmployeeRole role)
+    {
+        var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
+        return policy switch
+        {
+            LongTermProgressionPolicy.HighTurnover =>
+                (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
+                || (!need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock))
+                || (need.HasCheckout && need.HasRestock && need.EmployeeCount < 2),
+            LongTermProgressionPolicy.HighMargin or LongTermProgressionPolicy.CashPreservation =>
+                MeetsLeanStaffingNeed(tasks, need),
+            _ => throw new ArgumentOutOfRangeException(nameof(policy))
+        };
+    }
+
+    public static int Priority(
+        LongTermProgressionPolicy policy,
+        LongTermStoreStaffingNeed need,
+        EmployeeRole role)
+    {
+        var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
+        if ((policy is LongTermProgressionPolicy.HighMargin
+                or LongTermProgressionPolicy.CashPreservation)
+            && !need.HasCheckout
+            && !need.HasRestock
+            && tasks.Contains(EmployeeTaskKind.Checkout)
+            && tasks.Contains(EmployeeTaskKind.Restock))
+        {
+            return 0;
+        }
+
+        if (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
+        {
+            return 0;
+        }
+
+        return !need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock) ? 1 : 2;
+    }
+
+    private static bool MeetsLeanStaffingNeed(
+        IReadOnlyList<EmployeeTaskKind> tasks,
+        LongTermStoreStaffingNeed need)
+    {
+        var coversCheckout = tasks.Contains(EmployeeTaskKind.Checkout);
+        var coversRestock = tasks.Contains(EmployeeTaskKind.Restock);
+        if (!need.HasCheckout && !need.HasRestock)
+        {
+            return coversCheckout && coversRestock;
+        }
+
+        return (!need.HasCheckout && coversCheckout)
+            || (!need.HasRestock && coversRestock);
+    }
+}
+
 internal static class LongTermProgressionScenarioRunner
 {
     private const int RealSecondsPerBusinessDay = 1_440;
@@ -126,21 +202,24 @@ internal static class LongTermProgressionScenarioRunner
             .ToArray();
 
         var staffingNeeds = business.Stores
-            .Select(store => new StaffingNeed(
+            .Select(store => new
+            {
                 store.Id,
-                employees.Count(employee => string.Equals(
-                    employee.StoreId,
-                    store.Id,
-                    StringComparison.Ordinal)),
-                HasTaskCapability(employees, store.Id, EmployeeTaskKind.Checkout),
-                HasTaskCapability(employees, store.Id, EmployeeTaskKind.Restock)))
-            .Where(need => RequiresAdditionalStaff(policy, need))
-            .ToDictionary(need => need.StoreId, StringComparer.Ordinal);
+                Need = new LongTermStoreStaffingNeed(
+                    employees.Count(employee => string.Equals(
+                        employee.StoreId,
+                        store.Id,
+                        StringComparison.Ordinal)),
+                    HasTaskCapability(employees, store.Id, EmployeeTaskKind.Checkout),
+                    HasTaskCapability(employees, store.Id, EmployeeTaskKind.Restock))
+            })
+            .Where(route => LongTermStaffingPolicy.RequiresAdditionalStaff(policy, route.Need))
+            .ToDictionary(route => route.Id, route => route.Need, StringComparer.Ordinal);
         var staffing = candidates
             .Where(route => route.Candidate.Kind == InvestmentKind.Employee
                 && route.Candidate.Effect.AddedRole is { } role
                 && staffingNeeds.TryGetValue(route.StoreId, out var need)
-                && CandidateMeetsNeed(policy, role, need))
+                && LongTermStaffingPolicy.ShouldRecruit(policy, need, role))
             .OrderBy(route => StaffingPriority(
                 policy,
                 route.Candidate.Effect.AddedRole!.Value,
@@ -332,73 +411,11 @@ internal static class LongTermProgressionScenarioRunner
                 StringComparison.Ordinal)
             && EmployeeTaskPriorityCatalog.GetPriorities(employee.Role).Contains(task));
 
-    private static bool RequiresAdditionalStaff(
-        LongTermProgressionPolicy policy,
-        StaffingNeed need) => policy switch
-        {
-            LongTermProgressionPolicy.HighTurnover =>
-                need.EmployeeCount < 2 || !need.HasCheckout || !need.HasRestock,
-            LongTermProgressionPolicy.HighMargin or LongTermProgressionPolicy.CashPreservation =>
-                !need.HasCheckout || !need.HasRestock,
-            _ => throw new ArgumentOutOfRangeException(nameof(policy))
-        };
-
-    private static bool CandidateMeetsNeed(
-        LongTermProgressionPolicy policy,
-        EmployeeRole role,
-        StaffingNeed need)
-    {
-        var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
-        return policy switch
-        {
-            LongTermProgressionPolicy.HighTurnover =>
-                (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
-                || (!need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock))
-                || (need.HasCheckout && need.HasRestock && need.EmployeeCount < 2),
-            LongTermProgressionPolicy.HighMargin or LongTermProgressionPolicy.CashPreservation =>
-                CandidateMeetsLeanStaffingNeed(tasks, need),
-            _ => throw new ArgumentOutOfRangeException(nameof(policy))
-        };
-    }
-
-    private static bool CandidateMeetsLeanStaffingNeed(
-        IReadOnlyList<EmployeeTaskKind> tasks,
-        StaffingNeed need)
-    {
-        var coversCheckout = tasks.Contains(EmployeeTaskKind.Checkout);
-        var coversRestock = tasks.Contains(EmployeeTaskKind.Restock);
-        if (!need.HasCheckout && !need.HasRestock)
-        {
-            return coversCheckout && coversRestock;
-        }
-
-        return (!need.HasCheckout && coversCheckout)
-            || (!need.HasRestock && coversRestock);
-    }
-
     private static int StaffingPriority(
         LongTermProgressionPolicy policy,
         EmployeeRole role,
-        StaffingNeed need)
-    {
-        var tasks = EmployeeTaskPriorityCatalog.GetPriorities(role);
-        if ((policy is LongTermProgressionPolicy.HighMargin
-                or LongTermProgressionPolicy.CashPreservation)
-            && !need.HasCheckout
-            && !need.HasRestock
-            && tasks.Contains(EmployeeTaskKind.Checkout)
-            && tasks.Contains(EmployeeTaskKind.Restock))
-        {
-            return 0;
-        }
-
-        if (!need.HasCheckout && tasks.Contains(EmployeeTaskKind.Checkout))
-        {
-            return 0;
-        }
-
-        return !need.HasRestock && tasks.Contains(EmployeeTaskKind.Restock) ? 1 : 2;
-    }
+        LongTermStoreStaffingNeed need) =>
+        LongTermStaffingPolicy.Priority(policy, need, role);
 
     private static IReadOnlyList<ProductDefinition> LoadProducts()
     {
@@ -408,9 +425,4 @@ internal static class LongTermProgressionScenarioRunner
 
     private sealed record CandidateRoute(string StoreId, InvestmentCandidate Candidate);
 
-    private sealed record StaffingNeed(
-        string StoreId,
-        int EmployeeCount,
-        bool HasCheckout,
-        bool HasRestock);
 }
