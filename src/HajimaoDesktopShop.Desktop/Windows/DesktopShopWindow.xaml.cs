@@ -65,7 +65,6 @@ public partial class DesktopShopWindow : Window
         }
 
         DragMove();
-        ApplySurfaceLayout(reposition: true);
     }
 
     private void OnOpenManagementClick(object sender, RoutedEventArgs e) =>

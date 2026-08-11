@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.IO;
 using System.Windows.Controls;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
@@ -11,6 +12,25 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
 public sealed class DesktopShopWindowRenderingTests
 {
+    [Fact]
+    public void DragHandler_PreservesThePositionChosenByDragMove()
+    {
+        var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
+        var handlerStart = source.IndexOf(
+            "private void OnSurfaceMouseLeftButtonDown",
+            StringComparison.Ordinal);
+        var nextHandlerStart = source.IndexOf(
+            "private void OnOpenManagementClick",
+            handlerStart,
+            StringComparison.Ordinal);
+
+        Assert.True(handlerStart >= 0);
+        Assert.True(nextHandlerStart > handlerStart);
+        var dragHandler = source[handlerStart..nextHandlerStart];
+        Assert.Contains("DragMove();", dragHandler, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplySurfaceLayout", dragHandler, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Content_DefaultsToAOneStoreStreetAndKeepsTheShopSurfaceAvailable()
     {
@@ -133,5 +153,23 @@ public sealed class DesktopShopWindowRenderingTests
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
         }
+    }
+
+    private static string FindDesktopShopWindowCodeBehindPath()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        return Path.Combine(
+            directory.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "Windows",
+            "DesktopShopWindow.xaml.cs");
     }
 }
