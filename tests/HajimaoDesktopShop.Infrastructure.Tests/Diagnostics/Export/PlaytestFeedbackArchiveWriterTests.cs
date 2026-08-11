@@ -80,6 +80,45 @@ public sealed class PlaytestFeedbackArchiveWriterTests
     }
 
     [Fact]
+    public async Task Write_AllConcurrentCallsCreateUniqueReadableArchives()
+    {
+        using var directory = new TemporaryDirectory();
+        var allZipPaths = new List<string>();
+
+        for (var round = 0; round < 6; round++)
+        {
+            using var start = new ManualResetEventSlim();
+            var tasks = Enumerable
+                .Range(0, 32)
+                .Select(_ => Task.Run(() =>
+                {
+                    start.Wait();
+                    return PlaytestFeedbackArchiveWriter.Write(directory.Path, Report());
+                }))
+                .ToArray();
+
+            start.Set();
+            allZipPaths.AddRange(await Task.WhenAll(tasks));
+        }
+
+        Assert.Equal(192, allZipPaths.Count);
+        Assert.Equal(allZipPaths.Count, allZipPaths.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(allZipPaths, path => Assert.Equal(Path.GetFullPath(path), path));
+        Assert.Equal(
+            allZipPaths.OrderBy(path => path, StringComparer.Ordinal),
+            Directory.GetFiles(directory.Path, "*.zip").OrderBy(path => path, StringComparer.Ordinal));
+        Assert.Empty(Directory.GetFiles(directory.Path, "*.tmp"));
+
+        foreach (var zipPath in allZipPaths)
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            Assert.Equal(new[] { "feedback.json", "README.txt" }, archive.Entries.Select(entry => entry.FullName).OrderBy(name => name));
+            Assert.NotEmpty(ReadEntry(archive, "feedback.json"));
+            Assert.NotEmpty(ReadEntry(archive, "README.txt"));
+        }
+    }
+
+    [Fact]
     public void Write_ValidatesArgumentsWithoutLeavingTempFiles()
     {
         using var directory = new TemporaryDirectory();

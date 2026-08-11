@@ -8,6 +8,7 @@ namespace HajimaoDesktopShop.Infrastructure.Diagnostics.Export;
 public static class PlaytestFeedbackArchiveWriter
 {
     private const string FilenamePrefix = "HajimaoDesktopShop-Feedback";
+    private const int MaximumCollisionRetries = 32;
 
     public static JsonSerializerOptions JsonOptions => new(JsonSerializerDefaults.Web)
     {
@@ -44,8 +45,7 @@ public static class PlaytestFeedbackArchiveWriter
                 WriteTextEntry(archive, "feedback.json", JsonSerializer.Serialize(report, JsonOptions));
             }
 
-            var destinationPath = CreateDestinationPath(fullOutputDirectory);
-            File.Move(tempPath, destinationPath, overwrite: false);
+            var destinationPath = MoveToUniqueDestination(tempPath, fullOutputDirectory);
             return destinationPath;
         }
         catch
@@ -59,17 +59,48 @@ public static class PlaytestFeedbackArchiveWriter
         }
     }
 
-    private static string CreateDestinationPath(string outputDirectory)
+    private static string MoveToUniqueDestination(string tempPath, string outputDirectory)
     {
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss");
-        var destinationPath = Path.Combine(outputDirectory, $"{FilenamePrefix}-{timestamp}.zip");
-        if (!File.Exists(destinationPath))
+        var destinationPath = CreateDestinationPath(outputDirectory, timestamp, suffix: null);
+        if (TryMove(tempPath, destinationPath))
         {
             return destinationPath;
         }
 
-        var suffix = Guid.NewGuid().ToString("N")[..8];
-        return Path.Combine(outputDirectory, $"{FilenamePrefix}-{timestamp}-{suffix}.zip");
+        for (var attempt = 0; attempt < MaximumCollisionRetries; attempt++)
+        {
+            var suffix = Guid.NewGuid().ToString("N")[..8];
+            destinationPath = CreateDestinationPath(outputDirectory, timestamp, suffix);
+            if (TryMove(tempPath, destinationPath))
+            {
+                return destinationPath;
+            }
+        }
+
+        throw new IOException(
+            $"Could not create a unique feedback archive name after {MaximumCollisionRetries} collision retries.");
+    }
+
+    private static bool TryMove(string tempPath, string destinationPath)
+    {
+        try
+        {
+            File.Move(tempPath, destinationPath, overwrite: false);
+            return true;
+        }
+        catch (IOException) when (File.Exists(destinationPath))
+        {
+            return false;
+        }
+    }
+
+    private static string CreateDestinationPath(string outputDirectory, string timestamp, string? suffix)
+    {
+        var filename = suffix is null
+            ? $"{FilenamePrefix}-{timestamp}.zip"
+            : $"{FilenamePrefix}-{timestamp}-{suffix}.zip";
+        return Path.Combine(outputDirectory, filename);
     }
 
     private static void WriteTextEntry(ZipArchive archive, string entryName, string text)
