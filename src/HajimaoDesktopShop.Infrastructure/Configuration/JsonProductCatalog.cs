@@ -3,7 +3,7 @@ using HajimaoDesktopShop.Application.Catalog;
 
 namespace HajimaoDesktopShop.Infrastructure.Configuration;
 
-public sealed class JsonProductCatalog : IProductCatalog
+public sealed class JsonProductCatalog
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
