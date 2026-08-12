@@ -71,7 +71,7 @@ public sealed class MarketViewModelTests
         Assert.Equal("Lv.1", viewModel.PlayerLevelText);
         Assert.Equal("corner-store", viewModel.SelectedStoreId);
         Assert.Equal("街角便利店", viewModel.SelectedStoreName);
-        Assert.Equal("查看经营概览", viewModel.Onboarding.Title);
+        Assert.Equal("选择整店策略", viewModel.Onboarding.Title);
         Assert.NotEmpty(viewModel.Investment.Candidates);
     }
 
@@ -140,7 +140,7 @@ public sealed class MarketViewModelTests
 
         viewModel.GoToNextActionCommand.Execute(null);
 
-        Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
+        Assert.Equal(ManagementSection.Strategy, viewModel.SelectedSection);
         Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
     }
 

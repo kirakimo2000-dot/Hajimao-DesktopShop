@@ -73,8 +73,12 @@ public sealed class ManagementWindowTests
                 Assert.Equal(Visibility.Visible, panel.Visibility);
 
                 var action = Assert.IsType<Button>(window.FindName("NextActionButton"));
-                Assert.Equal("前往当前建议", AutomationProperties.GetName(action));
-                Assert.Equal("前往", viewModel.NextAction.ActionText);
+                Assert.Equal("选策略", viewModel.NextAction.ActionText);
+                Assert.Equal(
+                    "NextAction.ActionText",
+                    BindingOperations.GetBindingExpression(
+                        action,
+                        AutomationProperties.NameProperty)?.ParentBinding.Path.Path);
                 Assert.Equal(
                     "NextAction.ActionText",
                     BindingOperations.GetBindingExpression(

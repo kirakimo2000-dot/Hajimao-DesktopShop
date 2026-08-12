@@ -18,7 +18,7 @@ public sealed class OnboardingViewModelTests
 
         viewModel.Refresh(Snapshot(completedTasks, taskId));
 
-        Assert.Equal($"新手任务 {completedTasks + 1}/4", viewModel.ProgressText);
+        Assert.Equal($"新手任务 {completedTasks + 1}/3", viewModel.ProgressText);
         Assert.Equal(expectedTitle, viewModel.Title);
         Assert.Equal(expectedGuidance, viewModel.Guidance);
         Assert.Equal(expectedSection, viewModel.SuggestedSection);
@@ -30,7 +30,7 @@ public sealed class OnboardingViewModelTests
     {
         var viewModel = new OnboardingViewModel();
 
-        viewModel.Refresh(Snapshot(4, null));
+        viewModel.Refresh(Snapshot(3, null));
 
         Assert.Equal(ManagementSection.Overview, viewModel.SuggestedSection);
         Assert.False(viewModel.IsVisible);
@@ -39,10 +39,9 @@ public sealed class OnboardingViewModelTests
     public static TheoryData<OnboardingTaskId, int, string, string, ManagementSection> TaskPresentationCases() =>
         new()
         {
-            { OnboardingTaskId.ReviewEconomy, 0, "查看经营概览", "先看收入、利润和现金续航。", ManagementSection.Overview },
-            { OnboardingTaskId.ChooseStoreStrategy, 1, "选择整店策略", "选择高周转、高毛利或稳健备货。", ManagementSection.Strategy },
-            { OnboardingTaskId.MakeFirstInvestment, 2, "完成第一次投资", "比较回报与现金压力，执行一项投资。", ManagementSection.Investment },
-            { OnboardingTaskId.ReviewInvestmentReturn, 3, "查看投资回报", "等待下一次完整日结，查看投资前后变化。", ManagementSection.Investment }
+            { OnboardingTaskId.ChooseStoreStrategy, 0, "选择整店策略", "选择高周转、高毛利或稳健备货。", ManagementSection.Strategy },
+            { OnboardingTaskId.MakeFirstInvestment, 1, "完成第一次投资", "比较回报与现金压力，执行一项投资。", ManagementSection.Investment },
+            { OnboardingTaskId.ReviewInvestmentReturn, 2, "查看投资回报", "等待下一次完整日结，查看投资前后变化。", ManagementSection.Investment }
         };
 
     private static OnboardingSnapshot Snapshot(int completedTasks, OnboardingTaskId? currentTaskId) =>

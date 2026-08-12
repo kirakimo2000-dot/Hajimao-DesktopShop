@@ -315,7 +315,7 @@
                             <Button x:Name="NextActionButton" Content="{Binding NextAction.ActionText}"
                                     Style="{DynamicResource PrimaryPixelButton}"
                                     Command="{Binding GoToNextActionCommand}"
-                                    AutomationProperties.Name="前往当前建议" />
+                                    AutomationProperties.Name="{Binding NextAction.ActionText}" />
                         </StackPanel>
                     </Border>
                   </StackPanel>

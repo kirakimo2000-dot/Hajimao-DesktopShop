@@ -18,7 +18,6 @@ public sealed class OnboardingProgressServiceTests
     {
         Assert.Equal(
             [
-                "ReviewEconomy",
                 "ChooseStoreStrategy",
                 "MakeFirstInvestment",
                 "ReviewInvestmentReturn"
@@ -27,13 +26,13 @@ public sealed class OnboardingProgressServiceTests
     }
 
     [Fact]
-    public void CreateSnapshot_ForNewSession_StartsAtEconomyReview()
+    public void CreateSnapshot_ForNewSession_StartsAtTheFirstRealDecision()
     {
         var snapshot = OnboardingProgressService.CreateSnapshot(Simulation(), Procurement());
 
-        Assert.Equal(4, snapshot.TotalTasks);
+        Assert.Equal(3, snapshot.TotalTasks);
         Assert.Equal(0, snapshot.CompletedTasks);
-        Assert.Equal(OnboardingTaskId.ReviewEconomy, snapshot.CurrentTaskId);
+        Assert.Equal(OnboardingTaskId.ChooseStoreStrategy, snapshot.CurrentTaskId);
     }
 
     [Fact]
@@ -100,7 +99,7 @@ public sealed class OnboardingProgressServiceTests
             hasRecordedInvestment: true,
             hasComparableInvestmentReturn: true);
 
-        Assert.Equal(4, snapshot.CompletedTasks);
+        Assert.Equal(3, snapshot.CompletedTasks);
         Assert.Null(snapshot.CurrentTaskId);
         Assert.True(snapshot.IsComplete);
     }
@@ -117,7 +116,7 @@ public sealed class OnboardingProgressServiceTests
             new OnboardingSnapshot(
                 outOfOrder,
                 completedTasks: 0,
-                currentTaskId: OnboardingTaskId.ReviewEconomy));
+                currentTaskId: OnboardingTaskId.ChooseStoreStrategy));
     }
 
     [Fact]
@@ -127,7 +126,7 @@ public sealed class OnboardingProgressServiceTests
         var snapshot = new OnboardingSnapshot(
             tasks,
             completedTasks: 0,
-            currentTaskId: OnboardingTaskId.ReviewEconomy);
+            currentTaskId: OnboardingTaskId.ChooseStoreStrategy);
 
         tasks[0] = tasks[0] with { IsCompleted = true };
 
@@ -138,14 +137,12 @@ public sealed class OnboardingProgressServiceTests
     public static TheoryData<OnboardingTaskId, BusinessSimulationSnapshot, ProcurementSnapshot> CompletionCases() =>
         new()
         {
-            { OnboardingTaskId.ReviewEconomy, Simulation(gameMinute: 1), Procurement() },
             { OnboardingTaskId.ChooseStoreStrategy, Simulation(stores: [Store(salePriceCents: 230)]), Procurement() },
             { OnboardingTaskId.MakeFirstInvestment, Simulation(stores: [Store(growth: Growth(shelfLevel: 1))]), Procurement() }
         };
 
     private static OnboardingTaskState[] FullTaskStates(bool completed = false) =>
     [
-        new(OnboardingTaskId.ReviewEconomy, completed),
         new(OnboardingTaskId.ChooseStoreStrategy, completed),
         new(OnboardingTaskId.MakeFirstInvestment, completed),
         new(OnboardingTaskId.ReviewInvestmentReturn, completed)

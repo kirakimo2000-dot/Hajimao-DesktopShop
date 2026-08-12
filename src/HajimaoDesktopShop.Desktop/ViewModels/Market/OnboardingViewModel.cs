@@ -66,10 +66,6 @@ public sealed class OnboardingViewModel : ObservableObject
     private static OnboardingTaskPresentation GetPresentation(OnboardingTaskId taskId) =>
         taskId switch
         {
-            OnboardingTaskId.ReviewEconomy => new(
-                "查看经营概览",
-                "先看收入、利润和现金续航。",
-                ManagementSection.Overview),
             OnboardingTaskId.ChooseStoreStrategy => new(
                 "选择整店策略",
                 "选择高周转、高毛利或稳健备货。",

@@ -7,7 +7,7 @@ public sealed class NextActionViewModel : ObservableObject
     private string _contextText = string.Empty;
     private string _title = string.Empty;
     private string _detailText = string.Empty;
-    private string _actionText = "前往";
+    private string _actionText = "选策略";
     private ManagementSection _suggestedSection = ManagementSection.Overview;
 
     public string ContextText
@@ -47,13 +47,13 @@ public sealed class NextActionViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(onboarding);
         ArgumentNullException.ThrowIfNull(progression);
 
-        ActionText = "前往";
         if (onboarding.IsVisible)
         {
             ContextText = onboarding.ProgressText;
             Title = onboarding.Title;
             DetailText = onboarding.Guidance;
             SuggestedSection = onboarding.SuggestedSection;
+            ActionText = ActionTextFor(SuggestedSection);
             return;
         }
 
@@ -61,5 +61,15 @@ public sealed class NextActionViewModel : ObservableObject
         Title = progression.TitleText;
         DetailText = progression.ProgressText;
         SuggestedSection = progression.SuggestedSection;
+        ActionText = ActionTextFor(SuggestedSection);
     }
+
+    private static string ActionTextFor(ManagementSection section) =>
+        section switch
+        {
+            ManagementSection.Overview => "看概览",
+            ManagementSection.Strategy => "选策略",
+            ManagementSection.Investment => "看投资",
+            _ => throw new ArgumentOutOfRangeException(nameof(section), section, null)
+        };
 }

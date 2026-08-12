@@ -11,15 +11,16 @@ public sealed class NextActionViewModelTests
     public void Update_PrioritizesTheCurrentOnboardingAction()
     {
         var onboarding = new OnboardingViewModel();
-        onboarding.Refresh(OnboardingSnapshot(completedTasks: 1, OnboardingTaskId.ChooseStoreStrategy));
+        onboarding.Refresh(OnboardingSnapshot(completedTasks: 0, OnboardingTaskId.ChooseStoreStrategy));
         var progression = new LongTermProgressionViewModel();
         var nextAction = new NextActionViewModel();
 
         nextAction.Update(onboarding, progression);
 
-        Assert.Equal("新手任务 2/4", nextAction.ContextText);
+        Assert.Equal("新手任务 1/3", nextAction.ContextText);
         Assert.Equal("选择整店策略", nextAction.Title);
         Assert.Equal("选择高周转、高毛利或稳健备货。", nextAction.DetailText);
+        Assert.Equal("选策略", nextAction.ActionText);
         Assert.Equal(ManagementSection.Strategy, nextAction.SuggestedSection);
     }
 
@@ -27,7 +28,7 @@ public sealed class NextActionViewModelTests
     public void Update_FallsThroughToTheLongTermGoalAfterOnboarding()
     {
         var onboarding = new OnboardingViewModel();
-        onboarding.Refresh(OnboardingSnapshot(completedTasks: 4, currentTaskId: null));
+        onboarding.Refresh(OnboardingSnapshot(completedTasks: 3, currentTaskId: null));
         var progression = new LongTermProgressionViewModel();
         progression.Update(
             new LongTermProgressionSnapshot(
@@ -50,6 +51,7 @@ public sealed class NextActionViewModelTests
         Assert.Equal("长期目标", nextAction.ContextText);
         Assert.Equal("为第二家店准备资本", nextAction.Title);
         Assert.Equal("车站便利店 · 现金 ¥350.00/¥800.00 · Lv.2/3", nextAction.DetailText);
+        Assert.Equal("看投资", nextAction.ActionText);
         Assert.Equal(ManagementSection.Investment, nextAction.SuggestedSection);
     }
 
