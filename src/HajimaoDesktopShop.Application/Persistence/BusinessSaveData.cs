@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.Procurement;
+using HajimaoDesktopShop.Application.Business.Events;
 using HajimaoDesktopShop.Domain.Employees;
 
 namespace HajimaoDesktopShop.Application.Persistence;
@@ -71,7 +72,8 @@ public sealed record BusinessSimulationSaveData(
     IReadOnlyList<EmployeeAssignmentSaveData> Employees,
     IReadOnlyList<StoreRuntimeSaveData> Stores,
     BusinessDayReport? LastCompletedDay,
-    EmployeeOperationsSaveData? EmployeeOperations = null);
+    EmployeeOperationsSaveData? EmployeeOperations = null,
+    MarketEventSchedulerSnapshot? MarketEvents = null);
 
 public sealed record EmployeeOperationsSaveData(
     ulong CandidateRandomState,
@@ -83,7 +85,8 @@ public sealed record EmployeeCandidateSaveData(
     string Name,
     EmployeeRole Role,
     int EfficiencyPermille,
-    long HourlyWageCents);
+    long HourlyWageCents,
+    string ProfileId = "legacy");
 
 public sealed record EmployeeAssignmentSaveData(
     string StoreId,
@@ -102,7 +105,8 @@ public sealed record EmployeeAssignmentSaveData(
     int RestMinutesTowardSatisfactionGain = 0,
     int ShiftStartMinute = 0,
     int ShiftEndMinute = 0,
-    bool IsAlwaysOn = true);
+    bool IsAlwaysOn = true,
+    string ProfileId = "legacy");
 
 public sealed record StoreRuntimeSaveData(
     string StoreId,

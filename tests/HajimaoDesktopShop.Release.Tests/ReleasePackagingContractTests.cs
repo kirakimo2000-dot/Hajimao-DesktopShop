@@ -8,14 +8,14 @@ public sealed class ReleasePackagingContractTests
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_1_23()
+    public void ActiveVersion_Is_0_1_24()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.1.23", version.Value.Trim());
+        Assert.Equal("0.1.24", version.Value.Trim());
     }
 
     [Fact]

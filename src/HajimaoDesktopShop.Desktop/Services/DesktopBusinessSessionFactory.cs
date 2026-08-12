@@ -13,7 +13,8 @@ public static class DesktopBusinessSessionFactory
         GameSaveData? save,
         int seed,
         DateTimeOffset nowUtc,
-        StoreContentCatalog? storeContent = null)
+        StoreContentCatalog? storeContent = null,
+        PeopleMarketContent? peopleMarketContent = null)
     {
         ArgumentNullException.ThrowIfNull(products);
         if (products.Count == 0)
@@ -34,7 +35,9 @@ public static class DesktopBusinessSessionFactory
                 random,
                 DesktopGameContent.SimulationOptions,
                 experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold,
-                storeContent);
+                storeContent,
+                peopleMarketContent?.EmployeeProfiles,
+                peopleMarketContent?.MarketEvents);
             ConfigureStarterShifts(newSession);
             return new DesktopBusinessSessionStartResult(
                 newSession,
@@ -51,7 +54,9 @@ public static class DesktopBusinessSessionFactory
                 random,
                 DesktopGameContent.SimulationOptions,
                 experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold,
-                storeContent);
+                storeContent,
+                peopleMarketContent?.EmployeeProfiles,
+                peopleMarketContent?.MarketEvents);
         return new DesktopBusinessSessionStartResult(
             restoredSession,
             IsNewGame: false);

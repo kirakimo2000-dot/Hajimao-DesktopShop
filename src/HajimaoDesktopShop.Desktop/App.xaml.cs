@@ -61,6 +61,10 @@ public partial class App : System.Windows.Application
             var storeContent = await new JsonStoreContentCatalog(
                 storeFormatsPath,
                 storeBrandsPath).LoadAsync();
+            var peopleMarketContent = await new JsonPeopleMarketCatalog(
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "employees", "employee-profiles.json"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "events", "market-events.json"))
+                .LoadAsync();
             var savePath = ApplicationDataPathPolicy.ResolveSavePath(dataDirectoryOverride);
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
@@ -71,7 +75,8 @@ public partial class App : System.Windows.Application
                 savedGame,
                 Environment.TickCount,
                 startupUtc,
-                storeContent);
+                storeContent,
+                peopleMarketContent);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
             if (savedGame is null)

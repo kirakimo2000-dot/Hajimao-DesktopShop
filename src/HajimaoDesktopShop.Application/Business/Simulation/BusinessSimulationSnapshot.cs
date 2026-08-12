@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Domain.Demand;
 using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Street;
+using HajimaoDesktopShop.Application.Business.Events;
 
 namespace HajimaoDesktopShop.Application.Business.Simulation;
 
@@ -10,7 +11,8 @@ public sealed record BusinessSimulationSnapshot(
     IReadOnlyList<StoreOperationsSnapshot> Stores,
     EmployeeOperationsSnapshot Employees,
     CommercialStreetSnapshot Street,
-    BusinessDayReport? LastCompletedDay = null);
+    BusinessDayReport? LastCompletedDay = null,
+    MarketEventSchedulerSnapshot? MarketEvents = null);
 
 public sealed record StoreOperationsSnapshot(
     string StoreId,

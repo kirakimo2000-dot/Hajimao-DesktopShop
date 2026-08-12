@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Employees;
+using HajimaoDesktopShop.Application.Business.Events;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.Strategy;
@@ -458,6 +459,83 @@ public sealed class BusinessSimulationTests
         Assert.Equivalent(original.GetSnapshot(), restored.GetSnapshot(), strict: true);
         Assert.Equivalent(original.CaptureSaveData(), restored.CaptureSaveData(), strict: true);
         Assert.NotNull(restored.GetSnapshot().LastCompletedDay);
+    }
+
+    [Fact]
+    public void MarketEvents_AdvanceOnlyWithRunningSimulationAndRoundTripInSave()
+    {
+        var definitions = new[]
+        {
+            new MarketEventDefinition(
+                "street-buzz",
+                MarketEventScope.Street,
+                [],
+                240,
+                480,
+                "街区热议",
+                "客流上升。",
+                [new MarketEventEffect(MarketEventEffectKind.Traffic, 200)],
+                [])
+        };
+        var service = CreateService();
+        var original = new BusinessSimulation(
+            service,
+            [],
+            new StatefulTestRandomSource(42),
+            marketEvents: definitions);
+
+        Assert.Empty(Assert.IsType<MarketEventSchedulerSnapshot>(original.GetSnapshot().MarketEvents).ActiveEvents);
+        original.AdvanceRealSeconds(240);
+        Assert.Single(Assert.IsType<MarketEventSchedulerSnapshot>(original.GetSnapshot().MarketEvents).ActiveEvents);
+
+        var restored = new BusinessSimulation(
+            CreateService(service.CaptureSaveData()),
+            original.CaptureSaveData(),
+            new StatefulTestRandomSource(1),
+            marketEvents: definitions);
+
+        Assert.Equivalent(
+            Assert.IsType<MarketEventSchedulerSnapshot>(original.GetSnapshot().MarketEvents),
+            Assert.IsType<MarketEventSchedulerSnapshot>(restored.GetSnapshot().MarketEvents),
+            strict: true);
+        Assert.Equivalent(
+            Assert.IsType<MarketEventSchedulerSnapshot>(original.CaptureSaveData().MarketEvents),
+            Assert.IsType<MarketEventSchedulerSnapshot>(restored.CaptureSaveData().MarketEvents),
+            strict: true);
+    }
+
+    [Fact]
+    public void ActiveTrafficEvent_IncreasesArrivalDemandThroughExistingDemandModel()
+    {
+        var definitions = new[]
+        {
+            new MarketEventDefinition(
+                "street-buzz",
+                MarketEventScope.Street,
+                [],
+                240,
+                480,
+                "街区热议",
+                "客流上升。",
+                [new MarketEventEffect(MarketEventEffectKind.Traffic, 200)],
+                [])
+        };
+        var baseline = new BusinessSimulation(
+            CreateService(),
+            [],
+            new StatefulTestRandomSource(42));
+        var eventful = new BusinessSimulation(
+            CreateService(),
+            [],
+            new StatefulTestRandomSource(42),
+            marketEvents: definitions);
+
+        baseline.AdvanceRealSeconds(240);
+        eventful.AdvanceRealSeconds(240);
+
+        Assert.True(
+            Assert.Single(eventful.GetSnapshot().Stores).ArrivalDemand.FinalBasisPoints
+            > Assert.Single(baseline.GetSnapshot().Stores).ArrivalDemand.FinalBasisPoints);
     }
 
     [Fact]

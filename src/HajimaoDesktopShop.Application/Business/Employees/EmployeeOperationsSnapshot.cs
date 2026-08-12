@@ -23,7 +23,8 @@ public sealed record EmployeeOperationsEmployeeSnapshot(
     int ShiftEndMinute,
     bool IsAlwaysOn,
     EmployeeTaskSnapshot? CurrentTask = null,
-    IReadOnlyList<EmployeeTaskKind>? TaskPriorities = null);
+    IReadOnlyList<EmployeeTaskKind>? TaskPriorities = null,
+    string ProfileId = "legacy");
 
 internal sealed record EmployeeRuntimeAssignment(
     string StoreId,

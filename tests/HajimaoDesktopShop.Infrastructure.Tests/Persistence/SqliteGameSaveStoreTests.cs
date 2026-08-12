@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Events;
 using HajimaoDesktopShop.Infrastructure.Persistence;
 using HajimaoDesktopShop.Domain.Employees;
 using Microsoft.Data.Sqlite;
@@ -266,7 +267,24 @@ public sealed class SqliteGameSaveStoreTests
                         12,
                         8)
                 ],
-                new BusinessDayReport(1, [])));
+                new BusinessDayReport(1, []),
+                MarketEvents: new MarketEventSchedulerSnapshot(
+                    88,
+                    7_411,
+                    152,
+                    [
+                        new ActiveMarketEventSnapshot(
+                            "morning-commute",
+                            "早高峰提前",
+                            "通勤客流上升。",
+                            72,
+                            [new MarketEventEffect(MarketEventEffectKind.Traffic, 180)],
+                            [])
+                    ],
+                    new Dictionary<string, int>(StringComparer.Ordinal)
+                    {
+                        ["morning-commute"] = 1_392
+                    })));
 
     private static async Task CreateVersionOneDatabaseAsync(string path, int speed)
     {

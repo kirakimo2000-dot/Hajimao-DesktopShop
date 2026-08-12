@@ -7,6 +7,8 @@ using HajimaoDesktopShop.Domain.Demand;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Shops;
+using HajimaoDesktopShop.Application.Catalog;
+using HajimaoDesktopShop.Application.Business.Events;
 
 namespace HajimaoDesktopShop.Application.Business.Simulation;
 
@@ -20,6 +22,7 @@ public sealed class BusinessSimulation
     private readonly IStatefulRandomSource? _statefulRandom;
     private readonly EmployeeOperationsService _employeeOperations;
     private readonly CommercialStreetTrafficService _streetTraffic;
+    private readonly MarketEventScheduler? _marketEvents;
     private readonly Dictionary<string, StoreRuntime> _stores = new(StringComparer.Ordinal);
     private readonly HashSet<EmployeeId> _lastUnpaidEmployees = [];
     private readonly HashSet<EmployeeId> _lastRestingEmployees = [];
@@ -29,7 +32,9 @@ public sealed class BusinessSimulation
         BusinessGameService game,
         IEnumerable<StoreEmployeeAssignment> assignments,
         IRandomSource random,
-        BusinessSimulationOptions? options = null)
+        BusinessSimulationOptions? options = null,
+        IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles = null,
+        IReadOnlyList<MarketEventDefinition>? marketEvents = null)
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(assignments);
@@ -40,8 +45,9 @@ public sealed class BusinessSimulation
         _statefulRandom = random as IStatefulRandomSource;
         _options = options ?? new BusinessSimulationOptions();
         _clock = new SimulationClock();
-        _employeeOperations = CreateEmployeeOperations(game, assignments, nameof(assignments));
+        _employeeOperations = CreateEmployeeOperations(game, assignments, nameof(assignments), employeeProfiles);
         _streetTraffic = new CommercialStreetTrafficService(random);
+        _marketEvents = CreateMarketEvents(marketEvents);
         SynchronizeStores();
     }
 
@@ -49,7 +55,9 @@ public sealed class BusinessSimulation
         BusinessGameService game,
         BusinessSimulationSaveData restoredState,
         IStatefulRandomSource random,
-        BusinessSimulationOptions? options = null)
+        BusinessSimulationOptions? options = null,
+        IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles = null,
+        IReadOnlyList<MarketEventDefinition>? marketEvents = null)
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(restoredState);
@@ -70,8 +78,10 @@ public sealed class BusinessSimulation
             game,
             employeeSaves,
             restoredState.EmployeeOperations,
-            nameof(restoredState));
+            nameof(restoredState),
+            employeeProfiles);
         _streetTraffic = new CommercialStreetTrafficService(random);
+        _marketEvents = RestoreMarketEvents(marketEvents, restoredState.MarketEvents);
         _statefulRandom.RestoreState(restoredState.RandomState);
         _lastCompletedDay = restoredState.LastCompletedDay;
         RestoreStores(restoredState.Stores);
@@ -117,7 +127,8 @@ public sealed class BusinessSimulation
                 Array.AsReadOnly(stores),
                 _employeeOperations.GetSnapshot(employeeTasks),
                 street,
-                _lastCompletedDay);
+                _lastCompletedDay,
+                _marketEvents?.GetSnapshot());
         }
     }
 
@@ -132,6 +143,11 @@ public sealed class BusinessSimulation
                     "Complete simulation saves require an IStatefulRandomSource.");
             }
 
+            var employeeOperations = _employeeOperations.GetSnapshot();
+            var profilesByEmployee = employeeOperations.Employees.ToDictionary(
+                employee => employee.EmployeeId,
+                employee => employee.ProfileId,
+                StringComparer.Ordinal);
             var employees = _employeeOperations.GetRuntimeAssignments()
                 .OrderBy(assignment => assignment.StoreId, StringComparer.Ordinal)
                 .ThenBy(assignment => assignment.Employee.Id.Value, StringComparer.Ordinal)
@@ -157,21 +173,22 @@ public sealed class BusinessSimulation
                             condition.RestMinutesTowardSatisfactionGain,
                             assignment.Shift.StartMinute,
                             assignment.Shift.EndMinute,
-                            assignment.Shift.IsAlwaysOn);
+                            assignment.Shift.IsAlwaysOn,
+                            profilesByEmployee[employee.Id.Value]);
                     })
                 .ToArray();
             var stores = _stores.Values
                 .OrderBy(store => store.StoreId, StringComparer.Ordinal)
                 .Select(store => store.CaptureSaveData())
                 .ToArray();
-            var employeeOperations = _employeeOperations.GetSnapshot();
             var candidates = employeeOperations.Candidates
                 .Select(candidate => new EmployeeCandidateSaveData(
                     candidate.CandidateId,
                     candidate.Name,
                     candidate.Role,
                     candidate.EfficiencyPermille,
-                    candidate.HourlyWage.Cents))
+                    candidate.HourlyWage.Cents,
+                    candidate.ProfileId))
                 .ToArray();
             return new BusinessSimulationSaveData(
                 _clock.GameMinute,
@@ -182,17 +199,19 @@ public sealed class BusinessSimulation
                 new EmployeeOperationsSaveData(
                     employeeOperations.CandidateRandomState,
                     employeeOperations.NextCandidateId,
-                    Array.AsReadOnly(candidates)));
+                    Array.AsReadOnly(candidates)),
+                _marketEvents?.GetSnapshot());
         }
     }
 
     private static EmployeeOperationsService CreateEmployeeOperations(
         BusinessGameService game,
         IEnumerable<StoreEmployeeAssignment> assignments,
-        string parameterName)
+        string parameterName,
+        IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles)
     {
         var staffByStore = CreateStaffMap(assignments, parameterName);
-        var operations = new EmployeeOperationsService(game);
+        var operations = new EmployeeOperationsService(game, profiles: employeeProfiles);
         foreach (var pair in staffByStore.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             foreach (var employee in pair.Value)
@@ -238,7 +257,8 @@ public sealed class BusinessSimulation
         BusinessGameService game,
         IEnumerable<EmployeeAssignmentSaveData> savedEmployees,
         EmployeeOperationsSaveData? savedOperations,
-        string parameterName)
+        string parameterName,
+        IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles)
     {
         var saves = savedEmployees.ToArray();
         if (saves.Any(saved => saved is null))
@@ -259,7 +279,7 @@ public sealed class BusinessSimulation
         EmployeeOperationsService operations;
         if (savedOperations is null)
         {
-            operations = new EmployeeOperationsService(game);
+            operations = new EmployeeOperationsService(game, profiles: employeeProfiles);
         }
         else
         {
@@ -279,7 +299,9 @@ public sealed class BusinessSimulation
                     candidate.Name,
                     candidate.Role,
                     candidate.EfficiencyPermille,
-                    new Money(candidate.HourlyWageCents))));
+                    new Money(candidate.HourlyWageCents),
+                    candidate.ProfileId)),
+                employeeProfiles);
         }
 
         foreach (var saved in saves.OrderBy(saved => saved.EmployeeId, StringComparer.Ordinal))
@@ -307,7 +329,7 @@ public sealed class BusinessSimulation
                     saved.StoreId,
                     saved.ShiftStartMinute,
                     saved.ShiftEndMinute);
-            operations.RegisterExistingEmployee(saved.StoreId, employee, shift);
+            operations.RegisterExistingEmployee(saved.StoreId, employee, shift, saved.ProfileId);
         }
 
         return operations;
@@ -397,12 +419,32 @@ public sealed class BusinessSimulation
 
         _game.AdvanceProcurementMinute();
         _game.AdvanceStoreGrowthMinute();
+        _marketEvents?.AdvanceMinutes(1);
 
         var completedMinute = checked(_clock.GameMinute + 1L);
         if (completedMinute % 1_440L == 0)
         {
             CompleteDay(checked((int)(completedMinute / 1_440L)));
         }
+    }
+
+    private static MarketEventScheduler? CreateMarketEvents(IReadOnlyList<MarketEventDefinition>? definitions) =>
+        definitions is not { Count: > 0 }
+            ? null
+            : new MarketEventScheduler(definitions, 0x48414A494D414F45UL);
+
+    private static MarketEventScheduler? RestoreMarketEvents(
+        IReadOnlyList<MarketEventDefinition>? definitions,
+        MarketEventSchedulerSnapshot? restoredState)
+    {
+        if (definitions is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        return restoredState is null
+            ? CreateMarketEvents(definitions)
+            : new MarketEventScheduler(definitions, restoredState);
     }
 
     private void SynchronizeStores()
@@ -720,17 +762,18 @@ public sealed class BusinessSimulation
         }
 
         var format = store.FormatEconomics ?? StoreFormatEconomicsSnapshot.Neutral;
+        var eventModifiers = _marketEvents?.GetModifiers() ?? MarketEventModifiers.Neutral;
         var weighted = available
             .Select(product => product with
             {
-                DemandWeightPermille = format.ProductShelfWeights.GetValueOrDefault(
-                    product.ShelfKind,
-                    1_000)
+                DemandWeightPermille = ScalePermille(
+                    format.ProductShelfWeights.GetValueOrDefault(product.ShelfKind, 1_000),
+                    eventModifiers.CategoryWeightPermille.GetValueOrDefault(product.ShelfKind, 1_000))
             })
             .ToArray();
         var selected = ProductDemandSelector.Select(weighted, _random);
         var purchase = DemandModel.CalculatePurchase(new DemandContext(
-            _options.BasePurchaseBasisPoints,
+            ScaleBasisPoints(_options.BasePurchaseBasisPoints, eventModifiers.PurchaseChancePermille),
             CalculatePriceIndex(selected),
             runtime.ServicePermille,
             CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
@@ -785,8 +828,9 @@ public sealed class BusinessSimulation
     {
         var growth = store.Growth ?? _game.GetStoreGrowthSnapshot(runtime.StoreId);
         var format = store.FormatEconomics ?? StoreFormatEconomicsSnapshot.Neutral;
+        var eventModifiers = _marketEvents?.GetModifiers() ?? MarketEventModifiers.Neutral;
         return DemandModel.CalculateArrival(new DemandContext(
-            _options.BaseArrivalBasisPoints,
+            ScaleBasisPoints(_options.BaseArrivalBasisPoints, eventModifiers.TrafficPermille),
             CalculateAveragePriceIndex(store.Products),
             runtime.ServicePermille,
             CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
@@ -800,6 +844,12 @@ public sealed class BusinessSimulation
 
     private static int CalculateEffectiveQueueLength(int queueLength, int comfortCapacity) =>
         Math.Max(0, queueLength - comfortCapacity);
+
+    private static int ScaleBasisPoints(int basisPoints, int modifierPermille) =>
+        checked((int)Math.Clamp((long)basisPoints * modifierPermille / 1_000L, 0L, 10_000L));
+
+    private static int ScalePermille(int value, int modifierPermille) =>
+        checked((int)Math.Clamp((long)value * modifierPermille / 1_000L, 1L, 10_000L));
 
     private int CurrentMinuteOfDay => checked((int)(_clock.GameMinute % 1_440L));
 

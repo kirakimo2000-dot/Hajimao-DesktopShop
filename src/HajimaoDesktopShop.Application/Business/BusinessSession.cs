@@ -42,7 +42,9 @@ public sealed class BusinessSession
         IStatefulRandomSource random,
         BusinessSimulationOptions? options = null,
         int experiencePerItemSold = 1,
-        StoreContentCatalog? storeContent = null)
+        StoreContentCatalog? storeContent = null,
+        IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles = null,
+        IReadOnlyList<Business.Events.MarketEventDefinition>? marketEvents = null)
     {
         var products = productDefinitions?.ToArray()
             ?? throw new ArgumentNullException(nameof(productDefinitions));
@@ -60,7 +62,7 @@ public sealed class BusinessSession
             storeContent);
         return new BusinessSession(
             game,
-            new BusinessSimulation(game, staff, random, options),
+            new BusinessSimulation(game, staff, random, options, employeeProfiles, marketEvents),
             storeContent: storeContent);
     }
 
@@ -74,7 +76,9 @@ public sealed class BusinessSession
         IStatefulRandomSource random,
         BusinessSimulationOptions? options = null,
         int experiencePerItemSold = 1,
-        StoreContentCatalog? storeContent = null)
+        StoreContentCatalog? storeContent = null,
+        IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles = null,
+        IReadOnlyList<Business.Events.MarketEventDefinition>? marketEvents = null)
     {
         ArgumentNullException.ThrowIfNull(save);
         ArgumentNullException.ThrowIfNull(random);
@@ -107,7 +111,7 @@ public sealed class BusinessSession
                 storeContent);
             return new BusinessSession(
                 restoredGame,
-                new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options),
+                new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options, employeeProfiles, marketEvents),
                 save.InvestmentTracking,
                 storeContent);
         }
@@ -129,7 +133,7 @@ public sealed class BusinessSession
             options ?? new BusinessSimulationOptions());
         return new BusinessSession(
             game,
-            new BusinessSimulation(game, simulationState, random, options),
+            new BusinessSimulation(game, simulationState, random, options, employeeProfiles, marketEvents),
             save.InvestmentTracking,
             storeContent);
     }

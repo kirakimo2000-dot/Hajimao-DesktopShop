@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business.Employees;
+using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 
@@ -21,6 +22,7 @@ public sealed class EmployeeOperationsServiceTests
         Assert.Equal(EmployeeCommandStatus.UnknownCandidate, duplicate.Status);
         Assert.Equal(928_000, gateway.CashCents);
         Assert.Equal("employee-000001", employee.EmployeeId);
+        Assert.Equal("legacy", employee.ProfileId);
         Assert.Equal("store-1", employee.StoreId);
         Assert.Equal(480, employee.ShiftStartMinute);
         Assert.Equal(960, employee.ShiftEndMinute);
@@ -122,6 +124,44 @@ public sealed class EmployeeOperationsServiceTests
 
         Assert.Equivalent(first.GetSnapshot(), second.GetSnapshot(), strict: true);
         Assert.Equal(7, first.GetSnapshot().NextCandidateId);
+    }
+
+    [Fact]
+    public void CandidateGeneration_WithProfiles_UsesProfileIdentityAndAllowedRoles()
+    {
+        var profiles = new[]
+        {
+            new EmployeeProfileDefinition(
+                "profile-cashier",
+                "林小雨",
+                "cn",
+                "employee-a01",
+                [EmployeeRole.Cashier],
+                1100,
+                900,
+                "社区门店经验。")
+        };
+        var service = new EmployeeOperationsService(
+            new FakeGateway(1_000_000, "store-1"),
+            42UL,
+            1,
+            candidates: null,
+            profiles);
+
+        var candidates = service.GetSnapshot().Candidates;
+
+        Assert.Equal(3, candidates.Count);
+        Assert.All(candidates, candidate =>
+        {
+            Assert.Equal("profile-cashier", candidate.ProfileId);
+            Assert.Equal("林小雨", candidate.Name);
+            Assert.Equal(EmployeeRole.Cashier, candidate.Role);
+            Assert.InRange(candidate.EfficiencyPermille, 880, 1375);
+        });
+
+        var hired = service.Hire(candidates[0].CandidateId, "store-1");
+        Assert.Equal(EmployeeCommandStatus.Success, hired.Status);
+        Assert.Equal("profile-cashier", Assert.Single(service.GetSnapshot().Employees).ProfileId);
     }
 
     private static EmployeeOperationsService CreateService(
