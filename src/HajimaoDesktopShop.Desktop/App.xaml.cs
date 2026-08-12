@@ -45,6 +45,10 @@ public partial class App : System.Windows.Application
                 ApplicationDataPathPolicy.OverrideEnvironmentVariable);
             _dataDirectoryOverride = dataDirectoryOverride;
             InitializeDiagnostics(dataDirectoryOverride);
+            ReportDiagnostic(
+                "application.starting",
+                GameDiagnosticLevel.Information,
+                "Application startup initialized.");
 
             var catalogPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
             var products = await new JsonProductCatalog(catalogPath).LoadAsync();

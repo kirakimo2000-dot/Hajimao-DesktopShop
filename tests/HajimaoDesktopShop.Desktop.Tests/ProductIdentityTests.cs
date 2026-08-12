@@ -48,4 +48,31 @@ public sealed class ProductIdentityTests
             ProductIdentity.DisplayName,
             assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product);
     }
+
+    [Fact]
+    public void Startup_WritesDiagnosticBeforeWaitingForStarterStoreChoice()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+        var diagnosticIndex = startupSource.IndexOf(
+            "\"application.starting\"",
+            StringComparison.Ordinal);
+        var selectionIndex = startupSource.IndexOf(
+            "StarterStoreStartupCoordinator.SelectForStartup",
+            StringComparison.Ordinal);
+
+        Assert.True(diagnosticIndex >= 0);
+        Assert.True(selectionIndex > diagnosticIndex);
+    }
 }
