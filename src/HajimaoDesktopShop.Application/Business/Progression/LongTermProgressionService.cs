@@ -5,7 +5,6 @@ namespace HajimaoDesktopShop.Application.Business.Progression;
 
 public static class LongTermProgressionService
 {
-    private const int CommercialBlockLevel = 10;
     private const int StrengthenedStoreGrowthTotal = 2;
 
     public static LongTermProgressionSnapshot Create(
@@ -74,8 +73,7 @@ public static class LongTermProgressionService
         var nextStore = catalog.FirstOrDefault(store => !store.IsOpen);
         if (nextStore is not null)
         {
-            var isReady = simulation.Business.PlayerLevel >= nextStore.RequiredPlayerLevel
-                && simulation.Business.CashCents >= nextStore.OpeningCostCents;
+            var isReady = simulation.Business.CashCents >= nextStore.OpeningCostCents;
             var isSecondStore = openStores.Count == 1;
             return new ProgressionGoalSnapshot(
                 isSecondStore
@@ -88,18 +86,8 @@ public static class LongTermProgressionService
                 nextStore.Id,
                 simulation.Business.CashCents,
                 nextStore.OpeningCostCents,
-                nextStore.RequiredPlayerLevel,
+                RequiredPlayerLevel: 0,
                 nextStore.OpeningCostCents);
-        }
-
-        if (simulation.Business.PlayerLevel < CommercialBlockLevel)
-        {
-            return new ProgressionGoalSnapshot(
-                ProgressionGoalId.UnlockCommercialBlock,
-                string.Empty,
-                simulation.Business.PlayerLevel,
-                CommercialBlockLevel,
-                RequiredPlayerLevel: CommercialBlockLevel);
         }
 
         return new ProgressionGoalSnapshot(

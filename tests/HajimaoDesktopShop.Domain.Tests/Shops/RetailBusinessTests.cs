@@ -19,20 +19,22 @@ public sealed class RetailBusinessTests
     }
 
     [Fact]
-    public void OpenStore_RequiresPlayerLevelWithoutMutatingCash()
+    public void OpenStore_DoesNotRequirePlayerLevel()
     {
         var business = CreateBusiness();
         var definition = new ShopDefinition(
-            new ShopId("station-store"),
-            "车站便利店",
-            requiredPlayerLevel: 2,
+            new ShopId("store-0002"),
+            new StoreBrandId("familymart"),
+            new StoreFormatId("convenience"),
+            "FamilyMart",
+            streetOrdinal: 2,
             Money.FromYuan(300m));
 
         var result = business.TryOpenStore(definition);
 
-        Assert.Equal(OpenShopStatus.LevelLocked, result.Status);
-        Assert.Equal(Money.FromYuan(1_000m), business.Cash);
-        Assert.Single(business.StoreIds);
+        Assert.Equal(OpenShopStatus.Success, result.Status);
+        Assert.Equal(Money.FromYuan(700m), business.Cash);
+        Assert.Equal(2, business.StoreIds.Count);
     }
 
     [Fact]
@@ -40,9 +42,11 @@ public sealed class RetailBusinessTests
     {
         var business = CreateBusiness(totalExperience: 100);
         var definition = new ShopDefinition(
-            new ShopId("station-store"),
-            "车站便利店",
-            requiredPlayerLevel: 2,
+            new ShopId("store-0002"),
+            new StoreBrandId("seven-eleven"),
+            new StoreFormatId("convenience"),
+            "7-Eleven",
+            streetOrdinal: 2,
             Money.FromYuan(300m));
 
         var opened = business.TryOpenStore(definition);
@@ -59,9 +63,11 @@ public sealed class RetailBusinessTests
     {
         var business = CreateBusiness(totalExperience: 100);
         var definition = new ShopDefinition(
-            new ShopId("mall-store"),
-            "商场便利店",
-            requiredPlayerLevel: 2,
+            new ShopId("store-0002"),
+            new StoreBrandId("costco"),
+            new StoreFormatId("warehouse-club"),
+            "Costco",
+            streetOrdinal: 2,
             Money.FromYuan(1_500m));
 
         var result = business.TryOpenStore(definition);
@@ -75,11 +81,13 @@ public sealed class RetailBusinessTests
     public void StoresShareOneWalletButTrackTheirOwnRevenue()
     {
         var business = CreateBusiness(totalExperience: 100);
-        var secondId = new ShopId("station-store");
+        var secondId = new ShopId("store-0002");
         business.TryOpenStore(new ShopDefinition(
             secondId,
-            "车站便利店",
-            requiredPlayerLevel: 2,
+            new StoreBrandId("seven-eleven"),
+            new StoreFormatId("convenience"),
+            "7-Eleven",
+            streetOrdinal: 2,
             Money.FromYuan(300m)));
         var water = new Product(
             new ProductId("water"),
@@ -163,8 +171,10 @@ public sealed class RetailBusinessTests
             openingCash ?? Money.FromYuan(1_000m),
             new ShopDefinition(
                 new ShopId("corner-store"),
-                "街角便利店",
-                requiredPlayerLevel: 1,
+                new StoreBrandId("seven-eleven"),
+                new StoreFormatId("convenience"),
+                "7-Eleven",
+                streetOrdinal: 1,
                 Money.Zero));
     }
 

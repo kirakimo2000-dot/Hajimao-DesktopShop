@@ -256,4 +256,28 @@ public sealed class DesktopWindowPlacementPolicyTests
                 margin,
                 out _));
     }
+
+    [Theory]
+    [InlineData(712, true, 748)]
+    [InlineData(760, true, 748)]
+    [InlineData(711, false, 0)]
+    [InlineData(400, false, 0)]
+    public void TrySnapAboveWorkAreaBottom_OnlySnapsWithinTheTaskbarThreshold(
+        double currentTop,
+        bool expectedSnapped,
+        double expectedTop)
+    {
+        var snapped = DesktopWindowPlacementPolicy.TrySnapAboveWorkAreaBottom(
+            new DesktopRect(240, currentTop, 420, 280),
+            new DesktopRect(0, 0, 1920, 1040),
+            threshold: 48,
+            margin: 12,
+            out var point);
+
+        Assert.Equal(expectedSnapped, snapped);
+        if (expectedSnapped)
+        {
+            Assert.Equal(new DesktopPoint(240, expectedTop), point);
+        }
+    }
 }

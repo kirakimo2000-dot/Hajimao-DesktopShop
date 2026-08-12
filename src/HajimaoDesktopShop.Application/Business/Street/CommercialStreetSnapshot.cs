@@ -8,15 +8,18 @@ public sealed record CommercialStreetSnapshot(
     int SharedTrafficBasisPoints,
     int VisiblePedestrians,
     int VisibleVehicles,
-    IReadOnlyList<CommercialStreetStoreSnapshot> Stores);
+    IReadOnlyList<CommercialStreetStoreSnapshot> Stores,
+    int VisitorOpportunities = 1);
 
 public sealed record CommercialStreetStoreSnapshot(
     string StoreId,
     string StoreName,
     int AttractionBasisPoints,
-    int TrafficShareBasisPoints);
+    int TrafficShareBasisPoints,
+    string FacadeStyleKey = "facade-convenience-a");
 
 public sealed record StreetStoreDemand(
     string StoreId,
     string StoreName,
-    int AttractionBasisPoints);
+    int AttractionBasisPoints,
+    string FacadeStyleKey = "facade-convenience-a");

@@ -16,6 +16,7 @@ public sealed class TrayIconService : IDisposable
         _contextMenu = new Forms.ContextMenuStrip();
         _contextMenu.Items.Add("显示桌面小店", null, (_, _) => OpenShopRequested?.Invoke(this, EventArgs.Empty));
         _contextMenu.Items.Add("打开经营管理", null, (_, _) => OpenManagementRequested?.Invoke(this, EventArgs.Empty));
+        _contextMenu.Items.Add("生成测试反馈包", null, (_, _) => ExportFeedbackRequested?.Invoke(this, EventArgs.Empty));
         _contextMenu.Items.Add(new Forms.ToolStripSeparator());
         _contextMenu.Items.Add(ProductIdentity.ExitMenuText, null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
 
@@ -32,6 +33,8 @@ public sealed class TrayIconService : IDisposable
     public event EventHandler? OpenShopRequested;
 
     public event EventHandler? OpenManagementRequested;
+
+    public event EventHandler? ExportFeedbackRequested;
 
     public event EventHandler? ExitRequested;
 

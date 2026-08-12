@@ -16,20 +16,8 @@ public sealed class BusinessShopSceneRenderer : IDisposable
     private static readonly SKSamplingOptions PixelSampling =
         new(SKFilterMode.Nearest, SKMipmapMode.None);
 
-    private static readonly IReadOnlyDictionary<string, int> ProductFrameIndexes =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["water"] = 0,
-            ["bread"] = 1,
-            ["instant_noodles"] = 2,
-            ["chips"] = 3,
-            ["milk"] = 4,
-            ["soda"] = 5,
-            ["sandwich"] = 6,
-            ["yogurt"] = 7,
-            ["ice_cream"] = 8,
-            ["dumplings"] = 9
-        };
+    private static readonly string[] VariantColors =
+        ["#65B8C8", "#F1B844", "#E15A5A", "#72C986", "#B58AD4", "#E8905B", "#A6ABB4", "#F4EBDD"];
 
     private readonly SKPaint _paint = new()
     {
@@ -98,7 +86,7 @@ public sealed class BusinessShopSceneRenderer : IDisposable
                 EmployeeRole.Restocker => PixelSpriteId.Restocker,
                 _ => PixelSpriteId.Customer
             };
-            DrawSprite(canvas, sprite, pose.X, pose.Y, frame);
+            DrawSprite(canvas, sprite, pose.X, pose.Y, frame, pose.AppearanceKey);
             if (pose.IsSupporting)
             {
                 Fill(canvas, pose.X - 5, pose.Y + 3, 10, 3, "#65B8C8");
@@ -175,9 +163,14 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         var zoneSlots = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var product in products)
         {
-            if (!ProductFrameIndexes.TryGetValue(product.Id, out var frameIndex))
+            ProductSpriteVariant variant;
+            try
             {
-                continue;
+                variant = ContentSpriteKey.ResolveProduct(product.IconKey);
+            }
+            catch (ArgumentException)
+            {
+                variant = new ProductSpriteVariant(0, 0);
             }
 
             var zone = product.ShelfKind;
@@ -190,7 +183,8 @@ public sealed class BusinessShopSceneRenderer : IDisposable
                 _ => 62
             };
             var x = shelfStart + slot * 16;
-            DrawAtlasFrame(canvas, _atlas.ProductFrames[frameIndex], x, 88, 16, 16);
+            DrawAtlasFrame(canvas, _atlas.ProductFrames[variant.FrameIndex], x, 88, 16, 16);
+            Fill(canvas, x + 11, 90, 3, 3, VariantColors[variant.PaletteIndex]);
             var color = product.Quantity == 0
                 ? "#E15A5A"
                 : product.Quantity * 4 < product.Capacity ? "#F1B844" : "#72C986";
@@ -203,7 +197,8 @@ public sealed class BusinessShopSceneRenderer : IDisposable
         PixelSpriteId spriteId,
         int anchorX,
         int anchorY,
-        BusinessShopSceneFrame scene)
+        BusinessShopSceneFrame scene,
+        string? appearanceKey = null)
     {
         var frame = spriteId is PixelSpriteId.Cashier
             or PixelSpriteId.Restocker
@@ -217,6 +212,33 @@ public sealed class BusinessShopSceneRenderer : IDisposable
             anchorY - frame.AnchorY,
             frame.Width,
             frame.Height);
+        if (appearanceKey is not null)
+        {
+            EmployeeSpriteVariant appearance;
+            try
+            {
+                appearance = ContentSpriteKey.ResolveEmployee(appearanceKey);
+            }
+            catch (ArgumentException)
+            {
+                appearance = ContentSpriteKey.ResolveEmployee("employee-a01");
+            }
+
+            Fill(
+                canvas,
+                anchorX - 5 + appearance.DetailIndex % 2,
+                anchorY - 29,
+                10,
+                3,
+                VariantColors[appearance.PaletteIndex % VariantColors.Length]);
+            Fill(
+                canvas,
+                anchorX - 4,
+                anchorY - 16,
+                8,
+                2,
+                VariantColors[appearance.DetailIndex]);
+        }
     }
 
     private void DrawAtlasFrame(

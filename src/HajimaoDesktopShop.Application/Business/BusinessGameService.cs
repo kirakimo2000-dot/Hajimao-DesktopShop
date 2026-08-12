@@ -6,6 +6,7 @@ using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Game;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Domain.Economy;
+using HajimaoDesktopShop.Domain.Demand;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Products;
@@ -18,9 +19,13 @@ public sealed class BusinessGameService :
     IEmployeeOperationsGateway,
     IStoreGrowthGateway
 {
+    private const int MaximumBaseProductAssortment = 12;
     private readonly object _gate = new();
     private readonly ProductDefinition[] _productDefinitions;
     private readonly Dictionary<string, ShopDefinition> _shopDefinitions;
+    private readonly Dictionary<string, ProductDefinition[]> _assortmentsByStore = new(StringComparer.Ordinal);
+    private readonly IReadOnlyDictionary<string, StoreFormatDefinition> _storeFormats;
+    private readonly IReadOnlyDictionary<string, StoreBrandDefinition> _storeBrands;
     private readonly RetailBusiness _business;
     private readonly int _experiencePerItemSold;
     private readonly BusinessProcurementService _procurement;
@@ -32,7 +37,8 @@ public sealed class BusinessGameService :
         LevelCurve levelCurve,
         string starterShopId,
         long openingCashCents,
-        int experiencePerItemSold = 1)
+        int experiencePerItemSold = 1,
+        StoreContentCatalog? storeContent = null)
     {
         ArgumentNullException.ThrowIfNull(productDefinitions);
         ArgumentNullException.ThrowIfNull(shopDefinitions);
@@ -73,6 +79,9 @@ public sealed class BusinessGameService :
                 nameof(shopDefinitions));
         }
 
+        _storeFormats = CreateStoreFormatIndex(storeContent);
+        _storeBrands = CreateStoreBrandIndex(storeContent);
+
         if (!_shopDefinitions.TryGetValue(starterShopId.Trim(), out var starterDefinition))
         {
             throw new ArgumentException("Starter shop definition was not found.", nameof(starterShopId));
@@ -94,7 +103,8 @@ public sealed class BusinessGameService :
         IEnumerable<ShopDefinition> shopDefinitions,
         LevelCurve levelCurve,
         BusinessSaveData restoredState,
-        int experiencePerItemSold = 1)
+        int experiencePerItemSold = 1,
+        StoreContentCatalog? storeContent = null)
     {
         ArgumentNullException.ThrowIfNull(productDefinitions);
         ArgumentNullException.ThrowIfNull(shopDefinitions);
@@ -131,6 +141,9 @@ public sealed class BusinessGameService :
                 nameof(shopDefinitions));
         }
 
+        _storeFormats = CreateStoreFormatIndex(storeContent);
+        _storeBrands = CreateStoreBrandIndex(storeContent);
+
         var savedStores = restoredState.Stores?.ToArray()
             ?? throw new ArgumentException("Restored stores are required.", nameof(restoredState));
         if (savedStores.Length == 0 || savedStores.Any(store => store is null))
@@ -146,6 +159,29 @@ public sealed class BusinessGameService :
             throw new ArgumentException(
                 $"Restored store '{duplicateStore.Key}' is duplicated.",
                 nameof(restoredState));
+        }
+
+        foreach (var savedStore in savedStores)
+        {
+            if (savedStore.StreetOrdinal <= 0
+                || string.IsNullOrWhiteSpace(savedStore.StoreBrandId)
+                || string.IsNullOrWhiteSpace(savedStore.StoreFormatId))
+            {
+                continue;
+            }
+
+            var fallbackName = _shopDefinitions.TryGetValue(savedStore.StoreId, out var existing)
+                ? existing.Name
+                : savedStore.StoreId;
+            _shopDefinitions[savedStore.StoreId] = new ShopDefinition(
+                new ShopId(savedStore.StoreId),
+                new StoreBrandId(savedStore.StoreBrandId),
+                new StoreFormatId(savedStore.StoreFormatId),
+                string.IsNullOrWhiteSpace(savedStore.StoreName)
+                    ? fallbackName
+                    : savedStore.StoreName,
+                savedStore.StreetOrdinal,
+                Money.Zero);
         }
 
         var player = new PlayerProfile(levelCurve, restoredState.TotalExperience);
@@ -252,11 +288,16 @@ public sealed class BusinessGameService :
         }
     }
 
-    public void AdvanceProcurementMinute()
+    public void AdvanceProcurementMinute(int costModifierPermille = 1_000)
     {
+        if (costModifierPermille is < 100 or > 3_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costModifierPermille));
+        }
+
         lock (_gate)
         {
-            _procurement.AdvanceMinute();
+            _procurement.AdvanceMinute(costModifierPermille);
         }
     }
 
@@ -304,7 +345,9 @@ public sealed class BusinessGameService :
             }
 
             _business.Player.GainExperience(checked((long)quantity * _experiencePerItemSold));
-            var unlocked = RegisterUnlockedProductsForAllStores();
+            var unlocked = _business.Player.Level == previousLevel
+                ? []
+                : RegisterUnlockedProductsForAllStores();
             return new BusinessSaleResult(
                 sale,
                 previousLevel,
@@ -355,6 +398,31 @@ public sealed class BusinessGameService :
             {
                 RegisterUnlockedProducts(_business.GetShop(id));
                 ConfigureDefaultAutomaticStocking(id.Value);
+            }
+
+            return result;
+        }
+    }
+
+    public OpenShopResult OpenStore(ShopDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        lock (_gate)
+        {
+            if (_shopDefinitions.ContainsKey(definition.Id.Value))
+            {
+                return new OpenShopResult(
+                    OpenShopStatus.AlreadyOpen,
+                    definition.Id,
+                    definition.OpeningCost);
+            }
+
+            var result = _business.TryOpenStore(definition);
+            if (result.Status == OpenShopStatus.Success)
+            {
+                _shopDefinitions.Add(definition.Id.Value, definition);
+                RegisterUnlockedProducts(_business.GetShop(definition.Id));
+                ConfigureDefaultAutomaticStocking(definition.Id.Value);
             }
 
             return result;
@@ -424,14 +492,17 @@ public sealed class BusinessGameService :
                 .Select(id => id.Value)
                 .ToHashSet(StringComparer.Ordinal);
             return Array.AsReadOnly(_shopDefinitions.Values
-                .OrderBy(definition => definition.RequiredPlayerLevel)
+                .OrderBy(definition => definition.StreetOrdinal)
                 .ThenBy(definition => definition.Id.Value, StringComparer.Ordinal)
                 .Select(definition => new StoreCatalogItemSnapshot(
                     definition.Id.Value,
                     definition.Name,
-                    definition.RequiredPlayerLevel,
+                    RequiredPlayerLevel: 0,
                     definition.OpeningCost.Cents,
-                    openStoreIds.Contains(definition.Id.Value)))
+                    openStoreIds.Contains(definition.Id.Value),
+                    definition.BrandId.Value,
+                    definition.FormatId.Value,
+                    definition.StreetOrdinal))
                 .ToArray());
         }
     }
@@ -494,7 +565,11 @@ public sealed class BusinessGameService :
                     new StoreDevelopmentSaveData(
                         store.Growth!.ExpansionLevel,
                         store.Growth.ShelfLevel,
-                        store.Growth.DecorationLevel)))
+                        store.Growth.DecorationLevel),
+                    store.Name,
+                    store.StoreBrandId,
+                    store.StoreFormatId,
+                    store.StreetOrdinal))
                 .ToArray();
             var promotions = _storeGrowth.CaptureState()
                 .Select(state => new StorePromotionSaveData(
@@ -534,7 +609,10 @@ public sealed class BusinessGameService :
 
     private void RegisterUnlockedProducts(Shop shop, List<string>? unlocked = null)
     {
-        foreach (var definition in _productDefinitions)
+        var shopId = _business.StoreIds.Single(id => ReferenceEquals(_business.GetShop(id), shop));
+        var storeDefinition = _shopDefinitions[shopId.Value];
+        var format = CreateFormatEconomics(storeDefinition.FormatId.Value);
+        foreach (var definition in GetProductAssortment(storeDefinition))
         {
             var productId = new ProductId(definition.Id);
             if (definition.RequiredPlayerLevel > _business.Player.Level || shop.ContainsProduct(productId))
@@ -548,15 +626,85 @@ public sealed class BusinessGameService :
                     definition.Name,
                     new Money(definition.WholesalePriceCents),
                     new Money(definition.InitialSalePriceCents)),
-                definition.Capacity);
+                ScaleCapacity(definition.Capacity, format.InventoryCapacityPermille));
             unlocked?.Add(definition.Id);
         }
     }
 
+    private IEnumerable<ProductDefinition> SelectProductAssortment(ShopDefinition store)
+    {
+        if (_productDefinitions.Length <= MaximumBaseProductAssortment)
+        {
+            return _productDefinitions;
+        }
+
+        var ranked = _productDefinitions
+            .OrderBy(definition => StableProductRank(store.BrandId.Value, definition.Id))
+            .ThenBy(definition => definition.Id, StringComparer.Ordinal)
+            .ToArray();
+        var selected = new List<ProductDefinition>(MaximumBaseProductAssortment);
+        selected.AddRange(ranked
+            .Where(definition => definition.RequiredPlayerLevel == 1)
+            .Take(Math.Min(4, ranked.Count(definition => definition.RequiredPlayerLevel == 1))));
+
+        var targetCategoryCount = Math.Min(
+            6,
+            ranked.Select(definition => definition.CategoryId).Distinct(StringComparer.Ordinal).Count());
+        foreach (var definition in ranked)
+        {
+            if (selected.Count == MaximumBaseProductAssortment
+                || selected.Select(item => item.CategoryId).Distinct(StringComparer.Ordinal).Count() >= targetCategoryCount)
+            {
+                break;
+            }
+
+            if (!selected.Contains(definition)
+                && selected.All(item => !string.Equals(item.CategoryId, definition.CategoryId, StringComparison.Ordinal)))
+            {
+                selected.Add(definition);
+            }
+        }
+
+        selected.AddRange(ranked
+            .Where(definition => !selected.Contains(definition))
+            .Take(MaximumBaseProductAssortment - selected.Count));
+        return selected
+            .OrderBy(definition => definition.RequiredPlayerLevel)
+            .ThenBy(definition => definition.Id, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private IReadOnlyList<ProductDefinition> GetProductAssortment(ShopDefinition store)
+    {
+        if (_assortmentsByStore.TryGetValue(store.Id.Value, out var assortment))
+        {
+            return assortment;
+        }
+
+        assortment = SelectProductAssortment(store).ToArray();
+        _assortmentsByStore.Add(store.Id.Value, assortment);
+        return assortment;
+    }
+
+    private static ulong StableProductRank(string brandId, string productId)
+    {
+        var hash = 14_695_981_039_346_656_037UL;
+        foreach (var character in brandId.Concat("|").Concat(productId))
+        {
+            hash ^= character;
+            hash *= 1_099_511_628_211UL;
+        }
+
+        return hash;
+    }
+
+    private static int ScaleCapacity(int capacity, int permille) =>
+        checked(Math.Max(1, (int)((long)capacity * permille / 1_000L)));
+
     private BusinessStoreSnapshot CreateStoreSnapshot(ShopId shopId)
     {
         var shop = _business.GetShop(shopId);
-        var products = _productDefinitions
+        var products = GetProductAssortment(_shopDefinitions[shopId.Value])
             .Where(definition => shop.ContainsProduct(new ProductId(definition.Id)))
             .Select(definition => CreateProductSnapshot(shop, definition))
             .ToArray();
@@ -570,8 +718,57 @@ public sealed class BusinessGameService :
             shop.TotalWageCost.Cents,
             shop.TotalNetProfit.Cents,
             shop.TotalOperatingCost.Cents,
-            _storeGrowth.GetSnapshot(shopId.Value));
+            _storeGrowth.GetSnapshot(shopId.Value),
+            _shopDefinitions[shopId.Value].BrandId.Value,
+            _shopDefinitions[shopId.Value].FormatId.Value,
+            _shopDefinitions[shopId.Value].StreetOrdinal,
+            CreateFormatEconomics(_shopDefinitions[shopId.Value].FormatId.Value),
+            GetFacadeStyleKey(_shopDefinitions[shopId.Value].BrandId.Value));
     }
+
+    private StoreFormatEconomicsSnapshot CreateFormatEconomics(string formatId)
+    {
+        if (!_storeFormats.TryGetValue(formatId, out var format))
+        {
+            return StoreFormatEconomicsSnapshot.Neutral;
+        }
+
+        return new StoreFormatEconomicsSnapshot(
+            new DemandSensitivity(
+                format.BaseDemandPermille,
+                format.PriceSensitivityPermille,
+                format.ServiceSensitivityPermille,
+                format.QueueSensitivityPermille,
+                format.CleanlinessSensitivityPermille),
+            format.TimeProfile switch
+            {
+                "steady" => DemandTimeCurve.Steady,
+                "all-day-volume" => DemandTimeCurve.AllDayVolume,
+                "afternoon-select" => DemandTimeCurve.AfternoonSelect,
+                "commuter-peaks" => DemandTimeCurve.CommuterPeaks,
+                _ => throw new InvalidOperationException(
+                    $"Unknown store time profile '{format.TimeProfile}'.")
+            },
+            format.InventoryCapacityPermille,
+            format.ProductShelfWeights);
+    }
+
+    private static IReadOnlyDictionary<string, StoreFormatDefinition> CreateStoreFormatIndex(
+        StoreContentCatalog? content) =>
+        content is null
+            ? new Dictionary<string, StoreFormatDefinition>(StringComparer.Ordinal)
+            : content.Formats.ToDictionary(item => item.Id, StringComparer.Ordinal);
+
+    private static IReadOnlyDictionary<string, StoreBrandDefinition> CreateStoreBrandIndex(
+        StoreContentCatalog? content) =>
+        content is null
+            ? new Dictionary<string, StoreBrandDefinition>(StringComparer.Ordinal)
+            : content.Brands.ToDictionary(item => item.Id, StringComparer.Ordinal);
+
+    private string GetFacadeStyleKey(string brandId) =>
+        _storeBrands.TryGetValue(brandId, out var brand)
+            ? brand.FacadeStyleKey
+            : "facade-convenience-a";
 
     private void ConfigureDefaultAutomaticStocking(string storeId)
     {
@@ -607,7 +804,11 @@ public sealed class BusinessGameService :
             definition.RequiredPlayerLevel,
             slot.Product.UnitGrossProfit.Cents,
             slot.Product.GrossMarginBasisPoints,
-            definition.InitialSalePriceCents);
+            definition.InitialSalePriceCents,
+            DemandWeightPermille: 1_000,
+            definition.CategoryId,
+            definition.IconKey,
+            definition.RegionTags);
     }
 
     bool IProcurementStockGateway.ContainsOpenStore(string storeId) =>

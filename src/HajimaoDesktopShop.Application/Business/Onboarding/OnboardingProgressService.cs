@@ -17,9 +17,6 @@ public static class OnboardingProgressService
         var tasks = new[]
         {
             new OnboardingTaskState(
-                OnboardingTaskId.ReviewEconomy,
-                simulation.GameMinute > 0),
-            new OnboardingTaskState(
                 OnboardingTaskId.ChooseStoreStrategy,
                 HasChosenNonDefaultStrategy(simulation, procurement)),
             new OnboardingTaskState(

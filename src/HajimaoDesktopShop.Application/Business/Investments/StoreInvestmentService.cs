@@ -2,7 +2,10 @@ using HajimaoDesktopShop.Application.Business.Analysis;
 using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.StoreGrowth;
+using HajimaoDesktopShop.Application.Business.StorePortfolio;
+using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
+using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Shops;
 
 namespace HajimaoDesktopShop.Application.Business.Investments;
@@ -12,15 +15,20 @@ public sealed class StoreInvestmentService
     private readonly BusinessGameService _game;
     private readonly BusinessSimulation _simulation;
     private readonly InvestmentTracker _tracker;
+    private readonly StoreOpeningProposalService? _openingProposals;
 
     public StoreInvestmentService(
         BusinessGameService game,
         BusinessSimulation simulation,
-        InvestmentTrackingSaveData? restoredTracking = null)
+        InvestmentTrackingSaveData? restoredTracking = null,
+        StoreContentCatalog? storeContent = null)
     {
         _game = game ?? throw new ArgumentNullException(nameof(game));
         _simulation = simulation ?? throw new ArgumentNullException(nameof(simulation));
         _tracker = new InvestmentTracker(restoredTracking);
+        _openingProposals = storeContent is null
+            ? null
+            : new StoreOpeningProposalService(storeContent);
     }
 
     public StoreInvestmentPortfolio? GetPortfolio(string storeId)
@@ -47,10 +55,12 @@ public sealed class StoreInvestmentService
             snapshot,
             _game.GetStoreGrowthSnapshot(normalizedStoreId),
             economy);
-        var openingCandidates = StoreOpeningInvestmentAdvisor.Create(
-            snapshot,
-            _game.GetStoreCatalogSnapshot(),
-            economy);
+        var openingCandidates = _openingProposals is null
+            ? StoreOpeningInvestmentAdvisor.Create(
+                snapshot,
+                _game.GetStoreCatalogSnapshot(),
+                economy)
+            : GetOpeningProposals(snapshot);
         return new StoreInvestmentPortfolio(
             normalizedStoreId,
             economy,
@@ -58,6 +68,9 @@ public sealed class StoreInvestmentService
     }
 
     public bool HasAnyInvestment => _tracker.HasAnyInvestment;
+
+    public IReadOnlyList<InvestmentCandidate> GetOpeningProposals() =>
+        GetOpeningProposals(_simulation.GetSnapshot());
 
     public CapitalAllocationSnapshot GetCapitalAllocation()
     {
@@ -148,7 +161,15 @@ public sealed class StoreInvestmentService
 
     private InvestmentCommandResult ExecuteOpenStore(InvestmentCandidate candidate)
     {
-        var result = _game.OpenStore(candidate.TargetId);
+        var result = string.IsNullOrWhiteSpace(candidate.StoreBrandId)
+            ? _game.OpenStore(candidate.TargetId)
+            : _game.OpenStore(new ShopDefinition(
+                new ShopId(candidate.TargetId),
+                new StoreBrandId(candidate.StoreBrandId),
+                new StoreFormatId(candidate.StoreFormatId),
+                candidate.TargetName,
+                candidate.StreetOrdinal,
+                new Money(candidate.Return.CostCents)));
         var status = result.Status switch
         {
             OpenShopStatus.Success => InvestmentCommandStatus.Success,
@@ -161,6 +182,30 @@ public sealed class StoreInvestmentService
             status,
             status == InvestmentCommandStatus.Success ? candidate : null,
             result.OpeningCost.Cents);
+    }
+
+    private IReadOnlyList<InvestmentCandidate> GetOpeningProposals(
+        BusinessSimulationSnapshot snapshot)
+    {
+        if (_openingProposals is null)
+        {
+            var economy = snapshot.Business.Stores
+                .Select(store => StoreEconomyAnalysisService.Calculate(snapshot, store.Id))
+                .FirstOrDefault(item => item is not null)
+                ?? throw new InvalidOperationException("Opening proposals require an open store.");
+            return StoreOpeningInvestmentAdvisor.Create(
+                snapshot,
+                _game.GetStoreCatalogSnapshot(),
+                economy);
+        }
+
+        var openStores = snapshot.Business.Stores;
+        var proposals = _openingProposals.CreateExpansionProposals(
+            openStores.Count,
+            snapshot.Business.CashCents,
+            seed: checked(711 + openStores.Count * 101),
+            openStores.Select(store => store.StoreBrandId).ToArray());
+        return StoreOpeningInvestmentAdvisor.Create(proposals);
     }
 
     private InvestmentCommandResult ExecuteGrowth(InvestmentCandidate candidate)

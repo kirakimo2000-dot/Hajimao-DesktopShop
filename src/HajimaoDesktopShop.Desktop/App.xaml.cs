@@ -1,15 +1,17 @@
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 using HajimaoDesktopShop.Application.Business;
-using HajimaoDesktopShop.Application.Business.Offline;
+using HajimaoDesktopShop.Application.Diagnostics.Export;
 using HajimaoDesktopShop.Application.Diagnostics;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Desktop.Services;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
 using HajimaoDesktopShop.Infrastructure.Configuration;
+using HajimaoDesktopShop.Infrastructure.Diagnostics.Export;
 using HajimaoDesktopShop.Infrastructure.Logging;
 using HajimaoDesktopShop.Infrastructure.Persistence;
 
@@ -22,16 +24,16 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _autosaveTimer;
     private AutosaveCoordinator? _autosaveCoordinator;
     private BusinessSession? _session;
-    private GameSoundService? _soundService;
-    private PixelGameSoundOutput? _soundOutput;
     private TrayIconService? _trayIconService;
     private MarketViewModel? _viewModel;
     private DesktopShopWindow? _desktopWindow;
     private ManagementWindow? _managementWindow;
     private IGameDiagnosticSink _diagnosticSink = NullGameDiagnosticSink.Instance;
     private IDisposable? _diagnosticLifetime;
+    private string? _dataDirectoryOverride;
     private bool _startupCompleted;
     private bool _isExiting;
+    private bool _isExportingFeedback;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -41,10 +43,28 @@ public partial class App : System.Windows.Application
         {
             var dataDirectoryOverride = Environment.GetEnvironmentVariable(
                 ApplicationDataPathPolicy.OverrideEnvironmentVariable);
+            _dataDirectoryOverride = dataDirectoryOverride;
             InitializeDiagnostics(dataDirectoryOverride);
 
             var catalogPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
             var products = await new JsonProductCatalog(catalogPath).LoadAsync();
+            var storeFormatsPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                "Config",
+                "store-formats.json");
+            var storeBrandsPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                "Config",
+                "store-brands.json");
+            var storeContent = await new JsonStoreContentCatalog(
+                storeFormatsPath,
+                storeBrandsPath).LoadAsync();
+            var peopleMarketContent = await new JsonPeopleMarketCatalog(
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "employees", "employee-profiles.json"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "events", "market-events.json"))
+                .LoadAsync();
             var savePath = ApplicationDataPathPolicy.ResolveSavePath(dataDirectoryOverride);
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
@@ -54,14 +74,11 @@ public partial class App : System.Windows.Application
                 products,
                 savedGame,
                 Environment.TickCount,
-                startupUtc);
+                startupUtc,
+                storeContent,
+                peopleMarketContent);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
-            if (sessionStart.OfflineSettlement is { AppliedSeconds: > 0 })
-            {
-                await saveStore.SaveGameAsync(_session.CaptureSaveData(startupUtc));
-            }
-
             if (savedGame is null)
             {
                 var starterStore = _session.Game.GetSnapshot().Stores.Single();
@@ -77,10 +94,7 @@ public partial class App : System.Windows.Application
 
             _viewModel = new MarketViewModel(
                 _session,
-                reduceMotion: () => !SystemParameters.ClientAreaAnimation,
-                offlineSettlement: sessionStart.OfflineSettlement);
-            _soundOutput = new PixelGameSoundOutput();
-            _soundService = new GameSoundService(_viewModel, _soundOutput);
+                reduceMotion: () => !SystemParameters.ClientAreaAnimation);
             if (savedPlacement is not null)
             {
                 _viewModel.RestoreDesktopState(savedPlacement.IsLocked);
@@ -101,6 +115,7 @@ public partial class App : System.Windows.Application
             _trayIconService = new TrayIconService();
             _trayIconService.OpenShopRequested += OnTrayOpenShopRequested;
             _trayIconService.OpenManagementRequested += OnOpenManagementRequested;
+            _trayIconService.ExportFeedbackRequested += OnTrayExportFeedbackRequested;
             _trayIconService.ExitRequested += OnTrayExitRequested;
 
             _simulationLoop = new SimulationLoop(
@@ -171,12 +186,11 @@ public partial class App : System.Windows.Application
                 exception: exception);
         }
 
-        _soundService?.Dispose();
-        _soundOutput?.Dispose();
         if (_trayIconService is not null)
         {
             _trayIconService.OpenShopRequested -= OnTrayOpenShopRequested;
             _trayIconService.OpenManagementRequested -= OnOpenManagementRequested;
+            _trayIconService.ExportFeedbackRequested -= OnTrayExportFeedbackRequested;
             _trayIconService.ExitRequested -= OnTrayExitRequested;
             _trayIconService.Dispose();
         }
@@ -208,11 +222,6 @@ public partial class App : System.Windows.Application
             _managementWindow.Closed += OnManagementWindowClosed;
         }
 
-        if (_desktopWindow is not null)
-        {
-            _desktopWindow.Topmost = false;
-        }
-
         _managementWindow.Show();
         _managementWindow.Activate();
         if (_refreshTimer is not null)
@@ -241,7 +250,6 @@ public partial class App : System.Windows.Application
                 GameDiagnosticLevel.Error,
                 "Autosave failed.",
                 exception: exception);
-            _viewModel?.ReportSystemMessage($"自动存档失败：{exception.Message}");
         }
     }
 
@@ -274,7 +282,6 @@ public partial class App : System.Windows.Application
 
         e.Cancel = true;
         window.Hide();
-        _viewModel?.ReportSystemMessage("小店已隐藏到通知区域，经营仍在继续");
     }
 
     private void OnTrayOpenShopRequested(object? sender, EventArgs e)
@@ -295,6 +302,73 @@ public partial class App : System.Windows.Application
         Shutdown();
     }
 
+    private async void OnTrayExportFeedbackRequested(object? sender, EventArgs e)
+    {
+        if (_isExportingFeedback)
+        {
+            return;
+        }
+
+        if (_session is null || _autosaveCoordinator is null)
+        {
+            ReportFeedbackExportFailed("Unavailable");
+            MessageBox.Show(
+                "当前会话尚未准备好，无法生成测试反馈包。",
+                ProductIdentity.DisplayName,
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        _isExportingFeedback = true;
+        try
+        {
+            await _autosaveCoordinator.FlushAsync();
+            var snapshot = _session.Simulation.GetSnapshot();
+            var diagnosticEvents = SanitizedDiagnosticLogReader.Read(
+                ApplicationDataPathPolicy.ResolveLogDirectory(_dataDirectoryOverride),
+                maximumEvents: 200);
+            var createdAtUtc = DateTimeOffset.UtcNow;
+            var report = PlaytestFeedbackReportFactory.Create(
+                snapshot,
+                diagnosticEvents,
+                GetInformationalVersion(),
+                createdAtUtc);
+            var destinationPath = PlaytestFeedbackArchiveWriter.Write(
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                report);
+
+            ReportDiagnostic(
+                "feedback.export.completed",
+                GameDiagnosticLevel.Information,
+                "Feedback export completed.",
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["OpenStoreCount"] = report.OpenStoreCount.ToString(CultureInfo.InvariantCulture),
+                    ["EmployeeCount"] = report.EmployeeCount.ToString(CultureInfo.InvariantCulture),
+                    ["DiagnosticEventCount"] = report.DiagnosticEvents.Count.ToString(CultureInfo.InvariantCulture)
+                });
+            MessageBox.Show(
+                $"测试反馈包已生成：\n\n{destinationPath}",
+                ProductIdentity.DisplayName,
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            ReportFeedbackExportFailed(exception.GetType().Name);
+            MessageBox.Show(
+                "生成测试反馈包失败，请稍后重试。",
+                ProductIdentity.DisplayName,
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isExportingFeedback = false;
+        }
+    }
+
     private void OnManagementWindowClosed(object? sender, EventArgs e)
     {
         if (sender is ManagementWindow managementWindow)
@@ -308,10 +382,6 @@ public partial class App : System.Windows.Application
             _refreshTimer.Interval = RefreshCadencePolicy.GetInterval(managementOpen: false);
         }
 
-        if (_desktopWindow is { IsLoaded: true })
-        {
-            _desktopWindow.Topmost = true;
-        }
     }
 
     private void ReportSessionStart(DesktopBusinessSessionStartResult sessionStart)
@@ -327,42 +397,6 @@ public partial class App : System.Windows.Application
                     .ToString(CultureInfo.InvariantCulture)
             });
 
-        if (sessionStart.OfflineSettlement is not { } settlement)
-        {
-            return;
-        }
-
-        var properties = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["RequestedSeconds"] = settlement.RequestedSeconds.ToString(CultureInfo.InvariantCulture),
-            ["AppliedSeconds"] = settlement.AppliedSeconds.ToString(CultureInfo.InvariantCulture),
-            ["WasCapped"] = settlement.WasCapped.ToString(CultureInfo.InvariantCulture),
-            ["CashDeltaCents"] = (settlement.After.CashCents - settlement.Before.CashCents)
-                .ToString(CultureInfo.InvariantCulture),
-            ["CompletedSalesDelta"] = (settlement.After.CompletedSales - settlement.Before.CompletedSales)
-                .ToString(CultureInfo.InvariantCulture)
-        };
-        if (settlement.Anomaly == OfflineTimeAnomaly.ClockMovedBackward)
-        {
-            ReportDiagnostic(
-                "offline.settlement.clock_moved_backward",
-                GameDiagnosticLevel.Warning,
-                "Offline settlement was skipped because the system clock moved backward.",
-                properties);
-            return;
-        }
-
-        ReportDiagnostic(
-            settlement.WasCapped
-                ? "offline.settlement.capped"
-                : "offline.settlement.completed",
-            settlement.WasCapped
-                ? GameDiagnosticLevel.Warning
-                : GameDiagnosticLevel.Information,
-            settlement.WasCapped
-                ? "Offline settlement completed at the configured limit."
-                : "Offline settlement completed.",
-            properties);
     }
 
     private void ReportSimulationFailure(Exception exception) =>
@@ -371,6 +405,21 @@ public partial class App : System.Windows.Application
             GameDiagnosticLevel.Error,
             "Simulation loop stopped after an unexpected failure.",
             exception: exception);
+
+    private void ReportFeedbackExportFailed(string failureType) =>
+        ReportDiagnostic(
+            "feedback.export.failed",
+            GameDiagnosticLevel.Error,
+            "Feedback export failed.",
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["FailureType"] = failureType
+            });
+
+    private static string GetInformationalVersion() =>
+        typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(App).Assembly.GetName().Version?.ToString()
+        ?? "unknown";
 
     private void InitializeDiagnostics(string? dataDirectoryOverride)
     {

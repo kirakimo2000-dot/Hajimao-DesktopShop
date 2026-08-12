@@ -12,7 +12,7 @@ public sealed class StoreNavigationItemViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(snapshot);
         Id = snapshot.Id;
         Name = snapshot.Name;
-        RequiredPlayerLevel = snapshot.RequiredPlayerLevel;
+        StoreFormatText = FormatName(snapshot.StoreFormatId);
         OpeningCostCents = snapshot.OpeningCostCents;
         _isOpen = snapshot.IsOpen;
     }
@@ -21,7 +21,7 @@ public sealed class StoreNavigationItemViewModel : ObservableObject
 
     public string Name { get; }
 
-    public int RequiredPlayerLevel { get; }
+    public string StoreFormatText { get; }
 
     public long OpeningCostCents { get; }
 
@@ -32,4 +32,13 @@ public sealed class StoreNavigationItemViewModel : ObservableObject
     }
 
     internal void Update(StoreCatalogItemSnapshot snapshot) => IsOpen = snapshot.IsOpen;
+
+    private static string FormatName(string formatId) => formatId switch
+    {
+        "convenience" => "便利店",
+        "discount" => "折扣店",
+        "premium" => "精品百货",
+        "commuter" => "通勤店",
+        _ => "零售店"
+    };
 }

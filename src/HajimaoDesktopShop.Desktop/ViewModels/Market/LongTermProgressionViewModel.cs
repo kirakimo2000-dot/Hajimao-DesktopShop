@@ -10,6 +10,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
     private string _titleText = "建立第一家盈利店铺";
     private string _progressText = "等待第一份完整日结";
     private string _guidanceText = "先观察收入、毛利与工资能否形成正向现金流。";
+    private ManagementSection _suggestedSection = ManagementSection.Strategy;
 
     public string TitleText
     {
@@ -27,6 +28,12 @@ public sealed class LongTermProgressionViewModel : ObservableObject
     {
         get => _guidanceText;
         private set => SetProperty(ref _guidanceText, value);
+    }
+
+    public ManagementSection SuggestedSection
+    {
+        get => _suggestedSection;
+        private set => SetProperty(ref _suggestedSection, value);
     }
 
     public void Update(
@@ -56,7 +63,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
                 "比较当前店铺投资与开店储备，保留足够经营现金。"),
             ProgressionGoalId.OpenSecondStore => (
                 "开设第二家店",
-                $"{storeName} · 等级与资金已满足",
+                $"{storeName} · 开店资金已就绪",
                 "在投资列表执行开店，并为新店留下员工与周转资金。"),
             ProgressionGoalId.StrengthenPortfolio => (
                 "强化最弱店铺",
@@ -68,7 +75,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
                 "让现有店铺稳定盈利，同时积累下一家店的开业储备。"),
             ProgressionGoalId.OpenThirdStore => (
                 "开设第三家店",
-                $"{storeName} · 等级与资金已满足",
+                $"{storeName} · 开店资金已就绪",
                 "在投资列表完成扩张，逐步形成完整街区。"),
             ProgressionGoalId.UnlockCommercialBlock => (
                 "解锁完整街区",
@@ -80,13 +87,16 @@ public sealed class LongTermProgressionViewModel : ObservableObject
                 "长期比较各店回报，把下一笔资本投向最弱环节。"),
             _ => throw new ArgumentOutOfRangeException(nameof(snapshot))
         };
+        SuggestedSection = goal.Id == ProgressionGoalId.ReachProfitableDay
+            ? ManagementSection.Strategy
+            : ManagementSection.Investment;
     }
 
     private static string CapitalProgress(
         LongTermProgressionSnapshot snapshot,
         ProgressionGoalSnapshot goal,
         string storeName) =>
-        $"{storeName} · 现金 {FormatMoney(snapshot.SharedCashCents)}/{FormatMoney(goal.RequiredCashCents)} · Lv.{snapshot.PlayerLevel}/{goal.RequiredPlayerLevel}";
+        $"{storeName} · 现金 {FormatMoney(snapshot.SharedCashCents)}/{FormatMoney(goal.RequiredCashCents)}";
 
     private static string StoreName(
         IReadOnlyList<StoreCatalogItemSnapshot> storeCatalog,

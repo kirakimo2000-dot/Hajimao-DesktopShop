@@ -46,8 +46,6 @@
                           Command="{Binding PlacementTarget.DataContext.ToggleLockCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                 <MenuItem Header="切换鼠标穿透"
                           Command="{Binding PlacementTarget.DataContext.ToggleClickThroughCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                <MenuItem Header="静音 / 开启音效"
-                          Command="{Binding PlacementTarget.DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
             </ContextMenu>
         </Grid.ContextMenu>
 
@@ -56,6 +54,20 @@
             <controls:CommercialStreetSceneControl x:Name="StreetScene"
                                                    Frame="{Binding CommercialStreet.SceneFrame}"
                                                    StorefrontClicked="OnStorefrontClicked" />
+            <Border VerticalAlignment="Bottom"
+                    Margin="6"
+                    Padding="6,3"
+                    Background="#E623252B"
+                    BorderBrush="#886E8094"
+                    BorderThickness="1"
+                    IsHitTestVisible="False"
+                    Visibility="{Binding EventTicker.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="{Binding EventTicker.Text}"
+                           Foreground="#F4EBDD"
+                           FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding EventTicker.Text}" />
+            </Border>
         </Grid>
 
         <Grid x:Name="StorePage"

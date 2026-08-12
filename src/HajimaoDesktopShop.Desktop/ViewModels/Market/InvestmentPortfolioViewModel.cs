@@ -28,8 +28,6 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
         Refresh();
     }
 
-    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
-
     public ObservableCollection<InvestmentCandidateCardViewModel> Candidates { get; } = [];
 
     public bool HasLatestInvestment
@@ -80,12 +78,6 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
         };
         if (result.Status == InvestmentCommandStatus.Success)
         {
-            FeedbackRaised?.Invoke(
-                this,
-                new GameFeedbackEventArgs(
-                    result.AppliedCandidate?.Kind == InvestmentKind.Employee
-                        ? GameFeedbackKind.EmployeeChanged
-                        : GameFeedbackKind.StoreGrowthChanged));
             _refreshMarket();
         }
 

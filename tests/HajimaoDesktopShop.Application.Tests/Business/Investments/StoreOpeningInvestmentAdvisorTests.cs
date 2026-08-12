@@ -7,10 +7,10 @@ namespace HajimaoDesktopShop.Application.Tests.Business.Investments;
 public sealed class StoreOpeningInvestmentAdvisorTests
 {
     [Theory]
-    [InlineData(2, 100_000, InvestmentAvailability.LevelLocked)]
+    [InlineData(2, 100_000, InvestmentAvailability.Available)]
     [InlineData(3, 79_999, InvestmentAvailability.InsufficientFunds)]
     [InlineData(3, 80_000, InvestmentAvailability.Available)]
-    public void Create_UsesExactLevelCostAndSharedCashWithoutPromisingProfit(
+    public void Create_UsesExactCostAndSharedCashWithoutLevelGateOrPromisedProfit(
         int playerLevel,
         long cashCents,
         InvestmentAvailability expectedAvailability)
@@ -43,7 +43,7 @@ public sealed class StoreOpeningInvestmentAdvisorTests
         Assert.Equal(0, candidate.Return.ExpectedDailyNetBenefitCents);
         Assert.Null(candidate.Return.PaybackDaysTenths);
         Assert.Equal(1, candidate.Effect.StoreCountChange);
-        Assert.Equal(3, candidate.RequiredPlayerLevel);
+        Assert.Equal(0, candidate.RequiredPlayerLevel);
         Assert.Equal(InvestmentEstimateCondition.NewStoreNeedsCompletedDay, candidate.EstimateCondition);
         Assert.Equal(expectedAvailability, candidate.Availability);
     }

@@ -17,9 +17,9 @@ public sealed class SerilogGameDiagnosticSinkTests
                 "Application started.",
                 new Dictionary<string, string> { ["Mode"] = "restored" }));
             sink.Write(new GameDiagnosticEvent(
-                "offline.settlement.capped",
+                "simulation.checkpoint.completed",
                 GameDiagnosticLevel.Warning,
-                "Offline settlement was capped.",
+                "Simulation checkpoint completed.",
                 new Dictionary<string, string> { ["AppliedSeconds"] = "28800" }));
             sink.Write(new GameDiagnosticEvent(
                 "simulation.failed",
@@ -34,7 +34,7 @@ public sealed class SerilogGameDiagnosticSinkTests
         Assert.Contains("Application started.", log, StringComparison.Ordinal);
         Assert.Contains("Mode", log, StringComparison.Ordinal);
         Assert.Contains("restored", log, StringComparison.Ordinal);
-        Assert.Contains("offline.settlement.capped", log, StringComparison.Ordinal);
+        Assert.Contains("simulation.checkpoint.completed", log, StringComparison.Ordinal);
         Assert.Contains("28800", log, StringComparison.Ordinal);
         Assert.Contains("simulation.failed", log, StringComparison.Ordinal);
         Assert.Contains("InvalidOperationException", log, StringComparison.Ordinal);

@@ -1,6 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Investments;
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.Strategy;
@@ -9,12 +8,11 @@ using HajimaoDesktopShop.Domain.Employees;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Progression;
 
-public sealed class LongTermIdlePlayableLoopTests
+public sealed class LongTermActiveIdlePlayableLoopTests
 {
     [Fact]
-    public void ProductionContent_ProgressesAcrossRepeatedReturnsAndLeavesALaterGoal()
+    public void ProductionContent_ProgressesWhileRunningAndLeavesALaterGoal()
     {
-        var currentTime = new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
         var session = LongTermProgressionScenarioRunner.CreateSession(seed: 8_101);
         Assert.Equal(
             StoreStrategyCommandStatus.Success,
@@ -34,37 +32,39 @@ public sealed class LongTermIdlePlayableLoopTests
                 DesktopGameContent.StarterStoreId,
                 firstInvestment.Id).Status);
 
-        session = RestoreAfterOfflineDay(session, ref currentTime);
+        AdvanceActiveDay(session);
         while (session.Game.GetSnapshot().PlayerLevel < 3
                || session.Game.GetSnapshot().CashCents < 100_000)
         {
-            session = RestoreAfterOfflineDay(session, ref currentTime);
+            AdvanceActiveDay(session);
         }
 
         var opening = session.Investments.GetPortfolio(DesktopGameContent.StarterStoreId)!
-            .Candidates.Single(candidate => candidate.Kind == InvestmentKind.OpenStore
-                && candidate.TargetId == "station-store");
+            .Candidates.Where(candidate => candidate.Kind == InvestmentKind.OpenStore)
+            .OrderBy(candidate => candidate.Return.CostCents)
+            .First(candidate => candidate.IsExecutable);
+        var expandedStoreId = opening.TargetId;
         Assert.Equal(
             InvestmentCommandStatus.Success,
             session.Investments.Execute(DesktopGameContent.StarterStoreId, opening.Id).Status);
 
-        var employee = FindCashier(session);
+        var employee = FindCashier(session, expandedStoreId);
         var staffingWaitDays = 0;
         while (employee is null
                || session.Game.GetSnapshot().CashCents < employee.Return.CostCents + 25_000)
         {
             Assert.True(staffingWaitDays++ < 30, "A cashier route did not become safely affordable.");
-            session = RestoreAfterOfflineDay(session, ref currentTime);
-            employee = FindCashier(session);
+            AdvanceActiveDay(session);
+            employee = FindCashier(session, expandedStoreId);
         }
 
         Assert.Equal(
             InvestmentCommandStatus.Success,
-            session.Investments.Execute("station-store", employee.Id).Status);
+            session.Investments.Execute(expandedStoreId, employee.Id).Status);
         Assert.Equal(
             StoreStrategyCommandStatus.Success,
             session.Strategy.Apply(
-                "station-store",
+                expandedStoreId,
                 StorePricingPreset.HighTurnover,
                 StoreStockingPreset.Lean).Status);
 
@@ -72,7 +72,7 @@ public sealed class LongTermIdlePlayableLoopTests
         do
         {
             Assert.True(recoveryDays++ < 30, "The staffed two-store portfolio did not return to profit.");
-            session = RestoreAfterOfflineDay(session, ref currentTime);
+            AdvanceActiveDay(session);
         }
         while (session.Simulation.GetSnapshot().LastCompletedDay?.Stores.Sum(
             store => store.NetProfitCents) <= 0);
@@ -92,7 +92,7 @@ public sealed class LongTermIdlePlayableLoopTests
         Assert.Equal(2, snapshot.Business.Stores.Count);
         Assert.Equal(2, snapshot.Stores.Count);
         Assert.Equal(
-            [DesktopGameContent.StarterStoreId, "station-store"],
+            [DesktopGameContent.StarterStoreId, expandedStoreId],
             tracking.LatestInvestments.Select(investment => investment.StoreId));
         Assert.Equal(ProgressionGoalId.StrengthenPortfolio, progression.CurrentGoal.Id);
         Assert.True(progression.CurrentGoal.TargetValue > progression.CurrentGoal.CurrentValue);
@@ -103,25 +103,13 @@ public sealed class LongTermIdlePlayableLoopTests
         Assert.All(snapshot.Stores, store => Assert.Equal(0, store.WagePaymentFailures));
     }
 
-    private static BusinessSession RestoreAfterOfflineDay(
-        BusinessSession session,
-        ref DateTimeOffset currentTime)
-    {
-        var save = session.CaptureSaveData(currentTime);
-        currentTime = currentTime.AddSeconds(1_440);
-        var restored = DesktopBusinessSessionFactory.Create(
-            LongTermProgressionScenarioRunner.ProductionProducts,
-            save,
-            seed: 999,
-            nowUtc: currentTime,
-            new OfflineSettlementPolicy(maxOfflineSeconds: 1_440, batchSize: 137));
-        Assert.Equal(1_440, restored.OfflineSettlement?.AppliedSeconds);
-        return restored.Session;
-    }
+    private static void AdvanceActiveDay(BusinessSession session) =>
+        session.Simulation.AdvanceRealSeconds(1_440);
 
     private static InvestmentCandidate? FindCashier(
-        BusinessSession session) =>
-        session.Investments.GetPortfolio("station-store")!.Candidates
+        BusinessSession session,
+        string storeId) =>
+        session.Investments.GetPortfolio(storeId)!.Candidates
             .Where(candidate => candidate.Kind == InvestmentKind.Employee
                 && candidate.Effect.AddedRole == EmployeeRole.Cashier)
             .OrderBy(candidate => candidate.Return.CostCents)

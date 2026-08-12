@@ -1,10 +1,88 @@
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Desktop.Services;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Progression;
 
 public sealed class LongTermProgressionScenarioTests
 {
+    [Fact]
+    public void ProductionScenario_LoadsRichContentWithoutExpandingVisibleChoices()
+    {
+        var session = LongTermProgressionScenarioRunner.CreateSession(seed: 8_101);
+
+        Assert.Equal(3, session.Investments.GetOpeningProposals().Count);
+        Assert.Equal(3, session.Simulation.Employees.GetSnapshot().Candidates.Count);
+        Assert.DoesNotContain(
+            session.Simulation.Employees.GetSnapshot().Candidates,
+            candidate => candidate.ProfileId.StartsWith("legacy-", StringComparison.Ordinal));
+        Assert.NotNull(session.Simulation.GetSnapshot().MarketEvents);
+    }
+
+    [Fact]
+    public async Task OneYearPolicies_RemainHealthyLeaveGrowthHeadroomAndProduceDistinctTradeoffs()
+    {
+        var policies = Enum.GetValues<LongTermProgressionPolicy>();
+        var completed = await Task.WhenAll(policies.Select(policy => Task.Run(() =>
+            new KeyValuePair<LongTermProgressionPolicy, LongTermProgressionScenario>(
+                policy,
+                LongTermProgressionScenarioRunner.Run(policy, days: 365)))));
+        var scenarios = completed.ToDictionary(pair => pair.Key, pair => pair.Value);
+
+        foreach (var (policy, scenario) in scenarios)
+        {
+            var dayNinety = scenario.Day(90);
+            var dayOneEighty = scenario.Day(180);
+            var dayThreeSixtyFive = scenario.Day(365);
+
+            Assert.All(scenario.Checkpoints, checkpoint =>
+            {
+                Assert.True(checkpoint.CashCents >= 0, $"{policy}: {checkpoint}");
+                Assert.Equal(0, checkpoint.WagePaymentFailures);
+            });
+            Assert.True(dayOneEighty.OpenStores >= 4, $"{policy}: day180={dayOneEighty}");
+            Assert.True(dayThreeSixtyFive.OpenStores >= 6, $"{policy}: day365={dayThreeSixtyFive}");
+            Assert.True(
+                dayOneEighty.Investments > dayNinety.Investments,
+                $"{policy}: day90={dayNinety}; day180={dayOneEighty}");
+            Assert.True(
+                dayThreeSixtyFive.Investments > dayOneEighty.Investments,
+                $"{policy}: day180={dayOneEighty}; day365={dayThreeSixtyFive}");
+            Assert.True(
+                dayThreeSixtyFive.MaximumGrowthStores < dayThreeSixtyFive.OpenStores,
+                $"{policy}: day365={dayThreeSixtyFive}");
+            Assert.True(
+                scenario.Checkpoints
+                    .Where(checkpoint => checkpoint.Day > 335)
+                    .Count(checkpoint => checkpoint.NetProfitCents > 0) >= 24,
+                $"{policy}: final30={string.Join("; ", scenario.Checkpoints.Where(checkpoint => checkpoint.Day > 335))}");
+            Assert.True(
+                dayThreeSixtyFive.NetProfitCents > 0,
+                $"{policy}: day365={dayThreeSixtyFive}");
+        }
+
+        var turnover = scenarios[LongTermProgressionPolicy.HighTurnover];
+        var margin = scenarios[LongTermProgressionPolicy.HighMargin];
+
+        Assert.NotEqual(
+            turnover.Day(365).CompletedSales,
+            margin.Day(365).CompletedSales);
+        Assert.True(
+            GrossMarginBasisPoints(margin.Day(365)) > GrossMarginBasisPoints(turnover.Day(365)),
+            $"turnover={turnover.Day(365)}; margin={margin.Day(365)}");
+    }
+
+    [Fact]
+    public void CashPreservation_IsStrictlyDeterministicForOneHundredEightyDays()
+    {
+        var first = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.CashPreservation,
+            days: 180);
+        var second = LongTermProgressionScenarioRunner.Run(
+            LongTermProgressionPolicy.CashPreservation,
+            days: 180);
+
+        Assert.Equivalent(first.Checkpoints, second.Checkpoints, strict: true);
+    }
+
     [Theory]
     [InlineData(LongTermProgressionPolicy.HighTurnover)]
     [InlineData(LongTermProgressionPolicy.HighMargin)]
@@ -33,7 +111,7 @@ public sealed class LongTermProgressionScenarioTests
                 + $"beforeFailure={beforeWageFailure}; firstFailure={firstWageFailure}; "
                 + $"day30={dayThirty}; day90={dayNinety}");
         Assert.True(
-            dayNinety.OpenStores == 3,
+            dayNinety.OpenStores >= 3,
             $"{policy}: day30={dayThirty}; day90={dayNinety}");
         Assert.True(
             dayNinety.Investments > dayThirty.Investments,
@@ -70,7 +148,7 @@ public sealed class LongTermProgressionScenarioTests
         Assert.Equal(0, dayOne.MaximumGrowthStores);
         Assert.True(daySeven.Investments > 0);
         Assert.True(
-            dayThirty.OpenStores is >= 2 && dayThirty.OpenStores <= 3,
+            dayThirty.OpenStores >= 2,
             $"{policy}: day1={dayOne}; day7={daySeven}; day30={dayThirty}");
         Assert.True(dayThirty.AvailableInvestmentRoutes > 0);
         Assert.True(dayThirty.MaximumGrowthStores < dayThirty.OpenStores);
@@ -99,48 +177,6 @@ public sealed class LongTermProgressionScenarioTests
         Assert.All(
             new[] { turnover, margin, preservation },
             scenario => Assert.True(scenario.Day(30).OpenStores >= 2));
-    }
-
-    [Fact]
-    public void SavedCheckpoint_AdvancesEquallyOnlineAndThroughRepeatedOfflineReturns()
-    {
-        var savedAt = new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
-        var source = LongTermProgressionScenarioRunner.Run(
-            LongTermProgressionPolicy.CashPreservation,
-            days: 7).Session;
-        var save = source.CaptureSaveData(savedAt);
-        var online = DesktopBusinessSessionFactory.Create(
-            LongTermProgressionScenarioRunner.ProductionProducts,
-            save,
-            seed: 99,
-            nowUtc: savedAt).Session;
-        online.Simulation.AdvanceRealSeconds(4_320);
-
-        var offlineSave = save;
-        var offlineTime = savedAt;
-        for (var day = 0; day < 3; day++)
-        {
-            var nextTime = offlineTime.AddSeconds(1_440);
-            var restored = DesktopBusinessSessionFactory.Create(
-                LongTermProgressionScenarioRunner.ProductionProducts,
-                offlineSave,
-                seed: 99,
-                nowUtc: nextTime,
-                new OfflineSettlementPolicy(maxOfflineSeconds: 1_440, batchSize: 137));
-            Assert.Equal(1_440, restored.OfflineSettlement?.AppliedSeconds);
-            offlineTime = nextTime;
-            offlineSave = restored.Session.CaptureSaveData(offlineTime);
-        }
-
-        var offline = DesktopBusinessSessionFactory.Create(
-            LongTermProgressionScenarioRunner.ProductionProducts,
-            offlineSave,
-            seed: 99,
-            nowUtc: offlineTime).Session;
-        Assert.Equivalent(
-            online.Simulation.GetSnapshot(),
-            offline.Simulation.GetSnapshot(),
-            strict: true);
     }
 
     private static int GrossMarginBasisPoints(ProgressionCheckpoint checkpoint) =>

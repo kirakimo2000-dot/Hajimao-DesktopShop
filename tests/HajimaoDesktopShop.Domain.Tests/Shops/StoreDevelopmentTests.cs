@@ -10,9 +10,9 @@ public sealed class StoreDevelopmentTests
     [Fact]
     public void GrowthLimits_ExtendExistingSaveWithoutChangingItsLevels()
     {
-        Assert.Equal(8, StoreDevelopment.MaximumExpansionLevel);
-        Assert.Equal(9, StoreDevelopment.MaximumShelfLevel);
-        Assert.Equal(9, StoreDevelopment.MaximumDecorationLevel);
+        Assert.Equal(20, StoreDevelopment.MaximumExpansionLevel);
+        Assert.Equal(21, StoreDevelopment.MaximumShelfLevel);
+        Assert.Equal(21, StoreDevelopment.MaximumDecorationLevel);
 
         var restored = StoreDevelopment.Restore(new StoreDevelopmentState(4, 5, 5));
 
@@ -121,7 +121,7 @@ public sealed class StoreDevelopmentTests
         Assert.Equal(30, shop.GetInventory(water.Id).Quantity);
         Assert.Equal(new Money(12_000), shop.TotalOperatingCost);
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            StoreDevelopment.Restore(new StoreDevelopmentState(9, 0, 0)));
+            StoreDevelopment.Restore(new StoreDevelopmentState(21, 0, 0)));
         Assert.Throws<ArgumentException>(() =>
             StoreDevelopment.Restore(new StoreDevelopmentState(0, 2, 0)));
     }

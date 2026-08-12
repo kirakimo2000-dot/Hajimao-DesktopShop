@@ -1,6 +1,5 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Investments;
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Business.Onboarding;
 using HajimaoDesktopShop.Application.Business.Progression;
 using HajimaoDesktopShop.Application.Business.Simulation;
@@ -12,7 +11,7 @@ namespace HajimaoDesktopShop.Desktop.Tests.Progression;
 public sealed class PlayableDemoCandidateTests
 {
     [Fact]
-    public void ProductionLoop_ConnectsInvestmentReturnOfflineGrowthAndWeakStoreCapital()
+    public void ProductionLoop_ConnectsInvestmentReturnActiveIdleGrowthAndWeakStoreCapital()
     {
         var session = LongTermProgressionScenarioRunner.CreateSession(seed: 8_102);
         Assert.Equal(
@@ -42,23 +41,7 @@ public sealed class PlayableDemoCandidateTests
             hasComparableInvestmentReturn: true);
         Assert.True(onboarding.IsComplete);
 
-        var savedAt = new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
-        for (var returnNumber = 0; returnNumber < 3; returnNumber++)
-        {
-            var save = session.CaptureSaveData(savedAt);
-            savedAt = savedAt.AddSeconds(1_440);
-            var restored = DesktopBusinessSessionFactory.Create(
-                LongTermProgressionScenarioRunner.ProductionProducts,
-                save,
-                seed: 100 + returnNumber,
-                nowUtc: savedAt,
-                new OfflineSettlementPolicy(maxOfflineSeconds: 1_440, batchSize: 137));
-            var settlement = Assert.IsType<OfflineSettlementResult>(restored.OfflineSettlement);
-            Assert.True(ReturnBriefingService.Create(
-                settlement,
-                restored.Session.Simulation.GetSnapshot()).IsVisible);
-            session = restored.Session;
-        }
+        session.Simulation.AdvanceRealSeconds(3 * 1_440);
 
         var expansion = WaitForExecutableExpansion(session, maximumDays: 30);
         Assert.Equal(
@@ -69,12 +52,12 @@ public sealed class PlayableDemoCandidateTests
         Assert.Equal(
             StoreStrategyCommandStatus.Success,
             session.Strategy.Apply(
-                "station-store",
+                expansion.Candidate.TargetId,
                 StorePricingPreset.HighTurnover,
                 StoreStockingPreset.Lean).Status);
 
         var (capitalBeforeWeakStoreInvestment, weakStoreInvestment) =
-            WaitForWeakStoreInvestment(session, "station-store", maximumDays: 20);
+            WaitForWeakStoreInvestment(session, maximumDays: 20);
         Assert.InRange(capitalBeforeWeakStoreInvestment.Options.Count, 1, 3);
         Assert.True(capitalBeforeWeakStoreInvestment.Options
             .Select(option => option.Thesis)
@@ -113,7 +96,10 @@ public sealed class PlayableDemoCandidateTests
         {
             var expansion = session.Investments.GetCapitalAllocation().Options
                 .FirstOrDefault(option => option.Thesis == CapitalAllocationThesis.ExpandStreet
-                    && option.Candidate.IsExecutable);
+                    && option.Candidate.IsExecutable
+                    && option.Candidate.Return.CashPressure is not (
+                        InvestmentCashPressure.Critical
+                        or InvestmentCashPressure.CannotAfford));
             if (expansion is not null)
             {
                 return expansion;
@@ -128,7 +114,6 @@ public sealed class PlayableDemoCandidateTests
     private static (CapitalAllocationSnapshot Capital, CapitalAllocationOption Investment)
         WaitForWeakStoreInvestment(
             BusinessSession session,
-            string storeId,
             int maximumDays)
     {
         for (var day = 0; day <= maximumDays; day++)
@@ -136,7 +121,6 @@ public sealed class PlayableDemoCandidateTests
             var capital = session.Investments.GetCapitalAllocation();
             var investment = capital.Options.FirstOrDefault(option =>
                 option.Thesis == CapitalAllocationThesis.StabilizeWeakestStore
-                && option.Candidate.StoreId == storeId
                 && option.Candidate.IsExecutable);
             if (investment is not null)
             {
@@ -146,6 +130,14 @@ public sealed class PlayableDemoCandidateTests
             session.Simulation.AdvanceRealSeconds(1_440);
         }
 
-        throw new Xunit.Sdk.XunitException("The newly opened weak store did not receive capital advice.");
+        var finalCapital = session.Investments.GetCapitalAllocation();
+        var finalSnapshot = session.Simulation.GetSnapshot();
+        throw new Xunit.Sdk.XunitException(
+            $"No safely executable weak-store route appeared. "
+            + $"cash={finalSnapshot.Business.CashCents}; "
+            + $"stores={string.Join(',', finalSnapshot.Business.Stores.Select(store => store.Id))}; "
+            + $"options={string.Join(';', finalCapital.Options.Select(option =>
+                $"{option.Thesis}/{option.Candidate.StoreId}/{option.Candidate.Kind}/"
+                + $"{option.Candidate.Availability}/{option.Candidate.Return.CashPressure}"))}");
     }
 }

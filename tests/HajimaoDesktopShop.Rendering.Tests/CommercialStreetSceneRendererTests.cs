@@ -101,6 +101,33 @@ public sealed class CommercialStreetSceneRendererTests
         Assert.Equal(SKColor.Parse("#6B4634"), bitmap.GetPixel(16, 32));
     }
 
+    [Fact]
+    public void Renderer_UsesFacadeStyleKeyForVisibleStoreVariation()
+    {
+        var convenience = RenderFacade("facade-convenience-a");
+        var premium = RenderFacade("facade-premium-d");
+
+        Assert.NotEqual(convenience, premium);
+    }
+
+    private static string RenderFacade(string facadeStyleKey)
+    {
+        var snapshot = new CommercialStreetSnapshot(
+            CommercialStreetTier.Corner,
+            StreetWeather.Clear,
+            8_000,
+            0,
+            0,
+            [new CommercialStreetStoreSnapshot("corner", "街角店", 8_000, 10_000, facadeStyleKey)]);
+        using var bitmap = new SKBitmap(248, CommercialStreetLayout.LogicalHeight);
+        using var canvas = new SKCanvas(bitmap);
+        using var renderer = new CommercialStreetSceneRenderer();
+        renderer.Render(canvas, bitmap.Info, new CommercialStreetSceneFrame(snapshot));
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        return Convert.ToHexString(SHA256.HashData(encoded.ToArray()));
+    }
+
     private static string RenderHash(
         int animationFrame,
         bool reduceMotion,

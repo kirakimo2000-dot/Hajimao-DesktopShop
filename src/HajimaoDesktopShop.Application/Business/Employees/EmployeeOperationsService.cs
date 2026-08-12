@@ -1,6 +1,7 @@
 using System.Globalization;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
+using HajimaoDesktopShop.Application.Catalog;
 
 namespace HajimaoDesktopShop.Application.Business.Employees;
 
@@ -10,9 +11,6 @@ public sealed class EmployeeOperationsService
     private const int DefaultShiftStartMinute = 480;
     private const int DefaultShiftEndMinute = 960;
     private const ulong SplitMixIncrement = 0x9E3779B97F4A7C15UL;
-
-    private static readonly string[] CandidateNames =
-        ["小葵", "小满", "阿澄", "桃子", "晴川", "安禾", "铃兰", "星野"];
 
     private static readonly EmployeeRole[] CandidateRoles =
         [
@@ -24,12 +22,27 @@ public sealed class EmployeeOperationsService
             EmployeeRole.Buyer
         ];
 
+    private static readonly EmployeeProfileDefinition[] DefaultProfiles =
+        [
+            new("legacy-xiaokui", "小葵", "legacy", "employee-a01", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-xiaoman", "小满", "legacy", "employee-a02", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-acheng", "阿澄", "legacy", "employee-a03", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-taozi", "桃子", "legacy", "employee-a04", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-qingchuan", "晴川", "legacy", "employee-b01", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-anhe", "安禾", "legacy", "employee-b02", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-linglan", "铃兰", "legacy", "employee-b03", CandidateRoles, 1000, 1000, "社区门店经验。"),
+            new("legacy-xingye", "星野", "legacy", "employee-b04", CandidateRoles, 1000, 1000, "社区门店经验。")
+        ];
+
     private readonly object _gate = new();
     private readonly IEmployeeOperationsGateway _gateway;
     private readonly Dictionary<string, EmployeeCandidate> _candidates = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Employee> _employees = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _storeByEmployee = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _profileByEmployee = new(StringComparer.Ordinal);
     private readonly EmployeeRoster _roster = new();
+    private readonly IReadOnlyList<EmployeeProfileDefinition> _profiles;
+    private readonly IReadOnlyDictionary<string, EmployeeProfileDefinition> _profilesById;
     private ulong _candidateRandomState;
     private long _nextCandidateId;
 
@@ -37,7 +50,8 @@ public sealed class EmployeeOperationsService
         IEmployeeOperationsGateway gateway,
         ulong candidateRandomState = 0x48414A494D414FUL,
         long nextCandidateId = 1,
-        IEnumerable<EmployeeCandidate>? candidates = null)
+        IEnumerable<EmployeeCandidate>? candidates = null,
+        IEnumerable<EmployeeProfileDefinition>? profiles = null)
     {
         ArgumentNullException.ThrowIfNull(gateway);
         if (nextCandidateId <= 0)
@@ -48,6 +62,12 @@ public sealed class EmployeeOperationsService
         _gateway = gateway;
         _candidateRandomState = candidateRandomState;
         _nextCandidateId = nextCandidateId;
+        _profiles = Array.AsReadOnly((profiles ?? DefaultProfiles).ToArray());
+        if (_profiles.Count == 0)
+        {
+            throw new ArgumentException("At least one employee profile is required.", nameof(profiles));
+        }
+        _profilesById = _profiles.ToDictionary(profile => profile.Id, StringComparer.Ordinal);
 
         if (candidates is null)
         {
@@ -101,7 +121,9 @@ public sealed class EmployeeOperationsService
                         shift.EndMinute,
                         shift.IsAlwaysOn,
                         currentTask,
-                        EmployeeTaskPriorityCatalog.GetPriorities(employee.Role));
+                        EmployeeTaskPriorityCatalog.GetPriorities(employee.Role),
+                        _profileByEmployee[employee.Id.Value],
+                        ResolveAppearanceKey(_profileByEmployee[employee.Id.Value]));
                 })
                 .ToArray();
             return new EmployeeOperationsSnapshot(
@@ -111,6 +133,11 @@ public sealed class EmployeeOperationsService
                 Array.AsReadOnly(employees));
         }
     }
+
+    private string ResolveAppearanceKey(string profileId) =>
+        _profilesById.TryGetValue(profileId, out var profile)
+            ? profile.AppearanceKey
+            : "employee-a01";
 
     public void RefreshCandidates()
     {
@@ -167,6 +194,7 @@ public sealed class EmployeeOperationsService
                 candidate.HourlyWage);
             _employees.Add(employeeId, employee);
             _storeByEmployee.Add(employeeId, normalizedStoreId);
+            _profileByEmployee.Add(employeeId, candidate.ProfileId);
             _roster.SetShift(new EmployeeShift(
                 employeeId,
                 normalizedStoreId,
@@ -183,10 +211,15 @@ public sealed class EmployeeOperationsService
     public void RegisterExistingEmployee(
         string storeId,
         Employee employee,
-        EmployeeShift? shift = null)
+        EmployeeShift? shift = null,
+        string profileId = "legacy")
     {
         var normalizedStoreId = NormalizeId(storeId, nameof(storeId));
         ArgumentNullException.ThrowIfNull(employee);
+        if (string.IsNullOrWhiteSpace(profileId))
+        {
+            throw new ArgumentException("Profile ID is required.", nameof(profileId));
+        }
         lock (_gate)
         {
             var employeeId = employee.Id.Value;
@@ -209,6 +242,7 @@ public sealed class EmployeeOperationsService
 
             _employees.Add(employeeId, employee);
             _storeByEmployee.Add(employeeId, normalizedStoreId);
+            _profileByEmployee.Add(employeeId, profileId.Trim());
             _roster.SetShift(registeredShift);
         }
     }
@@ -402,9 +436,10 @@ public sealed class EmployeeOperationsService
     {
         var candidateNumber = _nextCandidateId;
         _nextCandidateId = checked(_nextCandidateId + 1L);
-        var name = CandidateNames[NextCandidateInt(CandidateNames.Length)];
-        var role = CandidateRoles[NextCandidateInt(CandidateRoles.Length)];
-        var efficiency = 800 + (NextCandidateInt(21) * 25);
+        var profile = _profiles[NextCandidateInt(_profiles.Count)];
+        var role = profile.AllowedRoles[NextCandidateInt(profile.AllowedRoles.Count)];
+        var baseEfficiency = 800 + (NextCandidateInt(21) * 25);
+        var efficiency = Math.Max(1, checked(baseEfficiency * profile.EfficiencyBiasPermille / 1000));
         var roleWage = role switch
         {
             EmployeeRole.Manager => 900,
@@ -413,13 +448,17 @@ public sealed class EmployeeOperationsService
             EmployeeRole.Cleaner => 600,
             _ => 650
         };
-        var hourlyWage = new Money(roleWage + ((efficiency - 800) / 25 * 25L));
+        var performancePremium = Math.Max(0, efficiency - 800) / 25 * 25L;
+        var hourlyWage = new Money(Math.Max(
+            1,
+            checked((roleWage + performancePremium) * profile.WageBiasPermille / 1000)));
         return new EmployeeCandidate(
             $"candidate-{candidateNumber:D6}",
-            name,
+            profile.DisplayName,
             role,
             efficiency,
-            hourlyWage);
+            hourlyWage,
+            profile.Id);
     }
 
     private int NextCandidateInt(int exclusiveMaximum)

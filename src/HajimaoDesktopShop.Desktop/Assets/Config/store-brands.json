@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "brands": [
+    { "id": "seven-eleven", "displayName": "7-Eleven", "region": "global", "formatId": "convenience", "facadeStyleKey": "facade-convenience-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "familymart", "displayName": "FamilyMart", "region": "asia", "formatId": "convenience", "facadeStyleKey": "facade-convenience-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "lawson", "displayName": "Lawson", "region": "asia", "formatId": "convenience", "facadeStyleKey": "facade-convenience-c", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "aldi", "displayName": "ALDI", "region": "europe", "formatId": "discount", "facadeStyleKey": "facade-discount-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "lidl", "displayName": "Lidl", "region": "europe", "formatId": "discount", "facadeStyleKey": "facade-discount-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "walmart", "displayName": "Walmart", "region": "americas", "formatId": "warehouse", "facadeStyleKey": "facade-warehouse-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "ginza-mitsukoshi", "displayName": "银座三越", "region": "japan", "formatId": "premium", "facadeStyleKey": "facade-premium-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "harrods", "displayName": "Harrods", "region": "europe", "formatId": "premium", "facadeStyleKey": "facade-premium-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "muji", "displayName": "MUJI", "region": "global", "formatId": "lifestyle", "facadeStyleKey": "facade-lifestyle-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "circle-k", "displayName": "Circle K", "region": "global", "formatId": "commuter", "facadeStyleKey": "facade-commuter-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "boots", "displayName": "Boots", "region": "europe", "formatId": "health-beauty", "facadeStyleKey": "facade-health-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "watsons", "displayName": "Watsons", "region": "asia", "formatId": "health-beauty", "facadeStyleKey": "facade-health-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "oxxo", "displayName": "OXXO", "region": "americas", "formatId": "commuter", "facadeStyleKey": "facade-commuter-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "wawa", "displayName": "Wawa", "region": "americas", "formatId": "commuter", "facadeStyleKey": "facade-commuter-c", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "ministop", "displayName": "Ministop", "region": "asia", "formatId": "variety", "facadeStyleKey": "facade-variety-a", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "carrefour", "displayName": "Carrefour", "region": "global", "formatId": "discount", "facadeStyleKey": "facade-discount-d", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "costco", "displayName": "Costco", "region": "global", "formatId": "warehouse", "facadeStyleKey": "facade-warehouse-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "target", "displayName": "Target", "region": "americas", "formatId": "warehouse", "facadeStyleKey": "facade-warehouse-c", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "selfridges", "displayName": "Selfridges", "region": "europe", "formatId": "premium", "facadeStyleKey": "facade-premium-d", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "kadewe", "displayName": "KaDeWe", "region": "europe", "formatId": "lifestyle", "facadeStyleKey": "facade-lifestyle-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "isetan", "displayName": "伊势丹", "region": "japan", "formatId": "lifestyle", "facadeStyleKey": "facade-lifestyle-c", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "marks-spencer", "displayName": "Marks & Spencer", "region": "europe", "formatId": "health-beauty", "facadeStyleKey": "facade-health-c", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "monoprix", "displayName": "Monoprix", "region": "europe", "formatId": "variety", "facadeStyleKey": "facade-variety-b", "referenceNote": "real-world-name", "distributionStatus": "review-required" },
+    { "id": "don-quijote", "displayName": "Don Quijote", "region": "japan", "formatId": "variety", "facadeStyleKey": "facade-variety-c", "referenceNote": "real-world-name", "distributionStatus": "review-required" }
+  ]
+}

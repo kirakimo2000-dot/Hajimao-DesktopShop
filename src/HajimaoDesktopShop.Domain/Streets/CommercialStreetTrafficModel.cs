@@ -40,9 +40,19 @@ public static class CommercialStreetTrafficModel
             1 => CommercialStreetTier.Corner,
             2 => CommercialStreetTier.Neighbors,
             3 or 4 => CommercialStreetTier.Street,
-            5 => CommercialStreetTier.Block,
+            >= 5 => CommercialStreetTier.Block,
             _ => throw new ArgumentOutOfRangeException(nameof(openStoreCount))
         };
+
+    public static int GetVisitorOpportunityCount(int openStoreCount)
+    {
+        if (openStoreCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(openStoreCount));
+        }
+
+        return checked(Math.Max(1, (openStoreCount * 3 + 4) / 5));
+    }
 
     public static StreetWeather GetWeather(long gameMinute)
     {

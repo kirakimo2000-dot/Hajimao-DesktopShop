@@ -10,6 +10,7 @@ namespace HajimaoDesktopShop.Desktop.Windows;
 
 public partial class DesktopShopWindow : Window
 {
+    private const double TaskbarSnapDistance = 48d;
     private readonly MarketViewModel _viewModel;
     private int _lastStreetStoreCount;
 
@@ -65,7 +66,7 @@ public partial class DesktopShopWindow : Window
         }
 
         DragMove();
-        ApplySurfaceLayout(reposition: true);
+        SnapAboveTaskbarIfNear();
     }
 
     private void OnOpenManagementClick(object sender, RoutedEventArgs e) =>
@@ -99,7 +100,7 @@ public partial class DesktopShopWindow : Window
             StorePage.SetCurrentValue(
                 VisibilityProperty,
                 _viewModel.DesktopNavigation.IsStore ? Visibility.Visible : Visibility.Collapsed);
-            ApplySurfaceLayout(reposition: true);
+            ApplySurfaceLayout(reposition: false);
         }
     }
 
@@ -119,7 +120,7 @@ public partial class DesktopShopWindow : Window
         _lastStreetStoreCount = storeCount;
         if (_viewModel.DesktopNavigation.IsStreet)
         {
-            ApplySurfaceLayout(reposition: true);
+            ApplySurfaceLayout(reposition: false);
         }
     }
 
@@ -149,11 +150,30 @@ public partial class DesktopShopWindow : Window
             _viewModel.DesktopNavigation.Mode,
             GetOpenedStoreCount(),
             workArea);
+        var currentWidth = ActualWidth > 0d ? ActualWidth : Width;
+        var currentHeight = ActualHeight > 0d ? ActualHeight : Height;
+        var wasTaskbarDocked = !reposition
+            && double.IsFinite(Left)
+            && double.IsFinite(Top)
+            && double.IsFinite(currentWidth)
+            && currentWidth > 0d
+            && double.IsFinite(currentHeight)
+            && currentHeight > 0d
+            && DesktopWindowPlacementPolicy.TrySnapAboveWorkAreaBottom(
+                new DesktopRect(Left, Top, currentWidth, currentHeight),
+                workArea,
+                TaskbarSnapDistance,
+                DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin,
+                out _);
         Width = layout.Size.Width;
         Height = layout.Size.Height;
         if (reposition)
         {
             Left = layout.Position.X;
+            Top = layout.Position.Y;
+        }
+        else if (wasTaskbarDocked)
+        {
             Top = layout.Position.Y;
         }
     }
@@ -178,6 +198,35 @@ public partial class DesktopShopWindow : Window
             ? area.Y - point.Y
             : point.Y > area.Bottom ? point.Y - area.Bottom : 0d;
         return (horizontal * horizontal) + (vertical * vertical);
+    }
+
+    private void SnapAboveTaskbarIfNear()
+    {
+        var workAreas = MonitorWorkAreaProvider.GetLogicalWorkAreas();
+        var width = ActualWidth > 0d ? ActualWidth : Width;
+        var height = ActualHeight > 0d ? ActualHeight : Height;
+        if (workAreas.Count == 0
+            || !double.IsFinite(Left)
+            || !double.IsFinite(Top)
+            || !double.IsFinite(width)
+            || width <= 0d
+            || !double.IsFinite(height)
+            || height <= 0d)
+        {
+            return;
+        }
+
+        var workArea = FindNearestWorkArea(workAreas);
+        if (DesktopWindowPlacementPolicy.TrySnapAboveWorkAreaBottom(
+                new DesktopRect(Left, Top, width, height),
+                workArea,
+                TaskbarSnapDistance,
+                DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin,
+                out var snapped))
+        {
+            Left = snapped.X;
+            Top = snapped.Y;
+        }
     }
 
     private void OnClosed(object? sender, EventArgs e)

@@ -4,9 +4,9 @@ namespace HajimaoDesktopShop.Domain.Shops;
 
 public sealed class StoreDevelopment
 {
-    public const int MaximumExpansionLevel = 8;
-    public const int MaximumShelfLevel = 9;
-    public const int MaximumDecorationLevel = 9;
+    public const int MaximumExpansionLevel = 20;
+    public const int MaximumShelfLevel = 21;
+    public const int MaximumDecorationLevel = 21;
 
     private StoreDevelopment(StoreDevelopmentState state)
     {

@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.IO;
 using System.Windows.Controls;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
@@ -12,6 +13,47 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class DesktopShopWindowRenderingTests
 {
     [Fact]
+    public void DragHandler_PreservesThePositionChosenByDragMove()
+    {
+        var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
+        var handlerStart = source.IndexOf(
+            "private void OnSurfaceMouseLeftButtonDown",
+            StringComparison.Ordinal);
+        var nextHandlerStart = source.IndexOf(
+            "private void OnOpenManagementClick",
+            handlerStart,
+            StringComparison.Ordinal);
+
+        Assert.True(handlerStart >= 0);
+        Assert.True(nextHandlerStart > handlerStart);
+        var dragHandler = source[handlerStart..nextHandlerStart];
+        Assert.Contains("DragMove();", dragHandler, StringComparison.Ordinal);
+        Assert.Contains("SnapAboveTaskbarIfNear();", dragHandler, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplySurfaceLayout", dragHandler, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopSurface_RemainsTopmostWhileManagementIsOpen()
+    {
+        var xaml = File.ReadAllText(FindDesktopShopWindowPath());
+        var appSource = File.ReadAllText(FindAppCodeBehindPath());
+
+        Assert.Contains("Topmost=\"True\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("_desktopWindow.Topmost = false", appSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToggleMuteCommand", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NavigationAndStreetGrowth_ResizeWithoutResettingTheHorizontalPosition()
+    {
+        var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
+
+        Assert.Equal(
+            2,
+            CountOccurrences(source, "ApplySurfaceLayout(reposition: false);"));
+    }
+
+    [Fact]
     public void Content_DefaultsToAOneStoreStreetAndKeepsTheShopSurfaceAvailable()
     {
         Exception? failure = null;
@@ -23,7 +65,7 @@ public sealed class DesktopShopWindowRenderingTests
                 var window = new DesktopShopWindow(viewModel);
                 Assert.Equal(ProductIdentity.DesktopWindowTitle, window.Title);
                 var root = Assert.IsType<Grid>(window.Content);
-                Assert.Equal(4, root.ContextMenu?.Items.Count);
+                Assert.Equal(3, root.ContextMenu?.Items.Count);
                 Assert.Equal(248, window.Width);
                 Assert.Equal(180, window.Height);
 
@@ -133,5 +175,63 @@ public sealed class DesktopShopWindowRenderingTests
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
         }
+    }
+
+    private static string FindDesktopShopWindowCodeBehindPath()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        return Path.Combine(
+            directory.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "Windows",
+            "DesktopShopWindow.xaml.cs");
+    }
+
+    private static string FindDesktopShopWindowPath() =>
+        Path.Combine(
+            FindRepositoryRoot().FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "Windows",
+            "DesktopShopWindow.xaml");
+
+    private static string FindAppCodeBehindPath() =>
+        Path.Combine(
+            FindRepositoryRoot().FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs");
+
+    private static DirectoryInfo FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return Assert.IsType<DirectoryInfo>(directory);
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        var count = 0;
+        var start = 0;
+        while ((start = source.IndexOf(value, start, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            start += value.Length;
+        }
+
+        return count;
     }
 }

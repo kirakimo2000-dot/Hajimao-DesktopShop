@@ -24,13 +24,6 @@ public sealed class RetailBusiness
     {
         ArgumentNullException.ThrowIfNull(player);
         ArgumentNullException.ThrowIfNull(starterDefinition);
-        if (starterDefinition.RequiredPlayerLevel > player.Level)
-        {
-            throw new ArgumentException(
-                "The starter store must be unlocked for the current player.",
-                nameof(starterDefinition));
-        }
-
         var business = new RetailBusiness(player, new BusinessWallet(openingCash));
         business._stores.Add(starterDefinition.Id, Shop.CreateWithWallet(business._wallet));
         return business;
@@ -89,11 +82,6 @@ public sealed class RetailBusiness
         if (_stores.ContainsKey(definition.Id))
         {
             return new OpenShopResult(OpenShopStatus.AlreadyOpen, definition.Id, Money.Zero);
-        }
-
-        if (Player.Level < definition.RequiredPlayerLevel)
-        {
-            return new OpenShopResult(OpenShopStatus.LevelLocked, definition.Id, definition.OpeningCost);
         }
 
         if (!_wallet.TryDebit(definition.OpeningCost))

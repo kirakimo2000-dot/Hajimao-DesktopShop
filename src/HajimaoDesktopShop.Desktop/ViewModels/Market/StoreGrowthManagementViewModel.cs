@@ -42,8 +42,6 @@ public sealed class StoreGrowthManagementViewModel : ObservableObject
         Refresh();
     }
 
-    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
-
     public IRelayCommand UpgradeExpansionCommand { get; }
     public IRelayCommand UpgradeShelfCommand { get; }
     public IRelayCommand UpgradeDecorationCommand { get; }
@@ -111,28 +109,22 @@ public sealed class StoreGrowthManagementViewModel : ObservableObject
     private void Upgrade(StoreUpgradeKind kind)
     {
         var result = _session.Game.UpgradeStore(_selectedStoreId(), kind);
-        CompleteCommand("升级", result, GameFeedbackKind.StoreGrowthChanged);
+        CompleteCommand("升级", result);
     }
 
     private void StartPromotion(string campaignId)
     {
         var result = _session.Game.StartPromotion(_selectedStoreId(), campaignId);
-        CompleteCommand("促销", result, GameFeedbackKind.PromotionStarted);
+        CompleteCommand("促销", result);
     }
 
     private void CompleteCommand(
         string operation,
-        StoreGrowthCommandResult result,
-        GameFeedbackKind feedbackKind)
+        StoreGrowthCommandResult result)
     {
         StatusMessage = result.Status == StoreGrowthCommandStatus.Success
             ? $"{operation}成功"
             : $"{operation}失败：{result.Status}";
-        if (result.Status == StoreGrowthCommandStatus.Success)
-        {
-            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(feedbackKind));
-        }
-
         Refresh();
     }
 }

@@ -10,7 +10,8 @@ public sealed record EmployeeCandidate
         string name,
         EmployeeRole role,
         int efficiencyPermille,
-        Money hourlyWage)
+        Money hourlyWage,
+        string profileId = "legacy")
     {
         if (string.IsNullOrWhiteSpace(candidateId))
         {
@@ -32,11 +33,17 @@ public sealed record EmployeeCandidate
             throw new ArgumentOutOfRangeException(nameof(hourlyWage));
         }
 
+        if (string.IsNullOrWhiteSpace(profileId))
+        {
+            throw new ArgumentException("Profile ID is required.", nameof(profileId));
+        }
+
         CandidateId = candidateId.Trim();
         Name = name.Trim();
         Role = role;
         EfficiencyPermille = efficiencyPermille;
         HourlyWage = hourlyWage;
+        ProfileId = profileId.Trim();
     }
 
     public string CandidateId { get; }
@@ -48,6 +55,8 @@ public sealed record EmployeeCandidate
     public int EfficiencyPermille { get; }
 
     public Money HourlyWage { get; }
+
+    public string ProfileId { get; }
 
     public Money HireCost => HourlyWage * 40;
 }

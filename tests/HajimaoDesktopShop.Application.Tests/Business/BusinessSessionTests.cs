@@ -2,6 +2,7 @@ using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Tests.Simulation;
@@ -88,6 +89,54 @@ public sealed class BusinessSessionTests
         Assert.Null(restored.Investments.GetLatestComparison("corner-store"));
     }
 
+    [Fact]
+    public void CaptureAndRestore_RoundTripsDynamicStoreIdentityWithoutPreconfiguredDefinition()
+    {
+        var content = StoreContent();
+        var session = BusinessSession.Create(
+            Products(),
+            [Stores()[0]],
+            new LevelCurve([0, 100]),
+            "corner-store",
+            100_000,
+            [CashierAssignment()],
+            new StatefulTestRandomSource(123),
+            new BusinessSimulationOptions(),
+            storeContent: content);
+        Assert.Equal(
+            OpenShopStatus.Success,
+            session.Game.OpenStore(new ShopDefinition(
+                new ShopId("store-0002"),
+                new StoreBrandId("aldi"),
+                new StoreFormatId("discount"),
+                "ALDI",
+                2,
+                new Money(30_000))).Status);
+
+        var save = session.CaptureSaveData(SavedAt);
+        var savedStore = save.Business!.Stores.Single(store => store.StoreId == "store-0002");
+        var restored = BusinessSession.RestoreOrUpgrade(
+            Products(),
+            [Stores()[0]],
+            new LevelCurve([0, 100]),
+            "corner-store",
+            save,
+            [CashierAssignment()],
+            new StatefulTestRandomSource(1),
+            new BusinessSimulationOptions(),
+            storeContent: content);
+
+        Assert.Equal(7, save.SchemaVersion);
+        Assert.Equal("aldi", savedStore.StoreBrandId);
+        Assert.Equal("discount", savedStore.StoreFormatId);
+        Assert.Equal(2, savedStore.StreetOrdinal);
+        var restoredStore = restored.Game.GetSnapshot().Stores.Single(store => store.Id == "store-0002");
+        Assert.Equal("ALDI", restoredStore.Name);
+        Assert.Equal("aldi", restoredStore.StoreBrandId);
+        Assert.Equal("discount", restoredStore.StoreFormatId);
+        Assert.Equal(2, restoredStore.StreetOrdinal);
+    }
+
     private static BusinessSession CreateSession() =>
         BusinessSession.Create(
             Products(),
@@ -130,4 +179,34 @@ public sealed class BusinessSessionTests
                 EmployeeRole.Cashier,
                 1_000,
                 new Money(1_001)));
+
+    private static StoreContentCatalog StoreContent() => new(
+        [new StoreFormatDefinition(
+            "discount",
+            "折扣店",
+            70_000,
+            80_000,
+            1_100,
+            1_200,
+            800,
+            900,
+            800,
+            1_300,
+            "all-day-volume",
+            new Dictionary<string, int>
+            {
+                ["ambient"] = 1_200,
+                ["chilled"] = 900,
+                ["frozen"] = 900
+            },
+            StorePricingPreset.HighTurnover,
+            StoreStockingPreset.Balanced)],
+        [new StoreBrandDefinition(
+            "aldi",
+            "ALDI",
+            "Europe",
+            "discount",
+            "discount-red",
+            "real-world-name",
+            "review-required")]);
 }

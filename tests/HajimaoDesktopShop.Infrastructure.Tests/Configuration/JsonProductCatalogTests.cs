@@ -5,27 +5,32 @@ namespace HajimaoDesktopShop.Infrastructure.Tests.Configuration;
 public sealed class JsonProductCatalogTests
 {
     [Fact]
-    public async Task LoadAsync_ShippedCatalog_HasTenUniqueProductsAndThreeShelfKinds()
+    public async Task LoadAsync_ShippedCatalog_HasTwelveBalancedEconomicCategories()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "TestData", "products.json");
         var catalog = new JsonProductCatalog(path);
 
         var products = await catalog.LoadAsync();
 
-        Assert.Equal(10, products.Count);
-        Assert.Equal(10, products.Select(product => product.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(120, products.Count);
+        Assert.Equal(120, products.Select(product => product.Id).Distinct(StringComparer.Ordinal).Count());
+        var categories = products.GroupBy(product => product.CategoryId).ToArray();
+        Assert.Equal(12, categories.Length);
+        Assert.All(categories, category => Assert.Equal(10, category.Count()));
         Assert.Equal(3, products.Select(product => product.ShelfKind).Distinct(StringComparer.Ordinal).Count());
         Assert.True(products.Select(product => product.RequiredPlayerLevel).Distinct().Count() >= 4);
         Assert.True(products
             .Select(product => product.InitialSalePriceCents - product.WholesalePriceCents)
             .Distinct()
-            .Count() >= 8);
+            .Count() >= 20);
         Assert.All(products, product =>
         {
             Assert.True(product.WholesalePriceCents > 0);
             Assert.True(product.InitialSalePriceCents > product.WholesalePriceCents);
             Assert.True(product.Capacity > 0);
             Assert.True(product.RequiredPlayerLevel >= 1);
+            Assert.StartsWith("product-", product.IconKey, StringComparison.Ordinal);
+            Assert.NotEmpty(product.RegionTags);
         });
     }
 

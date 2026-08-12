@@ -20,9 +20,8 @@ public sealed class CommercialStreetTrafficService
     {
         ArgumentNullException.ThrowIfNull(storeDemands);
         var stores = ValidateAndOrder(storeDemands);
-        var playerTier = CommercialStreetTrafficModel.GetTier(playerLevel);
-        var storefrontTier = CommercialStreetTrafficModel.GetTierForStorefrontCount(stores.Length);
-        var tier = (CommercialStreetTier)Math.Max((int)playerTier, (int)storefrontTier);
+        ArgumentOutOfRangeException.ThrowIfLessThan(playerLevel, 1);
+        var tier = CommercialStreetTrafficModel.GetTierForStorefrontCount(stores.Length);
 
         var weather = CommercialStreetTrafficModel.GetWeather(gameMinute);
         var traffic = CommercialStreetTrafficModel.CalculateSharedTrafficBasisPoints(
@@ -45,7 +44,8 @@ public sealed class CommercialStreetTrafficService
                 stores[index].StoreId,
                 stores[index].StoreName,
                 stores[index].AttractionBasisPoints,
-                share);
+                share,
+                stores[index].FacadeStyleKey);
         }
 
         return new CommercialStreetSnapshot(
@@ -56,7 +56,8 @@ public sealed class CommercialStreetTrafficService
             CommercialStreetTrafficModel.GetVisibleVehicleCount(
                 checked((int)(gameMinute % 1_440L)),
                 weather),
-            Array.AsReadOnly(snapshots));
+            Array.AsReadOnly(snapshots),
+            CommercialStreetTrafficModel.GetVisitorOpportunityCount(stores.Length));
     }
 
     public string? TryRouteVisitor(CommercialStreetSnapshot snapshot)
@@ -109,6 +110,7 @@ public sealed class CommercialStreetTrafficService
         {
             if (string.IsNullOrWhiteSpace(store.StoreId)
                 || string.IsNullOrWhiteSpace(store.StoreName)
+                || string.IsNullOrWhiteSpace(store.FacadeStyleKey)
                 || store.AttractionBasisPoints is < 0 or > 10_000)
             {
                 throw new ArgumentException("Street store demand is invalid.", nameof(storeDemands));

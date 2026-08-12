@@ -104,6 +104,36 @@ public sealed class BusinessShopSceneRendererTests
         Assert.NotEqual(shelf, leaving);
     }
 
+    [Fact]
+    public void Renderer_UsesProductIconKeyInsteadOfLegacyProductIdList()
+    {
+        var beverage = RenderContentVariant("product-beverage-water", "employee-a01");
+        var stationery = RenderContentVariant("product-stationery-notes", "employee-a01");
+
+        Assert.NotEqual(beverage, stationery);
+    }
+
+    [Fact]
+    public void Renderer_UsesEmployeeAppearanceKeyOnSharedAnimationTimeline()
+    {
+        var first = RenderContentVariant("product-beverage-water", "employee-a01");
+        var last = RenderContentVariant("product-beverage-water", "employee-l08");
+
+        Assert.NotEqual(first, last);
+    }
+
+    private static string RenderContentVariant(string iconKey, string appearanceKey)
+    {
+        var frame = CreateFrame(queueLength: 0, visitors: 0, iconKey, appearanceKey);
+        using var bitmap = new SKBitmap(420, 180);
+        using var canvas = new SKCanvas(bitmap);
+        using var renderer = new BusinessShopSceneRenderer();
+        renderer.Render(canvas, bitmap.Info, frame);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        return Convert.ToHexString(SHA256.HashData(encoded.ToArray()));
+    }
+
     private static string RenderFrame(
         int animationFrame,
         bool reduceMotion,
@@ -125,7 +155,11 @@ public sealed class BusinessShopSceneRendererTests
         return Convert.ToHexString(SHA256.HashData(encoded.ToArray()));
     }
 
-    private static BusinessShopSceneFrame CreateFrame(int queueLength, int visitors = 3)
+    private static BusinessShopSceneFrame CreateFrame(
+        int queueLength,
+        int visitors = 3,
+        string iconKey = "product-beverage-water",
+        string? appearanceKey = null)
     {
         var business = new BusinessSnapshot(
             1,
@@ -138,7 +172,7 @@ public sealed class BusinessShopSceneRendererTests
                     0,
                     0,
                     0,
-                    [new ProductSnapshot("water", "矿泉水", 100, 200, 0, 20, "ambient")])
+                    [new ProductSnapshot("rich-product", "丰富商品", 100, 200, 10, 20, "ambient", IconKey: iconKey)])
             ]);
         var operations = new StoreOperationsSnapshot(
             "corner-store",
@@ -155,7 +189,28 @@ public sealed class BusinessShopSceneRendererTests
             0,
             business,
             [operations],
-            new EmployeeOperationsSnapshot(1, 1, [], []),
+            new EmployeeOperationsSnapshot(
+                1,
+                1,
+                [],
+                appearanceKey is null
+                    ? []
+                    : [new EmployeeOperationsEmployeeSnapshot(
+                        "employee-1",
+                        "员工",
+                        HajimaoDesktopShop.Domain.Employees.EmployeeRole.Cashier,
+                        1_000,
+                        1_000,
+                        1_000,
+                        0,
+                        1_000,
+                        1_000,
+                        "corner-store",
+                        0,
+                        1_440,
+                        true,
+                        ProfileId: "profile",
+                        AppearanceKey: appearanceKey)]),
             new CommercialStreetSnapshot(
                 CommercialStreetTier.Corner,
                 StreetWeather.Clear,

@@ -70,9 +70,8 @@ public sealed class MarketViewModelTests
         Assert.Equal("¥1,000.00", viewModel.CashText);
         Assert.Equal("Lv.1", viewModel.PlayerLevelText);
         Assert.Equal("corner-store", viewModel.SelectedStoreId);
-        Assert.Equal("街角便利店", viewModel.SelectedStoreName);
-        Assert.Equal("固定现实 1x", viewModel.TimeModeText);
-        Assert.Equal("查看经营概览", viewModel.Onboarding.Title);
+        Assert.Equal("7-Eleven", viewModel.SelectedStoreName);
+        Assert.Equal("选择整店策略", viewModel.Onboarding.Title);
         Assert.NotEmpty(viewModel.Investment.Candidates);
     }
 
@@ -134,14 +133,14 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
-    public void GoToOnboardingTask_NavigatesToSuggestedSectionWithoutChangingGameTime()
+    public void GoToNextAction_NavigatesToSuggestedSectionWithoutChangingGameTime()
     {
         var viewModel = new MarketViewModel(MarketTestSession.Create());
         var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
 
-        viewModel.GoToOnboardingTaskCommand.Execute(null);
+        viewModel.GoToNextActionCommand.Execute(null);
 
-        Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
+        Assert.Equal(ManagementSection.Strategy, viewModel.SelectedSection);
         Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
     }
 
@@ -154,7 +153,7 @@ public sealed class MarketViewModelTests
         viewModel.SelectStoreCommand.Execute(station);
 
         Assert.Equal("station-store", viewModel.SelectedStoreId);
-        Assert.Equal("车站便利店", viewModel.SelectedStoreName);
+        Assert.Equal("FamilyMart", viewModel.SelectedStoreName);
         Assert.False(station.IsOpen);
     }
 
@@ -170,26 +169,6 @@ public sealed class MarketViewModelTests
 
         Assert.Equal(gameMinute, viewModel.SceneFrame.Snapshot.GameMinute);
         Assert.Equal(cash, viewModel.CashText);
-    }
-
-    [Fact]
-    public void ToggleStatusBar_ChangesPresentationHeightWithoutChangingGameTime()
-    {
-        var viewModel = new MarketViewModel(MarketTestSession.Create());
-        var minute = viewModel.SceneFrame!.Snapshot.GameMinute;
-
-        viewModel.ToggleStatusBarCommand.Execute(null);
-
-        Assert.False(viewModel.IsStatusBarExpanded);
-        Assert.Equal(34d, viewModel.StatusBarHeight);
-        Assert.Equal("展开状态栏", viewModel.StatusBarToggleText);
-        Assert.Equal(minute, viewModel.SceneFrame.Snapshot.GameMinute);
-
-        viewModel.ToggleStatusBarCommand.Execute(null);
-
-        Assert.True(viewModel.IsStatusBarExpanded);
-        Assert.Equal(56d, viewModel.StatusBarHeight);
-        Assert.Equal("收起状态栏", viewModel.StatusBarToggleText);
     }
 
     [Fact]

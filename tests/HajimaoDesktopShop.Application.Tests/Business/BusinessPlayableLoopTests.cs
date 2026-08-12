@@ -1,13 +1,9 @@
-using HajimaoDesktopShop.Application.Business.Offline;
 using HajimaoDesktopShop.Application.Business.Strategy;
 
 namespace HajimaoDesktopShop.Application.Tests.Business;
 
 public sealed class BusinessPlayableLoopTests
 {
-    private static readonly DateTimeOffset SavedAt =
-        new(2026, 8, 6, 12, 0, 0, TimeSpan.Zero);
-
     [Fact]
     public void DefaultStore_CanOperateForSevenDaysWithoutMaintenanceCommands()
     {
@@ -51,30 +47,4 @@ public sealed class BusinessPlayableLoopTests
             < marginSnapshot.Business.Stores[0].Products[0].GrossMarginBasisPoints);
     }
 
-    [Fact]
-    public void OfflineSettlement_UsesAppliedStrategyThroughTheNormalSimulationPath()
-    {
-        var initial = BusinessTestSessionFactory.Create(randomState: 789);
-        initial.Strategy.Apply(
-            "store-1",
-            StorePricingPreset.HighMargin,
-            StoreStockingPreset.Lean);
-        initial.Simulation.AdvanceRealSeconds(37);
-        var save = initial.CaptureSaveData(SavedAt);
-        var online = BusinessTestSessionFactory.Restore(save);
-        var offline = BusinessTestSessionFactory.Restore(save);
-
-        online.Simulation.AdvanceRealSeconds(3_600);
-        var result = OfflineSettlementService.Settle(
-            offline.Simulation,
-            SavedAt,
-            SavedAt.AddHours(1));
-
-        Assert.Equal(3_600, result.AppliedSeconds);
-        Assert.Equivalent(online.Simulation.GetSnapshot(), offline.Simulation.GetSnapshot(), strict: true);
-        var applied = offline.Strategy.GetAppliedPlan("store-1");
-        Assert.NotNull(applied);
-        Assert.Equal(StorePricingPreset.HighMargin, applied.Pricing);
-        Assert.Equal(StoreStockingPreset.Lean, applied.Stocking);
-    }
 }

@@ -24,8 +24,6 @@ public sealed class EmployeeManagementViewModel : ObservableObject
         RefreshCandidatesCommand = new RelayCommand(RefreshCandidates);
     }
 
-    public event EventHandler<GameFeedbackEventArgs>? FeedbackRaised;
-
     public ObservableCollection<EmployeeCardViewModel> Employees { get; } = [];
 
     public ObservableCollection<EmployeeCandidateCardViewModel> Candidates { get; } = [];
@@ -99,11 +97,6 @@ public sealed class EmployeeManagementViewModel : ObservableObject
         StatusMessage = result.Status == EmployeeCommandStatus.Success
             ? $"{operation}成功"
             : $"{operation}失败：{result.Status}";
-        if (result.Status == EmployeeCommandStatus.Success)
-        {
-            FeedbackRaised?.Invoke(this, new GameFeedbackEventArgs(GameFeedbackKind.EmployeeChanged));
-        }
-
         Refresh();
     }
 }

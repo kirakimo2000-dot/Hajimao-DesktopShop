@@ -110,6 +110,71 @@ public sealed class DemandModelTests
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateContext(minuteOfDay: 1_440));
     }
 
+    [Fact]
+    public void Arrival_DiscountFormatGetsMoreBaseDemandButLargerHighPricePenalty()
+    {
+        var neutral = DemandModel.CalculateArrival(CreateContext(priceIndexBasisPoints: 12_000));
+        var discount = DemandModel.CalculateArrival(new DemandContext(
+            3_000,
+            12_000,
+            1_000,
+            0,
+            1_000,
+            900,
+            sensitivity: new DemandSensitivity(
+                BaseDemandPermille: 1_220,
+                PricePermille: 1_450,
+                ServicePermille: 800,
+                QueuePermille: 1_250,
+                CleanlinessPermille: 800),
+            timeCurve: DemandTimeCurve.AllDayVolume));
+
+        Assert.Equal(3_660, discount.BaseBasisPoints);
+        Assert.True(discount.PriceAdjustmentBasisPoints < neutral.PriceAdjustmentBasisPoints);
+    }
+
+    [Fact]
+    public void Arrival_PremiumFormatAmplifiesServiceAndCleanlinessEffects()
+    {
+        var neutral = DemandModel.CalculateArrival(CreateContext(
+            servicePermille: 800,
+            cleanlinessPermille: 800));
+        var premium = DemandModel.CalculateArrival(new DemandContext(
+            3_000,
+            10_000,
+            800,
+            0,
+            800,
+            900,
+            sensitivity: new DemandSensitivity(
+                BaseDemandPermille: 780,
+                PricePermille: 600,
+                ServicePermille: 1_500,
+                QueuePermille: 900,
+                CleanlinessPermille: 1_500),
+            timeCurve: DemandTimeCurve.AfternoonSelect));
+
+        Assert.True(premium.ServiceAdjustmentBasisPoints < neutral.ServiceAdjustmentBasisPoints);
+        Assert.True(premium.CleanlinessAdjustmentBasisPoints < neutral.CleanlinessAdjustmentBasisPoints);
+    }
+
+    [Fact]
+    public void Arrival_CommuterCurveConcentratesDemandAtMorningAndEveningPeaks()
+    {
+        var morning = DemandModel.CalculateArrival(new DemandContext(
+            3_000, 10_000, 1_000, 0, 1_000, 480,
+            timeCurve: DemandTimeCurve.CommuterPeaks));
+        var midday = DemandModel.CalculateArrival(new DemandContext(
+            3_000, 10_000, 1_000, 0, 1_000, 780,
+            timeCurve: DemandTimeCurve.CommuterPeaks));
+        var evening = DemandModel.CalculateArrival(new DemandContext(
+            3_000, 10_000, 1_000, 0, 1_000, 1_080,
+            timeCurve: DemandTimeCurve.CommuterPeaks));
+
+        Assert.True(morning.TimeAdjustmentBasisPoints > midday.TimeAdjustmentBasisPoints);
+        Assert.True(evening.TimeAdjustmentBasisPoints > midday.TimeAdjustmentBasisPoints);
+    }
+
     private static DemandContext CreateContext(
         int baseBasisPoints = 3_000,
         int priceIndexBasisPoints = 10_000,

@@ -16,7 +16,37 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class ManagementWindowTests
 {
     [Fact]
-    public void ManagementWindow_ContainsAccessibleOnboardingPanel()
+    public void NavigationHighlight_FollowsSelectedSection()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+        Assert.Contains("x:Name=\"OverviewSelectionIndicator\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StrategySelectionIndicator\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"InvestmentSelectionIndicator\"", xaml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Visibility=\"{Binding IsOverviewSection, Converter={StaticResource BooleanToVisibilityConverter}}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Visibility=\"{Binding IsStrategySection, Converter={StaticResource BooleanToVisibilityConverter}}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Visibility=\"{Binding IsInvestmentSection, Converter={StaticResource BooleanToVisibilityConverter}}\"",
+            xaml,
+            StringComparison.Ordinal);
+
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        Assert.True(viewModel.IsOverviewSection);
+        Assert.False(viewModel.IsStrategySection);
+
+        viewModel.NavigateCommand.Execute(ManagementSection.Strategy);
+
+        Assert.False(viewModel.IsOverviewSection);
+        Assert.True(viewModel.IsStrategySection);
+    }
+
+    [Fact]
+    public void ManagementWindow_ContainsOneScrollableAccessibleNextActionRail()
     {
         RunOnSta(() =>
         {
@@ -35,32 +65,37 @@ public sealed class ManagementWindowTests
                     FindLogicalChildren<TextBlock>(window),
                     textBlock => textBlock.Text == ProductIdentity.BrandHeader);
 
-                var panel = Assert.IsType<Border>(window.FindName("OnboardingPanel"));
+                var scrollViewer = Assert.IsType<ScrollViewer>(window.FindName("RightRailScrollViewer"));
+                Assert.Equal(ScrollBarVisibility.Auto, scrollViewer.VerticalScrollBarVisibility);
+                Assert.Equal(ScrollBarVisibility.Disabled, scrollViewer.HorizontalScrollBarVisibility);
+
+                var panel = Assert.IsType<Border>(window.FindName("NextActionPanel"));
                 Assert.Equal(Visibility.Visible, panel.Visibility);
-                var visibilityBinding = BindingOperations.GetBindingExpression(panel, UIElement.VisibilityProperty);
-                Assert.NotNull(visibilityBinding);
+
+                var action = Assert.IsType<Button>(window.FindName("NextActionButton"));
+                Assert.Equal("选策略", viewModel.NextAction.ActionText);
                 Assert.Equal(
-                    $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.IsVisible)}",
-                    visibilityBinding.ParentBinding.Path.Path);
+                    "NextAction.ActionText",
+                    BindingOperations.GetBindingExpression(
+                        action,
+                        AutomationProperties.NameProperty)?.ParentBinding.Path.Path);
+                Assert.Equal(
+                    "NextAction.ActionText",
+                    BindingOperations.GetBindingExpression(
+                        action,
+                        ContentControl.ContentProperty)?.ParentBinding.Path.Path);
+                Assert.Equal(
+                    "GoToNextActionCommand",
+                    BindingOperations.GetBindingExpression(
+                        action,
+                        Button.CommandProperty)?.ParentBinding.Path.Path);
 
-                var action = Assert.IsType<Button>(window.FindName("OnboardingAction"));
-                Assert.Equal("前往当前新手任务", AutomationProperties.GetName(action));
-                Assert.Equal("前往", action.Content);
-                Assert.Same(viewModel.GoToOnboardingTaskCommand, action.Command);
-
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(panel),
-                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                        == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.ProgressText)}");
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(panel),
-                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                        == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.Title)}");
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(panel),
-                    textBlock => textBlock.TextWrapping == TextWrapping.Wrap
-                        && BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                            == $"{nameof(FrameworkElement.DataContext)}.{nameof(MarketViewModel.Onboarding)}.{nameof(OnboardingViewModel.Guidance)}");
+                var xaml = File.ReadAllText(FindManagementWindowPath());
+                Assert.Contains("Text=\"{Binding NextAction.ContextText}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"{Binding NextAction.Title}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"{Binding NextAction.DetailText}\"", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("x:Name=\"OnboardingPanel\"", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("x:Name=\"LongTermGoalPanel\"", xaml, StringComparison.Ordinal);
             }
             finally
             {
@@ -70,27 +105,12 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void ManagementWindow_ContainsReadOnlyReturnBriefingBeforeOnboarding()
-    {
-        var xaml = File.ReadAllText(FindManagementWindowPath());
-
-        Assert.Contains("x:Name=\"ReturnBriefingPanel\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Visibility=\"{Binding ReturnBriefing.IsVisible", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding ReturnBriefing.DurationText}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding ReturnBriefing.ResultText}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding ReturnBriefing.GuidanceText}\"", xaml, StringComparison.Ordinal);
-        Assert.True(
-            xaml.IndexOf("x:Name=\"ReturnBriefingPanel\"", StringComparison.Ordinal)
-                < xaml.IndexOf("x:Name=\"OnboardingPanel\"", StringComparison.Ordinal));
-        Assert.DoesNotContain("领取离线", xaml, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ManagementWindow_HasThreeInvestorNavigationTargetsPersistentSceneAndNoSpeedControls()
+    public void ManagementWindow_HasOnlyTheRequiredDesktopControlAndNoStatusOrSpeedText()
     {
         RunOnSta(() =>
         {
-            var window = new ManagementWindow(new MarketViewModel(MarketTestSession.Create()));
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
             try
             {
                 window.ApplyTemplate();
@@ -105,12 +125,26 @@ public sealed class ManagementWindowTests
                         .Count(button => Equals(button.Tag, "management-navigation")));
                 var scene = Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
                 Assert.Equal("实时像素店铺场景", AutomationProperties.GetName(scene));
-                Assert.Single(
+                Assert.DoesNotContain(
                     FindLogicalChildren<Button>(window),
                     button => Equals(button.Tag, "status-toggle"));
+                var desktopControl = Assert.Single(
+                    FindLogicalChildren<Button>(window),
+                    button => Equals(button.Tag, "desktop-control"));
+                Assert.Equal("切换鼠标穿透", desktopControl.Content);
+                Assert.Equal(
+                    nameof(MarketViewModel.ToggleClickThroughCommand),
+                    BindingOperations.GetBindingExpression(
+                        desktopControl,
+                        Button.CommandProperty)?.ParentBinding.Path.Path);
                 Assert.DoesNotContain(
                     FindLogicalChildren<Button>(window),
                     button => button.Content?.ToString() is "2x" or "4x" or "暂停" or "动画" or "特效" or "倍速");
+                var xaml = File.ReadAllText(FindManagementWindowPath());
+                Assert.DoesNotContain("TimeModeText", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("Text=\"{Binding StatusMessage}\"", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("ToggleMuteCommand", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("SoundToggleText", xaml, StringComparison.Ordinal);
             }
             finally
             {
@@ -177,7 +211,7 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void ManagementWindow_ShowsOneLongTermGoalAndConditionalRecoveryAction()
+    public void StrategySection_ShowsConditionalRecoveryAction()
     {
         RunOnSta(() =>
         {
@@ -192,22 +226,6 @@ public sealed class ManagementWindowTests
                 window.Measure(new Size(1180, 720));
                 window.Arrange(new Rect(0, 0, 1180, 720));
                 window.UpdateLayout();
-
-                var goal = Assert.IsType<Border>(window.FindName("LongTermGoalPanel"));
-                foreach (var property in new[]
-                         {
-                             nameof(LongTermProgressionViewModel.TitleText),
-                             nameof(LongTermProgressionViewModel.ProgressText),
-                             nameof(LongTermProgressionViewModel.GuidanceText)
-                         })
-                {
-                    Assert.Contains(
-                        FindLogicalChildren<TextBlock>(goal),
-                        textBlock => BindingOperations.GetBindingExpression(
-                            textBlock,
-                            TextBlock.TextProperty)?.ParentBinding.Path.Path
-                            == $"{nameof(MarketViewModel.Progression)}.{property}");
-                }
 
                 var recovery = Assert.IsType<Button>(window.FindName("ApplyRecoveryAction"));
                 Assert.Equal("采用保守方案", recovery.Content);

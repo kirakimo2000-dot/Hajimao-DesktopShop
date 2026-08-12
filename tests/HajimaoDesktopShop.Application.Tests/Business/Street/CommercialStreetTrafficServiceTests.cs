@@ -19,11 +19,12 @@ public sealed class CommercialStreetTrafficServiceTests
                 new StreetStoreDemand("alpha", "车站店", 8_000)
             ]);
 
-        Assert.Equal(CommercialStreetTier.Street, snapshot.Tier);
+        Assert.Equal(CommercialStreetTier.Neighbors, snapshot.Tier);
         Assert.Equal(StreetWeather.Rain, snapshot.Weather);
         Assert.Equal(6_440, snapshot.SharedTrafficBasisPoints);
         Assert.Equal(4, snapshot.VisiblePedestrians);
         Assert.Equal(1, snapshot.VisibleVehicles);
+        Assert.Equal(2, snapshot.VisitorOpportunities);
         Assert.Collection(
             snapshot.Stores,
             store =>
@@ -36,6 +37,21 @@ public sealed class CommercialStreetTrafficServiceTests
                 Assert.Equal("zeta", store.StoreId);
                 Assert.Equal(5_000, store.TrafficShareBasisPoints);
             });
+    }
+
+    [Fact]
+    public void CreateSnapshot_UsesStoreCountRatherThanPlayerLevelForTierAndOpportunities()
+    {
+        var service = new CommercialStreetTrafficService(new FixedRandomSource());
+        var stores = Enumerable.Range(1, 6)
+            .Select(index => new StreetStoreDemand($"store-{index:D4}", $"店铺 {index}", 5_000))
+            .ToArray();
+
+        var snapshot = service.CreateSnapshot(gameMinute: 0, playerLevel: 1, stores);
+
+        Assert.Equal(CommercialStreetTier.Block, snapshot.Tier);
+        Assert.Equal(6, snapshot.Stores.Count);
+        Assert.Equal(4, snapshot.VisitorOpportunities);
     }
 
     [Fact]
