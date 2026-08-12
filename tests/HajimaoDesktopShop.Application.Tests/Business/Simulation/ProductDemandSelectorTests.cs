@@ -31,6 +31,29 @@ public sealed class ProductDemandSelectorTests
             ProductDemandSelector.Select([Product("invalid", 0)], new FixedIntegerRandomSource(0)));
     }
 
+    [Fact]
+    public void CalculateDemandWeight_CombinesStoreShelfAndMarketProductCategory()
+    {
+        var product = new ProductSnapshot(
+            "tea",
+            "茶饮",
+            100,
+            200,
+            1,
+            10,
+            "ambient",
+            CategoryId: "beverages");
+        var marketWeights = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["ambient"] = 1_100,
+            ["beverages"] = 1_500
+        };
+
+        var weight = ProductDemandSelector.CalculateDemandWeight(product, 1_200, marketWeights);
+
+        Assert.Equal(1_980, weight);
+    }
+
     private static ProductSnapshot Product(string id, int weight) =>
         new(id, id, 100, 200, 1, 10, id, DemandWeightPermille: weight);
 

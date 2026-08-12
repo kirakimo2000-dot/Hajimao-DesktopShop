@@ -57,6 +57,7 @@ public sealed class MarketViewModel : ObservableObject
         Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
         Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
         CommercialStreet = new CommercialStreetViewModel();
+        EventTicker = new MarketEventTickerViewModel();
         Refresh();
     }
 
@@ -75,6 +76,8 @@ public sealed class MarketViewModel : ObservableObject
     public InvestmentPortfolioViewModel Investment { get; }
 
     public CommercialStreetViewModel CommercialStreet { get; }
+
+    public MarketEventTickerViewModel EventTicker { get; }
 
     public OnboardingViewModel Onboarding { get; }
 
@@ -233,6 +236,7 @@ public sealed class MarketViewModel : ObservableObject
             reduceMotion ? 0 : _animationFrame,
             reduceMotion);
         CommercialStreet.Refresh(snapshot.Street, SceneFrame.AnimationFrame, reduceMotion);
+        EventTicker.Update(snapshot.MarketEvents);
         if (!reduceMotion)
         {
             _animationFrame = _animationFrame == int.MaxValue ? 0 : _animationFrame + 1;

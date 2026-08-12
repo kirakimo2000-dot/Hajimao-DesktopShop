@@ -10,6 +10,7 @@ internal sealed class BusinessProcurementService
     private readonly IProcurementStockGateway _stock;
     private readonly List<ProcurementOrder> _pendingOrders = [];
     private readonly Dictionary<(string StoreId, string ProductId), AutoRestockPolicy> _policies = [];
+    private AutoRestockPolicy[]? _orderedEnabledPolicies;
     private long _nextOrderId = 1;
 
     public BusinessProcurementService(IProcurementStockGateway stock)
@@ -113,6 +114,7 @@ internal sealed class BusinessProcurementService
             ProductId = productId,
             PreferredChannelId = channelId
         };
+        _orderedEnabledPolicies = null;
     }
 
     public Money QuoteUnitCost(Money wholesalePrice, string channelId) =>
@@ -156,7 +158,8 @@ internal sealed class BusinessProcurementService
         string productId,
         string channelId,
         int quantity,
-        bool isAutomatic)
+        bool isAutomatic,
+        int costModifierPermille = 1_000)
     {
         storeId = NormalizeId(storeId, nameof(storeId));
         productId = NormalizeId(productId, nameof(productId));
@@ -182,6 +185,11 @@ internal sealed class BusinessProcurementService
             return Failure(ProcurementOrderPlacementStatus.InvalidQuantity);
         }
 
+        if (costModifierPermille is < 100 or > 3_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costModifierPermille));
+        }
+
         if (quantity < channel.MinimumOrderQuantity)
         {
             return Failure(ProcurementOrderPlacementStatus.BelowMinimum);
@@ -196,7 +204,8 @@ internal sealed class BusinessProcurementService
             return Failure(ProcurementOrderPlacementStatus.CapacityExceeded);
         }
 
-        var unitCost = channel.QuoteUnitCost(product.WholesalePrice);
+        var quotedUnitCost = channel.QuoteUnitCost(product.WholesalePrice);
+        var unitCost = ScaleCost(quotedUnitCost, costModifierPermille);
         var payment = _stock.TryPayForStockOrder(storeId, productId, quantity, unitCost);
         if (payment.Status != StockPurchaseStatus.Success)
         {
@@ -227,7 +236,7 @@ internal sealed class BusinessProcurementService
             payment.TotalCost);
     }
 
-    public void AdvanceMinute()
+    public void AdvanceMinute(int costModifierPermille = 1_000)
     {
         foreach (var order in _pendingOrders.OrderBy(order => order.OrderId).ToArray())
         {
@@ -242,15 +251,17 @@ internal sealed class BusinessProcurementService
             }
         }
 
-        ProcessAutoRestock();
+        ProcessAutoRestock(costModifierPermille);
     }
 
-    private void ProcessAutoRestock()
+    private void ProcessAutoRestock(int costModifierPermille)
     {
-        foreach (var policy in _policies.Values
-                     .Where(policy => policy.IsEnabled)
-                     .OrderBy(policy => policy.StoreId, StringComparer.Ordinal)
-                     .ThenBy(policy => policy.ProductId, StringComparer.Ordinal))
+        _orderedEnabledPolicies ??= _policies.Values
+            .Where(policy => policy.IsEnabled)
+            .OrderBy(policy => policy.StoreId, StringComparer.Ordinal)
+            .ThenBy(policy => policy.ProductId, StringComparer.Ordinal)
+            .ToArray();
+        foreach (var policy in _orderedEnabledPolicies)
         {
             var product = _stock.FindProduct(policy.StoreId, policy.ProductId);
             if (product is null)
@@ -278,7 +289,8 @@ internal sealed class BusinessProcurementService
                 policy.ProductId,
                 channel.Id,
                 orderQuantity,
-                isAutomatic: true);
+                isAutomatic: true,
+                costModifierPermille);
             if (result.Status == ProcurementOrderPlacementStatus.Success
                 || product.Quantity != 0
                 || !policy.UseEmergencySupplierWhenOutOfStock
@@ -292,8 +304,15 @@ internal sealed class BusinessProcurementService
                 policy.ProductId,
                 "local-wholesale",
                 1,
-                isAutomatic: true);
+                isAutomatic: true,
+                costModifierPermille);
         }
+    }
+
+    private static Money ScaleCost(Money cost, int modifierPermille)
+    {
+        var scaled = checked(cost.Cents * modifierPermille);
+        return new Money(checked((scaled + 999L) / 1_000L));
     }
 
     private bool TryDeliver(ProcurementOrder order)

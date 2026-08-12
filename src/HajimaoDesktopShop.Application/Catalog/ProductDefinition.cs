@@ -9,7 +9,10 @@ public sealed record ProductDefinition
         long initialSalePriceCents,
         int capacity,
         string shelfKind,
-        int requiredPlayerLevel = 1)
+        int requiredPlayerLevel = 1,
+        string categoryId = "general",
+        string? iconKey = null,
+        IReadOnlyList<string>? regionTags = null)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -46,6 +49,21 @@ public sealed record ProductDefinition
             throw new ArgumentOutOfRangeException(nameof(requiredPlayerLevel));
         }
 
+        if (string.IsNullOrWhiteSpace(categoryId))
+        {
+            throw new ArgumentException("Product category is required.", nameof(categoryId));
+        }
+
+        var normalizedRegions = (regionTags ?? ["global"])
+            .Select(tag => tag.Trim())
+            .Where(tag => tag.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (normalizedRegions.Length == 0)
+        {
+            throw new ArgumentException("At least one product region is required.", nameof(regionTags));
+        }
+
         Id = id.Trim();
         Name = name.Trim();
         WholesalePriceCents = wholesalePriceCents;
@@ -53,6 +71,9 @@ public sealed record ProductDefinition
         Capacity = capacity;
         ShelfKind = shelfKind.Trim();
         RequiredPlayerLevel = requiredPlayerLevel;
+        CategoryId = categoryId.Trim();
+        IconKey = string.IsNullOrWhiteSpace(iconKey) ? $"product-{Id}" : iconKey.Trim();
+        RegionTags = Array.AsReadOnly(normalizedRegions);
     }
 
     public string Id { get; }
@@ -68,4 +89,10 @@ public sealed record ProductDefinition
     public string ShelfKind { get; }
 
     public int RequiredPlayerLevel { get; }
+
+    public string CategoryId { get; }
+
+    public string IconKey { get; }
+
+    public IReadOnlyList<string> RegionTags { get; }
 }

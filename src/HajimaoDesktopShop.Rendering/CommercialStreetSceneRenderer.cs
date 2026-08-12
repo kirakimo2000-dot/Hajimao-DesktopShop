@@ -12,6 +12,12 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
     private static readonly SKSamplingOptions PixelSampling =
         new(SKFilterMode.Nearest, SKMipmapMode.None);
 
+    private static readonly string[] FacadeBodies =
+        ["#6B4634", "#4B5964", "#735244", "#48515C", "#8A765D", "#4D6A62", "#594453", "#7B554B"];
+
+    private static readonly string[] FacadeSigns =
+        ["#F1B844", "#65B8C8", "#E15A5A", "#A6ABB4", "#F4EBDD", "#72C986", "#D4AE67", "#E8905B"];
+
     private readonly SKPaint _paint = new()
     {
         IsAntialias = false,
@@ -86,15 +92,39 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         for (var index = 0; index < storefronts.Count; index++)
         {
             var bounds = storefronts[index].Bounds;
-            Fill(canvas, bounds.X, bounds.Y, bounds.Width, bounds.Height, "#6B4634");
-            Fill(canvas, bounds.X + 8, bounds.Y + 7, bounds.Width - 16, 16, "#F1B844");
+            FacadeSpriteVariant variant;
+            try
+            {
+                variant = ContentSpriteKey.ResolveFacade(street.Stores[index].FacadeStyleKey);
+            }
+            catch (ArgumentException)
+            {
+                variant = new FacadeSpriteVariant(0, 0);
+            }
+
+            Fill(canvas, bounds.X, bounds.Y, bounds.Width, bounds.Height, FacadeBodies[variant.PaletteIndex]);
+            Fill(canvas, bounds.X + 8, bounds.Y + 7, bounds.Width - 16, 16, FacadeSigns[variant.PaletteIndex]);
             Fill(canvas, bounds.X + 12, bounds.Y + 37, 72, bounds.Height - 37, "#65B8C8");
             Fill(canvas, bounds.X + 96, bounds.Y + 37, bounds.Width - 108, bounds.Height - 37, "#4A353C");
+            DrawAwning(canvas, bounds, variant.AwningIndex, FacadeSigns[variant.PaletteIndex]);
             var shareWidth = Math.Clamp(
                 street.Stores[index].TrafficShareBasisPoints * (bounds.Width - 24) / 10_000,
                 1,
                 bounds.Width - 24);
             Fill(canvas, bounds.X + 12, bounds.Y + 27, shareWidth, 4, "#72C986");
+        }
+    }
+
+    private void DrawAwning(
+        SKCanvas canvas,
+        LogicalPixelRect bounds,
+        int style,
+        string color)
+    {
+        var stripeWidth = 8 + style * 2;
+        for (var x = bounds.X + 12; x < bounds.X + bounds.Width - 12; x += stripeWidth * 2)
+        {
+            Fill(canvas, x, bounds.Y + 31, stripeWidth, 4 + style, color);
         }
     }
 

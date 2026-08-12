@@ -219,6 +219,50 @@ public sealed class BusinessGameServiceTests
     }
 
     [Fact]
+    public void RichCatalog_AssortmentKeepsLevelOnePlayableAndSpreadsCategories()
+    {
+        var products = Enumerable.Range(0, 120)
+            .Select(index => new ProductDefinition(
+                $"product-{index:D3}",
+                $"商品 {index}",
+                100 + index,
+                240 + index,
+                10 + index % 8,
+                index % 3 == 0 ? "frozen" : index % 2 == 0 ? "chilled" : "ambient",
+                requiredPlayerLevel: index < 6 ? 1 : 2 + index % 7,
+                categoryId: $"category-{index % 12:D2}",
+                iconKey: $"product-icon-{index % 12:D2}",
+                regionTags: ["global"]))
+            .ToArray();
+        var store = new ShopDefinition(
+            new ShopId("store-1"),
+            new StoreBrandId("brand-a"),
+            new StoreFormatId("convenience"),
+            "A",
+            1,
+            Money.Zero);
+
+        var service = new BusinessGameService(
+            products,
+            [store],
+            new LevelCurve([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+            "store-1",
+            100_000,
+            experiencePerItemSold: 100);
+        var initial = Assert.Single(service.GetSnapshot().Stores).Products;
+        Assert.True(initial.Count >= 4);
+        Assert.All(initial, product => Assert.Equal(1, product.RequiredPlayerLevel));
+        var starter = initial[0];
+        service.PurchaseStock("store-1", starter.Id, 1);
+        service.Sell("store-1", starter.Id, 1);
+        var assortment = Assert.Single(service.GetSnapshot().Stores).Products;
+
+        Assert.Equal(12, assortment.Count);
+        Assert.True(assortment.Count(product => product.RequiredPlayerLevel == 1) >= 4);
+        Assert.True(assortment.Select(product => product.CategoryId).Distinct().Count() >= 6);
+    }
+
+    [Fact]
     public void ChangePrice_IsStoreSpecificAndRetainsCatalogReferencePrice()
     {
         var service = CreateService();

@@ -5,6 +5,23 @@ namespace HajimaoDesktopShop.Application.Business.Simulation;
 
 public static class ProductDemandSelector
 {
+    public static int CalculateDemandWeight(
+        ProductSnapshot product,
+        int storeShelfWeightPermille,
+        IReadOnlyDictionary<string, int> marketCategoryWeights)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ArgumentNullException.ThrowIfNull(marketCategoryWeights);
+        if (storeShelfWeightPermille <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(storeShelfWeightPermille));
+        }
+
+        var shelfModifier = marketCategoryWeights.GetValueOrDefault(product.ShelfKind, 1_000);
+        var categoryModifier = marketCategoryWeights.GetValueOrDefault(product.CategoryId, 1_000);
+        return ScalePermille(ScalePermille(storeShelfWeightPermille, shelfModifier), categoryModifier);
+    }
+
     public static ProductSnapshot Select(
         IReadOnlyList<ProductSnapshot> products,
         IRandomSource random)
@@ -32,4 +49,7 @@ public static class ProductDemandSelector
 
         throw new InvalidOperationException("Product demand selection exhausted its weights.");
     }
+
+    private static int ScalePermille(int value, int modifierPermille) =>
+        checked((int)(((long)value * modifierPermille) / 1_000));
 }

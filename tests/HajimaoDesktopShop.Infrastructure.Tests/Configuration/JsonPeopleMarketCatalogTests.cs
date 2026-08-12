@@ -14,8 +14,8 @@ public sealed class JsonPeopleMarketCatalogTests
 
         var content = await catalog.LoadAsync();
 
-        Assert.Equal(32, content.EmployeeProfiles.Count);
-        Assert.Equal(32, content.MarketEvents.Count);
+        Assert.Equal(96, content.EmployeeProfiles.Count);
+        Assert.Equal(96, content.MarketEvents.Count);
         Assert.Equal(
             Enum.GetValues<EmployeeRole>().Order(),
             content.EmployeeProfiles.SelectMany(profile => profile.AllowedRoles).Distinct().Order());
@@ -34,5 +34,21 @@ public sealed class JsonPeopleMarketCatalogTests
             Assert.True(marketEvent.DurationMinutes > 0);
             Assert.True(marketEvent.CooldownMinutes >= marketEvent.DurationMinutes);
         });
+        Assert.All(
+            Enum.GetValues<Application.Business.Events.MarketEventScope>(),
+            scope => Assert.True(
+                content.MarketEvents.Count(marketEvent => marketEvent.Scope == scope) >= 12,
+                $"Market event scope '{scope}' has fewer than 12 records."));
+        var effectBundles = content.MarketEvents
+            .Select(marketEvent => string.Join(
+                "|",
+                marketEvent.Scope,
+                marketEvent.DurationMinutes,
+                string.Join(',', marketEvent.EligibilityTags.Order()),
+                string.Join(',', marketEvent.Effects
+                    .Select(effect => $"{effect.Kind}:{effect.ModifierPermille}:{effect.TargetTag}")
+                    .Order())))
+            .ToArray();
+        Assert.Equal(effectBundles.Length, effectBundles.Distinct(StringComparer.Ordinal).Count());
     }
 }

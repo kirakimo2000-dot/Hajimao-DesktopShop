@@ -5,7 +5,7 @@ namespace HajimaoDesktopShop.Infrastructure.Tests.Configuration;
 public sealed class JsonStoreContentCatalogTests
 {
     [Fact]
-    public async Task LoadAsync_ShippedCatalog_HasFourFormatsAndTwentyFourReferencedBrands()
+    public async Task LoadAsync_ShippedCatalog_HasEightFormatsAndTwentyFourReferencedBrands()
     {
         var formatsPath = Path.Combine(AppContext.BaseDirectory, "TestData", "store-formats.json");
         var brandsPath = Path.Combine(AppContext.BaseDirectory, "TestData", "store-brands.json");
@@ -13,7 +13,7 @@ public sealed class JsonStoreContentCatalogTests
 
         var content = await catalog.LoadAsync();
 
-        Assert.Equal(4, content.Formats.Count);
+        Assert.Equal(8, content.Formats.Count);
         Assert.Equal(24, content.Brands.Count);
         Assert.Equal(24, content.Brands.Select(brand => brand.Id).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains(content.Brands, brand => brand.DisplayName == "7-Eleven");
@@ -21,7 +21,7 @@ public sealed class JsonStoreContentCatalogTests
         Assert.All(content.Brands, brand =>
             Assert.Contains(content.Formats, format => format.Id == brand.FormatId));
         Assert.All(content.Formats, format =>
-            Assert.True(content.Brands.Count(brand => brand.FormatId == format.Id) >= 5));
+            Assert.Equal(3, content.Brands.Count(brand => brand.FormatId == format.Id)));
         Assert.All(content.Formats, format =>
         {
             Assert.True(format.BaseOpeningCostCents >= 0);

@@ -5,20 +5,27 @@ namespace HajimaoDesktopShop.Desktop.Tests.Progression;
 public sealed class LongTermProgressionScenarioTests
 {
     [Fact]
-    public void OneYearPolicies_RemainHealthyLeaveGrowthHeadroomAndProduceDistinctTradeoffs()
+    public void ProductionScenario_LoadsRichContentWithoutExpandingVisibleChoices()
     {
-        var scenarios = new Dictionary<LongTermProgressionPolicy, LongTermProgressionScenario>
-        {
-            [LongTermProgressionPolicy.HighTurnover] = LongTermProgressionScenarioRunner.Run(
-                LongTermProgressionPolicy.HighTurnover,
-                days: 365),
-            [LongTermProgressionPolicy.HighMargin] = LongTermProgressionScenarioRunner.Run(
-                LongTermProgressionPolicy.HighMargin,
-                days: 365),
-            [LongTermProgressionPolicy.CashPreservation] = LongTermProgressionScenarioRunner.Run(
-                LongTermProgressionPolicy.CashPreservation,
-                days: 365)
-        };
+        var session = LongTermProgressionScenarioRunner.CreateSession(seed: 8_101);
+
+        Assert.Equal(3, session.Investments.GetOpeningProposals().Count);
+        Assert.Equal(3, session.Simulation.Employees.GetSnapshot().Candidates.Count);
+        Assert.DoesNotContain(
+            session.Simulation.Employees.GetSnapshot().Candidates,
+            candidate => candidate.ProfileId.StartsWith("legacy-", StringComparison.Ordinal));
+        Assert.NotNull(session.Simulation.GetSnapshot().MarketEvents);
+    }
+
+    [Fact]
+    public async Task OneYearPolicies_RemainHealthyLeaveGrowthHeadroomAndProduceDistinctTradeoffs()
+    {
+        var policies = Enum.GetValues<LongTermProgressionPolicy>();
+        var completed = await Task.WhenAll(policies.Select(policy => Task.Run(() =>
+            new KeyValuePair<LongTermProgressionPolicy, LongTermProgressionScenario>(
+                policy,
+                LongTermProgressionScenarioRunner.Run(policy, days: 365)))));
+        var scenarios = completed.ToDictionary(pair => pair.Key, pair => pair.Value);
 
         foreach (var (policy, scenario) in scenarios)
         {
@@ -31,8 +38,8 @@ public sealed class LongTermProgressionScenarioTests
                 Assert.True(checkpoint.CashCents >= 0, $"{policy}: {checkpoint}");
                 Assert.Equal(0, checkpoint.WagePaymentFailures);
             });
-            Assert.Equal(3, dayOneEighty.OpenStores);
-            Assert.Equal(3, dayThreeSixtyFive.OpenStores);
+            Assert.True(dayOneEighty.OpenStores >= 4, $"{policy}: day180={dayOneEighty}");
+            Assert.True(dayThreeSixtyFive.OpenStores >= 6, $"{policy}: day365={dayThreeSixtyFive}");
             Assert.True(
                 dayOneEighty.Investments > dayNinety.Investments,
                 $"{policy}: day90={dayNinety}; day180={dayOneEighty}");
@@ -104,7 +111,7 @@ public sealed class LongTermProgressionScenarioTests
                 + $"beforeFailure={beforeWageFailure}; firstFailure={firstWageFailure}; "
                 + $"day30={dayThirty}; day90={dayNinety}");
         Assert.True(
-            dayNinety.OpenStores == 3,
+            dayNinety.OpenStores >= 3,
             $"{policy}: day30={dayThirty}; day90={dayNinety}");
         Assert.True(
             dayNinety.Investments > dayThirty.Investments,
@@ -141,7 +148,7 @@ public sealed class LongTermProgressionScenarioTests
         Assert.Equal(0, dayOne.MaximumGrowthStores);
         Assert.True(daySeven.Investments > 0);
         Assert.True(
-            dayThirty.OpenStores is >= 2 && dayThirty.OpenStores <= 3,
+            dayThirty.OpenStores >= 2,
             $"{policy}: day1={dayOne}; day7={daySeven}; day30={dayThirty}");
         Assert.True(dayThirty.AvailableInvestmentRoutes > 0);
         Assert.True(dayThirty.MaximumGrowthStores < dayThirty.OpenStores);

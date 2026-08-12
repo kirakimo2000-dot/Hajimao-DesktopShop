@@ -63,7 +63,8 @@ public static class BusinessShopEmployeeChoreography
             142,
             IsSupporting: taskKind == EmployeeTaskKind.CustomerService,
             taskKind,
-            targetKey);
+            targetKey,
+            employee.AppearanceKey);
     }
 
     private static int Move(

@@ -125,6 +125,8 @@ internal static class LongTermProgressionScenarioRunner
 {
     private const int RealSecondsPerBusinessDay = 1_440;
     private static readonly Lazy<IReadOnlyList<ProductDefinition>> Products = new(LoadProducts);
+    private static readonly Lazy<StoreContentCatalog> Stores = new(LoadStores);
+    private static readonly Lazy<PeopleMarketContent> PeopleAndEvents = new(LoadPeopleAndEvents);
 
     public static LongTermProgressionScenario Run(
         LongTermProgressionPolicy policy,
@@ -144,7 +146,7 @@ internal static class LongTermProgressionScenarioRunner
             ApplyStrategy(session, policy);
             session.Simulation.AdvanceRealSeconds(RealSecondsPerBusinessDay);
             checkpoints.Add(Capture(session, day, investments));
-            if (day < days && TryInvest(session, policy))
+            if (day < days && day % 7 == 1 && TryInvest(session, policy))
             {
                 investments++;
             }
@@ -161,7 +163,9 @@ internal static class LongTermProgressionScenarioRunner
             Products.Value,
             save: null,
             seed,
-            new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero));
+            new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero),
+            Stores.Value,
+            PeopleAndEvents.Value);
         return start.Session;
     }
 
@@ -238,22 +242,27 @@ internal static class LongTermProgressionScenarioRunner
             return TryExecuteFirst(session, staffing);
         }
 
-        var nextStore = session.Game.GetStoreCatalogSnapshot().FirstOrDefault(store => !store.IsOpen);
-        if (nextStore is not null)
+        var executionStoreId = business.Stores
+            .OrderBy(store => store.StreetOrdinal)
+            .ThenBy(store => store.Id, StringComparer.Ordinal)
+            .First()
+            .Id;
+        var opening = business.Stores.Count >= 8
+            ? []
+            : session.Investments.GetOpeningProposals()
+            .Where(candidate => candidate.IsExecutable
+                && candidate.Return.CashPressure != InvestmentCashPressure.Critical
+                && PreservesOperatingReserve(session, candidate))
+            .OrderBy(candidate => candidate.Return.CostCents)
+            .ThenBy(candidate => candidate.StoreFormatId, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.StoreBrandId, StringComparer.Ordinal)
+            .Select(candidate => new CandidateRoute(executionStoreId, candidate))
+            .ToArray();
+        if (opening.Length > 0)
         {
-            var opening = candidates
-                .Where(route => route.Candidate.Kind == InvestmentKind.OpenStore
-                    && route.Candidate.TargetId == nextStore.Id)
-                .OrderBy(route => route.StoreId, StringComparer.Ordinal)
-                .ToArray();
             if (TryExecuteFirst(session, opening))
             {
                 return true;
-            }
-
-            if (session.Investments.HasAnyInvestment)
-            {
-                return false;
             }
         }
 
@@ -417,6 +426,28 @@ internal static class LongTermProgressionScenarioRunner
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
         return new JsonProductCatalog(path).LoadAsync().GetAwaiter().GetResult();
+    }
+
+    private static StoreContentCatalog LoadStores()
+    {
+        var config = Path.Combine(AppContext.BaseDirectory, "Assets", "Config");
+        return new JsonStoreContentCatalog(
+                Path.Combine(config, "store-formats.json"),
+                Path.Combine(config, "store-brands.json"))
+            .LoadAsync()
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private static PeopleMarketContent LoadPeopleAndEvents()
+    {
+        var content = Path.Combine(AppContext.BaseDirectory, "Assets", "Content");
+        return new JsonPeopleMarketCatalog(
+                Path.Combine(content, "employees", "employee-profiles.json"),
+                Path.Combine(content, "events", "market-events.json"))
+            .LoadAsync()
+            .GetAwaiter()
+            .GetResult();
     }
 
     private sealed record CandidateRoute(string StoreId, InvestmentCandidate Candidate);

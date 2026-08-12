@@ -52,7 +52,7 @@ public sealed class PlayableDemoCandidateTests
         Assert.Equal(
             StoreStrategyCommandStatus.Success,
             session.Strategy.Apply(
-                "station-store",
+                expansion.Candidate.TargetId,
                 StorePricingPreset.HighTurnover,
                 StoreStockingPreset.Lean).Status);
 

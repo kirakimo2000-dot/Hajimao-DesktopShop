@@ -44,7 +44,8 @@ public sealed class CommercialStreetTrafficService
                 stores[index].StoreId,
                 stores[index].StoreName,
                 stores[index].AttractionBasisPoints,
-                share);
+                share,
+                stores[index].FacadeStyleKey);
         }
 
         return new CommercialStreetSnapshot(
@@ -109,6 +110,7 @@ public sealed class CommercialStreetTrafficService
         {
             if (string.IsNullOrWhiteSpace(store.StoreId)
                 || string.IsNullOrWhiteSpace(store.StoreName)
+                || string.IsNullOrWhiteSpace(store.FacadeStyleKey)
                 || store.AttractionBasisPoints is < 0 or > 10_000)
             {
                 throw new ArgumentException("Street store demand is invalid.", nameof(storeDemands));

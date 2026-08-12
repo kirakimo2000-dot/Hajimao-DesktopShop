@@ -42,6 +42,7 @@ public sealed class EmployeeOperationsService
     private readonly Dictionary<string, string> _profileByEmployee = new(StringComparer.Ordinal);
     private readonly EmployeeRoster _roster = new();
     private readonly IReadOnlyList<EmployeeProfileDefinition> _profiles;
+    private readonly IReadOnlyDictionary<string, EmployeeProfileDefinition> _profilesById;
     private ulong _candidateRandomState;
     private long _nextCandidateId;
 
@@ -66,6 +67,7 @@ public sealed class EmployeeOperationsService
         {
             throw new ArgumentException("At least one employee profile is required.", nameof(profiles));
         }
+        _profilesById = _profiles.ToDictionary(profile => profile.Id, StringComparer.Ordinal);
 
         if (candidates is null)
         {
@@ -120,7 +122,8 @@ public sealed class EmployeeOperationsService
                         shift.IsAlwaysOn,
                         currentTask,
                         EmployeeTaskPriorityCatalog.GetPriorities(employee.Role),
-                        _profileByEmployee[employee.Id.Value]);
+                        _profileByEmployee[employee.Id.Value],
+                        ResolveAppearanceKey(_profileByEmployee[employee.Id.Value]));
                 })
                 .ToArray();
             return new EmployeeOperationsSnapshot(
@@ -130,6 +133,11 @@ public sealed class EmployeeOperationsService
                 Array.AsReadOnly(employees));
         }
     }
+
+    private string ResolveAppearanceKey(string profileId) =>
+        _profilesById.TryGetValue(profileId, out var profile)
+            ? profile.AppearanceKey
+            : "employee-a01";
 
     public void RefreshCandidates()
     {

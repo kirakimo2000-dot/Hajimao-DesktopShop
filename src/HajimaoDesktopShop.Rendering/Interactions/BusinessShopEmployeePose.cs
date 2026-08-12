@@ -10,7 +10,8 @@ public sealed record BusinessShopEmployeePose(
     int Y,
     bool IsSupporting,
     EmployeeTaskKind TaskKind = EmployeeTaskKind.Idle,
-    string? TargetKey = null)
+    string? TargetKey = null,
+    string AppearanceKey = "employee-a01")
 {
     public string EmployeeId { get; } =
         string.IsNullOrWhiteSpace(EmployeeId)

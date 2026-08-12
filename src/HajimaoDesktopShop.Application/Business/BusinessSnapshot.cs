@@ -24,7 +24,8 @@ public sealed record BusinessStoreSnapshot(
     string StoreBrandId = "legacy",
     string StoreFormatId = "legacy",
     int StreetOrdinal = 1,
-    StoreFormatEconomicsSnapshot? FormatEconomics = null);
+    StoreFormatEconomicsSnapshot? FormatEconomics = null,
+    string FacadeStyleKey = "facade-convenience-a");
 
 public sealed record StoreFormatEconomicsSnapshot(
     DemandSensitivity DemandSensitivity,

@@ -24,7 +24,8 @@ public sealed record EmployeeOperationsEmployeeSnapshot(
     bool IsAlwaysOn,
     EmployeeTaskSnapshot? CurrentTask = null,
     IReadOnlyList<EmployeeTaskKind>? TaskPriorities = null,
-    string ProfileId = "legacy");
+    string ProfileId = "legacy",
+    string AppearanceKey = "employee-a01");
 
 internal sealed record EmployeeRuntimeAssignment(
     string StoreId,

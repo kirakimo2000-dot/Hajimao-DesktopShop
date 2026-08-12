@@ -28,8 +28,8 @@ public sealed class JsonPeopleMarketCatalog
         var events = await LoadAsync<MarketEventCatalogDocument>(_eventsPath, cancellationToken);
         ValidateSchema(employees.SchemaVersion, "employee");
         ValidateSchema(events.SchemaVersion, "market event");
-        ValidateCount(employees.Profiles, 32, "employee profile");
-        ValidateCount(events.Events, 32, "market event");
+        ValidateCount(employees.Profiles, 96, "employee profile");
+        ValidateCount(events.Events, 96, "market event");
         ValidateUniqueIds(employees.Profiles!, profile => profile.Id, "employee profile");
         ValidateUniqueIds(events.Events!, marketEvent => marketEvent.Id, "market event");
         ValidateEventReferences(events.Events!);
