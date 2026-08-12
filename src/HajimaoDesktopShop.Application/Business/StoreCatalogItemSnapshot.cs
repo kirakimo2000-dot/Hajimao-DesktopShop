@@ -5,4 +5,7 @@ public sealed record StoreCatalogItemSnapshot(
     string Name,
     int RequiredPlayerLevel,
     long OpeningCostCents,
-    bool IsOpen);
+    bool IsOpen,
+    string StoreBrandId = "legacy",
+    string StoreFormatId = "legacy",
+    int StreetOrdinal = 1);

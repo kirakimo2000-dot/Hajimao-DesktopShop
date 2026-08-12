@@ -241,22 +241,19 @@ internal static class LongTermProgressionScenarioRunner
         var nextStore = session.Game.GetStoreCatalogSnapshot().FirstOrDefault(store => !store.IsOpen);
         if (nextStore is not null)
         {
-            if (business.PlayerLevel + 1 >= nextStore.RequiredPlayerLevel)
+            var opening = candidates
+                .Where(route => route.Candidate.Kind == InvestmentKind.OpenStore
+                    && route.Candidate.TargetId == nextStore.Id)
+                .OrderBy(route => route.StoreId, StringComparer.Ordinal)
+                .ToArray();
+            if (TryExecuteFirst(session, opening))
             {
-                var opening = candidates
-                    .Where(route => route.Candidate.Kind == InvestmentKind.OpenStore
-                        && route.Candidate.TargetId == nextStore.Id)
-                    .OrderBy(route => route.StoreId, StringComparer.Ordinal)
-                    .ToArray();
-                if (TryExecuteFirst(session, opening))
-                {
-                    return true;
-                }
+                return true;
+            }
 
-                if (session.Investments.HasAnyInvestment)
-                {
-                    return false;
-                }
+            if (session.Investments.HasAnyInvestment)
+            {
+                return false;
             }
         }
 

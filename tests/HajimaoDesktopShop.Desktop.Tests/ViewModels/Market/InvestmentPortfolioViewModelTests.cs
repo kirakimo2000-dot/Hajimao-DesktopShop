@@ -27,7 +27,7 @@ public sealed class InvestmentPortfolioViewModelTests
         var shelf = viewModel.Candidates.Single(candidate => candidate.Id == "growth:shelf");
 
         Assert.Equal("稳住弱店", shelf.ThesisText);
-        Assert.Equal("街角便利店", shelf.StoreContextText);
+        Assert.Equal("7-Eleven", shelf.StoreContextText);
         Assert.Equal("升级货架", shelf.TitleText);
         Assert.Equal("投入 ¥250.00", shelf.CostText);
         Assert.Equal("暂无足够数据", shelf.ExpectedBenefitText);
@@ -94,7 +94,7 @@ public sealed class InvestmentPortfolioViewModelTests
     }
 
     [Fact]
-    public void Refresh_FormatsStoreOpeningAsAUnifiedLevelGatedInvestment()
+    public void Refresh_FormatsStoreOpeningAsACashGatedInvestment()
     {
         var viewModel = new InvestmentPortfolioViewModel(
             MarketTestSession.Create(),
@@ -105,14 +105,14 @@ public sealed class InvestmentPortfolioViewModelTests
             candidate.Id == "store:open:station-store");
 
         Assert.Equal("扩张街区", opening.ThesisText);
-        Assert.Equal("车站便利店", opening.StoreContextText);
-        Assert.Equal("开设 车站便利店", opening.TitleText);
+        Assert.Equal("FamilyMart", opening.StoreContextText);
+        Assert.Equal("开设 FamilyMart", opening.TitleText);
         Assert.Equal("投入 ¥800.00", opening.CostText);
         Assert.Equal("新店尚无完整经营数据", opening.ExpectedBenefitText);
         Assert.Equal("新店日结后评估回本", opening.PaybackText);
         Assert.Equal("新增店铺 +1", opening.EffectText);
         Assert.Equal("新店需完成一个经营日后再评估回报", opening.EstimateConditionText);
-        Assert.Equal("需要 Lv.3", opening.AvailabilityText);
-        Assert.False(opening.InvestCommand.CanExecute(null));
+        Assert.Equal("可投资", opening.AvailabilityText);
+        Assert.True(opening.InvestCommand.CanExecute(null));
     }
 }

@@ -70,7 +70,7 @@ public sealed class MarketViewModelTests
         Assert.Equal("¥1,000.00", viewModel.CashText);
         Assert.Equal("Lv.1", viewModel.PlayerLevelText);
         Assert.Equal("corner-store", viewModel.SelectedStoreId);
-        Assert.Equal("街角便利店", viewModel.SelectedStoreName);
+        Assert.Equal("7-Eleven", viewModel.SelectedStoreName);
         Assert.Equal("选择整店策略", viewModel.Onboarding.Title);
         Assert.NotEmpty(viewModel.Investment.Candidates);
     }
@@ -153,7 +153,7 @@ public sealed class MarketViewModelTests
         viewModel.SelectStoreCommand.Execute(station);
 
         Assert.Equal("station-store", viewModel.SelectedStoreId);
-        Assert.Equal("车站便利店", viewModel.SelectedStoreName);
+        Assert.Equal("FamilyMart", viewModel.SelectedStoreName);
         Assert.False(station.IsOpen);
     }
 

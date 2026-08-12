@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Tests.Business;
 using HajimaoDesktopShop.Application.Tests.Simulation;
@@ -163,6 +164,48 @@ public sealed class StoreInvestmentServiceTests
         Assert.Equal(79_999, poor.Game.GetSnapshot().CashCents);
     }
 
+    [Fact]
+    public void GetOpeningProposals_WithStoreContentReturnsThreeBrandChoicesAcrossFormats()
+    {
+        var session = CreatePortfolioSession(openingCashCents: 300_000);
+        var cashBefore = session.Game.GetSnapshot().CashCents;
+
+        var proposals = session.Investments.GetOpeningProposals();
+
+        Assert.Equal(3, proposals.Count);
+        Assert.Equal(3, proposals.Select(item => item.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.True(proposals.Select(item => item.StoreFormatId).Distinct(StringComparer.Ordinal).Count() >= 2);
+        Assert.All(proposals, item =>
+        {
+            Assert.Equal(InvestmentKind.OpenStore, item.Kind);
+            Assert.Equal("store-0002", item.TargetId);
+            Assert.False(string.IsNullOrWhiteSpace(item.StoreBrandId));
+            Assert.True(item.Return.IsAffordable);
+        });
+        var expansion = session.Investments.GetCapitalAllocation().Options.Single(option =>
+            option.Thesis == CapitalAllocationThesis.ExpandStreet);
+        Assert.Contains(expansion.Candidate, proposals);
+        Assert.Equal(cashBefore, session.Game.GetSnapshot().CashCents);
+        Assert.Single(session.Game.GetSnapshot().Stores);
+    }
+
+    [Fact]
+    public void Execute_BrandProposalCreatesDynamicStoreAndTracksTheNewInstance()
+    {
+        var session = CreatePortfolioSession(openingCashCents: 300_000);
+        var proposal = session.Investments.GetOpeningProposals()[0];
+
+        var result = session.Investments.Execute("store-0001", proposal.Id);
+
+        Assert.Equal(InvestmentCommandStatus.Success, result.Status);
+        var opened = session.Game.GetSnapshot().Stores.Single(store => store.Id == "store-0002");
+        Assert.Equal(proposal.StoreBrandId, opened.StoreBrandId);
+        Assert.Equal(proposal.StoreFormatId, opened.StoreFormatId);
+        Assert.Equal(2, opened.StreetOrdinal);
+        Assert.Contains(session.Simulation.GetSnapshot().Stores, store => store.StoreId == "store-0002");
+        Assert.Equal(proposal.Id, session.Investments.GetLatestComparison("store-0002")?.CandidateId);
+    }
+
     private static BusinessSession CreateOpeningSession(long openingCashCents) =>
         BusinessSession.Create(
             [new ProductDefinition("water", "矿泉水", 100, 200, 10, "ambient")],
@@ -185,4 +228,67 @@ public sealed class StoreInvestmentServiceTests
             ],
             new StatefulTestRandomSource(123),
             new BusinessSimulationOptions());
+
+    private static BusinessSession CreatePortfolioSession(long openingCashCents)
+    {
+        var formats = new[]
+        {
+            Format("convenience", 40_000),
+            Format("discount", 70_000),
+            Format("premium", 90_000),
+            Format("commuter", 60_000)
+        };
+        var brands = new[]
+        {
+            Brand("seven-eleven", "7-Eleven", "convenience"),
+            Brand("familymart", "FamilyMart", "convenience"),
+            Brand("aldi", "ALDI", "discount"),
+            Brand("lidl", "Lidl", "discount"),
+            Brand("ginza", "银座三越", "premium"),
+            Brand("harrods", "Harrods", "premium"),
+            Brand("circle-k", "Circle K", "commuter"),
+            Brand("watsons", "Watsons", "commuter")
+        };
+        var content = new StoreContentCatalog(formats, brands);
+        return BusinessSession.Create(
+            [new ProductDefinition("water", "矿泉水", 100, 200, 10, "ambient")],
+            [new ShopDefinition(
+                new ShopId("store-0001"),
+                new StoreBrandId("seven-eleven"),
+                new StoreFormatId("convenience"),
+                "7-Eleven",
+                1,
+                Money.Zero)],
+            new LevelCurve([0]),
+            "store-0001",
+            openingCashCents,
+            [],
+            new StatefulTestRandomSource(123),
+            new BusinessSimulationOptions(),
+            storeContent: content);
+    }
+
+    private static StoreFormatDefinition Format(string id, long cost) => new(
+        id,
+        id,
+        cost,
+        recommendedReserveCents: 80_000,
+        baseDemandPermille: 1_000,
+        priceSensitivityPermille: 1_000,
+        serviceSensitivityPermille: 1_000,
+        queueSensitivityPermille: 1_000,
+        cleanlinessSensitivityPermille: 1_000,
+        inventoryCapacityPermille: 1_000,
+        timeProfile: "steady",
+        new Dictionary<string, int>
+        {
+            ["ambient"] = 1_000,
+            ["chilled"] = 1_000,
+            ["frozen"] = 1_000
+        },
+        StorePricingPreset.Balanced,
+        StoreStockingPreset.Balanced);
+
+    private static StoreBrandDefinition Brand(string id, string name, string formatId) =>
+        new(id, name, "global", formatId, "facade", "real-world-name", "review-required");
 }

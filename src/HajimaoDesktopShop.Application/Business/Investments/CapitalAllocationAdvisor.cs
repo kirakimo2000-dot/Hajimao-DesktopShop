@@ -70,9 +70,11 @@ public static class CapitalAllocationAdvisor
 
         var expansion = routes
             .Where(route => route.Candidate.Kind == InvestmentKind.OpenStore
-                && catalogById.TryGetValue(route.Candidate.TargetId, out var store)
-                && !store.IsOpen)
-            .OrderBy(route => catalogById[route.Candidate.TargetId].RequiredPlayerLevel)
+                && (!catalogById.TryGetValue(route.Candidate.TargetId, out var store)
+                    || !store.IsOpen))
+            .OrderBy(route => route.Candidate.StreetOrdinal > 0
+                ? route.Candidate.StreetOrdinal
+                : catalogById[route.Candidate.TargetId].StreetOrdinal)
             .ThenBy(route => route.Candidate.TargetId, StringComparer.Ordinal)
             .ThenBy(route => route.Portfolio.StoreId, StringComparer.Ordinal)
             .FirstOrDefault();
@@ -113,7 +115,7 @@ public static class CapitalAllocationAdvisor
         var nameId = useTargetStoreName
             ? route.Candidate.TargetId
             : route.Portfolio.StoreId;
-        if (!catalogById.TryGetValue(nameId, out var store))
+        if (!catalogById.TryGetValue(nameId, out var store) && !useTargetStoreName)
         {
             return;
         }
@@ -121,7 +123,7 @@ public static class CapitalAllocationAdvisor
         options.Add(new CapitalAllocationOption(
             thesis,
             route.Portfolio.StoreId,
-            store.Name,
+            store?.Name ?? route.Candidate.TargetName,
             route.Candidate));
     }
 

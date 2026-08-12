@@ -8,7 +8,8 @@ public sealed record CommercialStreetSnapshot(
     int SharedTrafficBasisPoints,
     int VisiblePedestrians,
     int VisibleVehicles,
-    IReadOnlyList<CommercialStreetStoreSnapshot> Stores);
+    IReadOnlyList<CommercialStreetStoreSnapshot> Stores,
+    int VisitorOpportunities = 1);
 
 public sealed record CommercialStreetStoreSnapshot(
     string StoreId,

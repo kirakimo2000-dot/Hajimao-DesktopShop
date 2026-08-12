@@ -48,6 +48,19 @@ public partial class App : System.Windows.Application
 
             var catalogPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "products.json");
             var products = await new JsonProductCatalog(catalogPath).LoadAsync();
+            var storeFormatsPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                "Config",
+                "store-formats.json");
+            var storeBrandsPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                "Config",
+                "store-brands.json");
+            var storeContent = await new JsonStoreContentCatalog(
+                storeFormatsPath,
+                storeBrandsPath).LoadAsync();
             var savePath = ApplicationDataPathPolicy.ResolveSavePath(dataDirectoryOverride);
             var saveStore = new SqliteGameSaveStore(savePath);
             var savedGame = await saveStore.LoadGameAsync();
@@ -57,7 +70,8 @@ public partial class App : System.Windows.Application
                 products,
                 savedGame,
                 Environment.TickCount,
-                startupUtc);
+                startupUtc,
+                storeContent);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
             if (savedGame is null)

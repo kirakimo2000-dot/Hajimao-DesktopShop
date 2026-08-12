@@ -63,7 +63,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
                 "比较当前店铺投资与开店储备，保留足够经营现金。"),
             ProgressionGoalId.OpenSecondStore => (
                 "开设第二家店",
-                $"{storeName} · 等级与资金已满足",
+                $"{storeName} · 开店资金已就绪",
                 "在投资列表执行开店，并为新店留下员工与周转资金。"),
             ProgressionGoalId.StrengthenPortfolio => (
                 "强化最弱店铺",
@@ -75,7 +75,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
                 "让现有店铺稳定盈利，同时积累下一家店的开业储备。"),
             ProgressionGoalId.OpenThirdStore => (
                 "开设第三家店",
-                $"{storeName} · 等级与资金已满足",
+                $"{storeName} · 开店资金已就绪",
                 "在投资列表完成扩张，逐步形成完整街区。"),
             ProgressionGoalId.UnlockCommercialBlock => (
                 "解锁完整街区",
@@ -96,7 +96,7 @@ public sealed class LongTermProgressionViewModel : ObservableObject
         LongTermProgressionSnapshot snapshot,
         ProgressionGoalSnapshot goal,
         string storeName) =>
-        $"{storeName} · 现金 {FormatMoney(snapshot.SharedCashCents)}/{FormatMoney(goal.RequiredCashCents)} · Lv.{snapshot.PlayerLevel}/{goal.RequiredPlayerLevel}";
+        $"{storeName} · 现金 {FormatMoney(snapshot.SharedCashCents)}/{FormatMoney(goal.RequiredCashCents)}";
 
     private static string StoreName(
         IReadOnlyList<StoreCatalogItemSnapshot> storeCatalog,

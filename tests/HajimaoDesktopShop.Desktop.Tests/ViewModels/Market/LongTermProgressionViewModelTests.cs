@@ -16,7 +16,7 @@ public sealed class LongTermProgressionViewModelTests
                 "station-store",
                 CurrentValue: 35_000,
                 TargetValue: 80_000,
-                RequiredPlayerLevel: 3,
+                RequiredPlayerLevel: 0,
                 RequiredCashCents: 80_000),
             OpenStoreCount: 1,
             ConfiguredStoreCount: 3,
@@ -26,7 +26,7 @@ public sealed class LongTermProgressionViewModelTests
         viewModel.Update(snapshot, Catalog());
 
         Assert.Equal("为第二家店准备资本", viewModel.TitleText);
-        Assert.Equal("车站便利店 · 现金 ¥350.00/¥800.00 · Lv.2/3", viewModel.ProgressText);
+        Assert.Equal("车站便利店 · 现金 ¥350.00/¥800.00", viewModel.ProgressText);
         Assert.Contains("比较当前店铺投资与开店储备", viewModel.GuidanceText);
         Assert.DoesNotContain("分钟", viewModel.GuidanceText);
         Assert.DoesNotContain("小时", viewModel.GuidanceText);

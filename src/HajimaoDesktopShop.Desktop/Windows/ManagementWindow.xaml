@@ -152,7 +152,7 @@
                                                             CommandParameter="{Binding}" />
                                                     <StackPanel>
                                                         <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-                                                        <TextBlock Foreground="{DynamicResource Brush.TextMuted}" FontSize="12"><Run Text="解锁等级 Lv."/><Run Text="{Binding RequiredPlayerLevel, Mode=OneWay}"/></TextBlock>
+                                                        <TextBlock Text="{Binding StoreFormatText}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
                                                     </StackPanel>
                                                 </DockPanel>
                                             </Border>

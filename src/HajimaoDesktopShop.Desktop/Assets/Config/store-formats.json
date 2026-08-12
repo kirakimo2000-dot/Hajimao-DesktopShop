@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "formats": [
+    {
+      "id": "convenience",
+      "displayName": "社区便利",
+      "baseOpeningCostCents": 40000,
+      "recommendedReserveCents": 40000,
+      "baseDemandPermille": 1000,
+      "priceSensitivityPermille": 1000,
+      "serviceSensitivityPermille": 1000,
+      "queueSensitivityPermille": 1000,
+      "cleanlinessSensitivityPermille": 1000,
+      "inventoryCapacityPermille": 1000,
+      "timeProfile": "steady",
+      "productShelfWeights": { "ambient": 1000, "chilled": 1000, "frozen": 1000 },
+      "recommendedPricing": "Balanced",
+      "recommendedStocking": "Balanced"
+    },
+    {
+      "id": "discount",
+      "displayName": "平价量贩",
+      "baseOpeningCostCents": 70000,
+      "recommendedReserveCents": 70000,
+      "baseDemandPermille": 1220,
+      "priceSensitivityPermille": 1450,
+      "serviceSensitivityPermille": 800,
+      "queueSensitivityPermille": 1250,
+      "cleanlinessSensitivityPermille": 800,
+      "inventoryCapacityPermille": 1300,
+      "timeProfile": "all-day-volume",
+      "productShelfWeights": { "ambient": 1250, "chilled": 1000, "frozen": 850 },
+      "recommendedPricing": "HighTurnover",
+      "recommendedStocking": "FullShelves"
+    },
+    {
+      "id": "premium",
+      "displayName": "精品食品",
+      "baseOpeningCostCents": 90000,
+      "recommendedReserveCents": 55000,
+      "baseDemandPermille": 780,
+      "priceSensitivityPermille": 600,
+      "serviceSensitivityPermille": 1500,
+      "queueSensitivityPermille": 900,
+      "cleanlinessSensitivityPermille": 1500,
+      "inventoryCapacityPermille": 800,
+      "timeProfile": "afternoon-select",
+      "productShelfWeights": { "ambient": 750, "chilled": 1250, "frozen": 1400 },
+      "recommendedPricing": "HighMargin",
+      "recommendedStocking": "Lean"
+    },
+    {
+      "id": "commuter",
+      "displayName": "通勤快购",
+      "baseOpeningCostCents": 60000,
+      "recommendedReserveCents": 50000,
+      "baseDemandPermille": 900,
+      "priceSensitivityPermille": 750,
+      "serviceSensitivityPermille": 1000,
+      "queueSensitivityPermille": 1800,
+      "cleanlinessSensitivityPermille": 900,
+      "inventoryCapacityPermille": 900,
+      "timeProfile": "commuter-peaks",
+      "productShelfWeights": { "ambient": 1050, "chilled": 1350, "frozen": 500 },
+      "recommendedPricing": "Balanced",
+      "recommendedStocking": "Balanced"
+    }
+  ]
+}

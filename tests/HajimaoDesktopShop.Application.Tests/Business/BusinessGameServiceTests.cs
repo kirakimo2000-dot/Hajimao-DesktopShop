@@ -70,7 +70,7 @@ public sealed class BusinessGameServiceTests
     }
 
     [Fact]
-    public void StoreCatalog_ExposesOpenAndLockedStoresWithoutLeakingDefinitions()
+    public void StoreCatalog_ExposesBrandFormatAndStreetOrderWithoutLevelGates()
     {
         var service = CreateService();
 
@@ -87,7 +87,8 @@ public sealed class BusinessGameServiceTests
             {
                 Assert.False(store.IsOpen);
                 Assert.Equal("station-store", store.Id);
-                Assert.Equal(2, store.RequiredPlayerLevel);
+                Assert.Equal(0, store.RequiredPlayerLevel);
+                Assert.Equal(2, store.StreetOrdinal);
                 Assert.Equal(30_000, store.OpeningCostCents);
             });
     }
@@ -125,21 +126,96 @@ public sealed class BusinessGameServiceTests
     }
 
     [Fact]
-    public void OpenStore_UsesLevelGateSharedCashAndCurrentProductUnlocks()
+    public void OpenStore_HasNoLevelGateAndUsesSharedCashAndCurrentProductUnlocks()
     {
         var service = CreateService();
-        var locked = service.OpenStore("station-store");
+        var opened = service.OpenStore("station-store");
         service.PurchaseStock("corner-store", "water", 1);
         service.Sell("corner-store", "water", 1);
 
-        var opened = service.OpenStore("station-store");
+        var duplicate = service.OpenStore("station-store");
         var snapshot = service.GetSnapshot();
 
-        Assert.Equal(OpenShopStatus.LevelLocked, locked.Status);
         Assert.Equal(OpenShopStatus.Success, opened.Status);
+        Assert.Equal(OpenShopStatus.AlreadyOpen, duplicate.Status);
         Assert.Equal(2, snapshot.Stores.Count);
         Assert.All(snapshot.Stores, store => Assert.Equal(["water", "milk"], store.Products.Select(p => p.Id)));
         Assert.Equal(20_100, snapshot.CashCents);
+    }
+
+    [Fact]
+    public void OpenDynamicStore_PersistsBrandFormatAndStreetOrderInSnapshot()
+    {
+        var service = CreateService();
+        var definition = new ShopDefinition(
+            new ShopId("store-0002"),
+            new StoreBrandId("seven-eleven"),
+            new StoreFormatId("convenience"),
+            "7-Eleven",
+            streetOrdinal: 2,
+            new Money(30_000));
+
+        var result = service.OpenStore(definition);
+        var store = service.GetSnapshot().Stores.Single(item => item.Id == "store-0002");
+
+        Assert.Equal(OpenShopStatus.Success, result.Status);
+        Assert.Equal("seven-eleven", store.StoreBrandId);
+        Assert.Equal("convenience", store.StoreFormatId);
+        Assert.Equal(2, store.StreetOrdinal);
+    }
+
+    [Fact]
+    public void RichCatalog_AssignsAtMostTwelveDeterministicProductsPerStore()
+    {
+        var products = Enumerable.Range(1, 40)
+            .Select(index => new ProductDefinition(
+                $"product-{index:D2}",
+                $"商品 {index}",
+                100 + index,
+                200 + index,
+                10,
+                index % 3 == 0 ? "frozen" : index % 2 == 0 ? "chilled" : "ambient",
+                requiredPlayerLevel: 1))
+            .ToArray();
+        var stores = new[]
+        {
+            new ShopDefinition(
+                new ShopId("store-1"),
+                new StoreBrandId("brand-a"),
+                new StoreFormatId("convenience"),
+                "A",
+                1,
+                Money.Zero),
+            new ShopDefinition(
+                new ShopId("store-2"),
+                new StoreBrandId("brand-b"),
+                new StoreFormatId("discount"),
+                "B",
+                2,
+                Money.Zero)
+        };
+        var first = new BusinessGameService(
+            products,
+            stores,
+            new LevelCurve([0]),
+            "store-1",
+            100_000);
+        first.OpenStore("store-2");
+        var repeated = new BusinessGameService(
+            products,
+            stores,
+            new LevelCurve([0]),
+            "store-1",
+            100_000);
+
+        var firstStore = first.GetSnapshot().Stores.Single(store => store.Id == "store-1");
+        var secondStore = first.GetSnapshot().Stores.Single(store => store.Id == "store-2");
+        Assert.Equal(12, firstStore.Products.Count);
+        Assert.Equal(firstStore.Products.Select(product => product.Id),
+            repeated.GetSnapshot().Stores.Single().Products.Select(product => product.Id));
+        Assert.NotEqual(
+            firstStore.Products.Select(product => product.Id),
+            secondStore.Products.Select(product => product.Id));
     }
 
     [Fact]

@@ -125,6 +125,7 @@ public sealed class BusinessSimulation
     {
         lock (_gate)
         {
+            SynchronizeStores();
             if (_statefulRandom is null)
             {
                 throw new InvalidOperationException(
@@ -380,10 +381,13 @@ public sealed class BusinessSimulation
                 business.Stores.Single(store => store.Id == runtime.StoreId)))
             .ToArray();
         var street = CreateStreetSnapshot(business, storeOperations);
-        var visitingStoreId = _streetTraffic.TryRouteVisitor(street);
-        if (visitingStoreId is not null)
+        for (var opportunity = 0; opportunity < street.VisitorOpportunities; opportunity++)
         {
-            ProcessVisitorAndQueuePurchase(_stores[visitingStoreId]);
+            var visitingStoreId = _streetTraffic.TryRouteVisitor(street);
+            if (visitingStoreId is not null)
+            {
+                ProcessVisitorAndQueuePurchase(_stores[visitingStoreId]);
+            }
         }
 
         foreach (var store in _stores.Values)
@@ -715,7 +719,16 @@ public sealed class BusinessSimulation
             return;
         }
 
-        var selected = available[_random.Next(available.Length)];
+        var format = store.FormatEconomics ?? StoreFormatEconomicsSnapshot.Neutral;
+        var weighted = available
+            .Select(product => product with
+            {
+                DemandWeightPermille = format.ProductShelfWeights.GetValueOrDefault(
+                    product.ShelfKind,
+                    1_000)
+            })
+            .ToArray();
+        var selected = ProductDemandSelector.Select(weighted, _random);
         var purchase = DemandModel.CalculatePurchase(new DemandContext(
             _options.BasePurchaseBasisPoints,
             CalculatePriceIndex(selected),
@@ -723,7 +736,9 @@ public sealed class BusinessSimulation
             CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
             runtime.CleanlinessPermille,
             CurrentMinuteOfDay,
-            promotionBasisPoints: growth.PromotionPurchaseBonusBasisPoints));
+            promotionBasisPoints: growth.PromotionPurchaseBonusBasisPoints,
+            sensitivity: format.DemandSensitivity,
+            timeCurve: format.TimeCurve));
         if (_random.NextDouble() >= purchase.FinalBasisPoints / 10_000d)
         {
             runtime.LostSales++;
@@ -769,6 +784,7 @@ public sealed class BusinessSimulation
         BusinessStoreSnapshot store)
     {
         var growth = store.Growth ?? _game.GetStoreGrowthSnapshot(runtime.StoreId);
+        var format = store.FormatEconomics ?? StoreFormatEconomicsSnapshot.Neutral;
         return DemandModel.CalculateArrival(new DemandContext(
             _options.BaseArrivalBasisPoints,
             CalculateAveragePriceIndex(store.Products),
@@ -777,7 +793,9 @@ public sealed class BusinessSimulation
             runtime.CleanlinessPermille,
             CurrentMinuteOfDay,
             growth.AttractionBonusBasisPoints,
-            growth.PromotionArrivalBonusBasisPoints));
+            growth.PromotionArrivalBonusBasisPoints,
+            format.DemandSensitivity,
+            format.TimeCurve));
     }
 
     private static int CalculateEffectiveQueueLength(int queueLength, int comfortCapacity) =>

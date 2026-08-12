@@ -11,4 +11,5 @@ public sealed record ProductSnapshot(
     int RequiredPlayerLevel = 1,
     long UnitGrossProfitCents = 0,
     int GrossMarginBasisPoints = 0,
-    long ReferenceSalePriceCents = 0);
+    long ReferenceSalePriceCents = 0,
+    int DemandWeightPermille = 1_000);

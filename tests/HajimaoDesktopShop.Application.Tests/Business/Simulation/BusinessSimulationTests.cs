@@ -2,6 +2,7 @@ using HajimaoDesktopShop.Application.Business;
 using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Tests.Business;
 using HajimaoDesktopShop.Application.Tests.Simulation;
@@ -17,7 +18,7 @@ namespace HajimaoDesktopShop.Application.Tests.Business.Simulation;
 public sealed class BusinessSimulationTests
 {
     [Fact]
-    public void Advance_ProcessesEveryOpenStoreThenRoutesOneSharedVisitor()
+    public void Advance_ProcessesEveryOpenStoreThenRoutesConfiguredStreetOpportunities()
     {
         var service = CreateService();
         var simulation = new BusinessSimulation(
@@ -38,8 +39,8 @@ public sealed class BusinessSimulationTests
         Assert.Equal(1, snapshot.GameMinute);
         Assert.Equal(["alpha-store", "zeta-store"], snapshot.Stores.Select(store => store.StoreId));
         Assert.All(snapshot.Stores, store => Assert.Equal(960, store.ServicePermille));
-        Assert.Equal(1, snapshot.Stores.Sum(store => store.Visitors));
-        Assert.Equal(1, snapshot.Stores.Sum(store => store.CheckoutQueueLength));
+        Assert.Equal(2, snapshot.Stores.Sum(store => store.Visitors));
+        Assert.Equal(2, snapshot.Stores.Sum(store => store.CheckoutQueueLength));
     }
 
     [Fact]
@@ -60,6 +61,38 @@ public sealed class BusinessSimulationTests
         var expensive = Assert.Single(simulation.GetSnapshot().Stores).ArrivalDemand.FinalBasisPoints;
 
         Assert.True(expensive < normal);
+    }
+
+    [Fact]
+    public void StoreFormat_ChangesExplainableArrivalDemandWithoutChangingPlayerControls()
+    {
+        var discountService = CreateFormattedService("discount");
+        var premiumService = CreateFormattedService("premium");
+        discountService.PurchaseStock("store-0001", "water", 1);
+        premiumService.PurchaseStock("store-0001", "water", 1);
+        discountService.ChangePrice("store-0001", "water", 240);
+        premiumService.ChangePrice("store-0001", "water", 240);
+        var discount = new BusinessSimulation(
+            discountService,
+            [],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 3_000));
+        var premium = new BusinessSimulation(
+            premiumService,
+            [],
+            new ScriptedRandomSource(),
+            new BusinessSimulationOptions(baseArrivalBasisPoints: 3_000));
+
+        var discountDemand = Assert.Single(discount.GetSnapshot().Stores).ArrivalDemand;
+        var premiumDemand = Assert.Single(premium.GetSnapshot().Stores).ArrivalDemand;
+        var discountCapacity = Assert.Single(discountService.GetSnapshot().Stores).Products.Single().Capacity;
+        var premiumCapacity = Assert.Single(premiumService.GetSnapshot().Stores).Products.Single().Capacity;
+
+        Assert.Equal(3_660, discountDemand.BaseBasisPoints);
+        Assert.Equal(2_340, premiumDemand.BaseBasisPoints);
+        Assert.True(discountDemand.PriceAdjustmentBasisPoints < premiumDemand.PriceAdjustmentBasisPoints);
+        Assert.Equal(130, discountCapacity);
+        Assert.Equal(80, premiumCapacity);
     }
 
     [Fact]
@@ -115,7 +148,7 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
-    public void MultipleStores_CompeteForAtMostOneSharedStreetVisitorPerMinute()
+    public void MultipleStores_ReceiveSixtyPercentVisitorOpportunitiesPerMinute()
     {
         var service = CreateService();
         Assert.Equal(OpenShopStatus.Success, service.OpenStore("alpha-store").Status);
@@ -124,15 +157,15 @@ public sealed class BusinessSimulationTests
         var simulation = new BusinessSimulation(
             service,
             [],
-            new ScriptedRandomSource(0, 0),
+            new ScriptedRandomSource(0, 0, 0, 0),
             CreateAlwaysBusyOptions());
 
         simulation.AdvanceRealSecond();
 
         var stores = simulation.GetSnapshot().Stores;
-        Assert.Equal(1, stores.Sum(store => store.Visitors));
-        Assert.Equal(1, stores.Count(store => store.Visitors == 1));
+        Assert.Equal(2, stores.Sum(store => store.Visitors));
         Assert.Equal(2, simulation.GetSnapshot().Street.Stores.Count);
+        Assert.Equal(2, simulation.GetSnapshot().Street.VisitorOpportunities);
     }
 
     [Fact]
@@ -607,6 +640,54 @@ public sealed class BusinessSimulationTests
             starterShopId: "zeta-store",
             openingCashCents,
             experiencePerItemSold: 1);
+
+    private static BusinessGameService CreateFormattedService(string formatId)
+    {
+        var formats = new[]
+        {
+            new StoreFormatDefinition(
+                "discount", "平价量贩", 70_000, 70_000,
+                1_220, 1_450, 800, 1_250, 800, 1_300,
+                "all-day-volume",
+                new Dictionary<string, int>
+                {
+                    ["ambient"] = 1_250,
+                    ["chilled"] = 1_000,
+                    ["frozen"] = 850
+                },
+                StorePricingPreset.HighTurnover,
+                StoreStockingPreset.FullShelves),
+            new StoreFormatDefinition(
+                "premium", "精品食品", 90_000, 55_000,
+                780, 600, 1_500, 900, 1_500, 800,
+                "afternoon-select",
+                new Dictionary<string, int>
+                {
+                    ["ambient"] = 750,
+                    ["chilled"] = 1_250,
+                    ["frozen"] = 1_400
+                },
+                StorePricingPreset.HighMargin,
+                StoreStockingPreset.Lean)
+        };
+        var brand = new StoreBrandDefinition(
+            $"brand-{formatId}", formatId, "global", formatId,
+            "facade", "real-world-name", "review-required");
+        return new BusinessGameService(
+            [new ProductDefinition("water", "矿泉水", 100, 200, 100, "ambient")],
+            [new ShopDefinition(
+                new ShopId("store-0001"),
+                new StoreBrandId(brand.Id),
+                new StoreFormatId(formatId),
+                brand.DisplayName,
+                1,
+                Money.Zero)],
+            new LevelCurve([0, 100]),
+            starterShopId: "store-0001",
+            openingCashCents: 100_000,
+            experiencePerItemSold: 1,
+            storeContent: new StoreContentCatalog(formats, [brand]));
+    }
 
     private static BusinessGameService CreateService(BusinessSaveData restoredState) =>
         new(

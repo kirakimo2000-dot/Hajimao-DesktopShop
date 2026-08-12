@@ -57,7 +57,7 @@ public sealed class PlayableDemoCandidateTests
                 StoreStockingPreset.Lean).Status);
 
         var (capitalBeforeWeakStoreInvestment, weakStoreInvestment) =
-            WaitForWeakStoreInvestment(session, "station-store", maximumDays: 20);
+            WaitForWeakStoreInvestment(session, maximumDays: 20);
         Assert.InRange(capitalBeforeWeakStoreInvestment.Options.Count, 1, 3);
         Assert.True(capitalBeforeWeakStoreInvestment.Options
             .Select(option => option.Thesis)
@@ -96,7 +96,10 @@ public sealed class PlayableDemoCandidateTests
         {
             var expansion = session.Investments.GetCapitalAllocation().Options
                 .FirstOrDefault(option => option.Thesis == CapitalAllocationThesis.ExpandStreet
-                    && option.Candidate.IsExecutable);
+                    && option.Candidate.IsExecutable
+                    && option.Candidate.Return.CashPressure is not (
+                        InvestmentCashPressure.Critical
+                        or InvestmentCashPressure.CannotAfford));
             if (expansion is not null)
             {
                 return expansion;
@@ -111,7 +114,6 @@ public sealed class PlayableDemoCandidateTests
     private static (CapitalAllocationSnapshot Capital, CapitalAllocationOption Investment)
         WaitForWeakStoreInvestment(
             BusinessSession session,
-            string storeId,
             int maximumDays)
     {
         for (var day = 0; day <= maximumDays; day++)
@@ -119,7 +121,6 @@ public sealed class PlayableDemoCandidateTests
             var capital = session.Investments.GetCapitalAllocation();
             var investment = capital.Options.FirstOrDefault(option =>
                 option.Thesis == CapitalAllocationThesis.StabilizeWeakestStore
-                && option.Candidate.StoreId == storeId
                 && option.Candidate.IsExecutable);
             if (investment is not null)
             {
@@ -129,6 +130,14 @@ public sealed class PlayableDemoCandidateTests
             session.Simulation.AdvanceRealSeconds(1_440);
         }
 
-        throw new Xunit.Sdk.XunitException("The newly opened weak store did not receive capital advice.");
+        var finalCapital = session.Investments.GetCapitalAllocation();
+        var finalSnapshot = session.Simulation.GetSnapshot();
+        throw new Xunit.Sdk.XunitException(
+            $"No safely executable weak-store route appeared. "
+            + $"cash={finalSnapshot.Business.CashCents}; "
+            + $"stores={string.Join(',', finalSnapshot.Business.Stores.Select(store => store.Id))}; "
+            + $"options={string.Join(';', finalCapital.Options.Select(option =>
+                $"{option.Thesis}/{option.Candidate.StoreId}/{option.Candidate.Kind}/"
+                + $"{option.Candidate.Availability}/{option.Candidate.Return.CashPressure}"))}");
     }
 }

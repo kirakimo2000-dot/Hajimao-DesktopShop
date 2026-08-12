@@ -24,6 +24,12 @@
     <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Config\products.json"
           Link="TestData\products.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Config\store-formats.json"
+          Link="TestData\store-formats.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Config\store-brands.json"
+          Link="TestData\store-brands.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

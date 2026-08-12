@@ -12,7 +12,8 @@ public static class DesktopBusinessSessionFactory
         IReadOnlyList<ProductDefinition> products,
         GameSaveData? save,
         int seed,
-        DateTimeOffset nowUtc)
+        DateTimeOffset nowUtc,
+        StoreContentCatalog? storeContent = null)
     {
         ArgumentNullException.ThrowIfNull(products);
         if (products.Count == 0)
@@ -32,7 +33,8 @@ public static class DesktopBusinessSessionFactory
                 DesktopGameContent.CreateStarterAssignments(),
                 random,
                 DesktopGameContent.SimulationOptions,
-                experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold);
+                experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold,
+                storeContent);
             ConfigureStarterShifts(newSession);
             return new DesktopBusinessSessionStartResult(
                 newSession,
@@ -48,7 +50,8 @@ public static class DesktopBusinessSessionFactory
                 DesktopGameContent.CreateStarterAssignments(),
                 random,
                 DesktopGameContent.SimulationOptions,
-                experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold);
+                experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold,
+                storeContent);
         return new DesktopBusinessSessionStartResult(
             restoredSession,
             IsNewGame: false);

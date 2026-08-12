@@ -15,12 +15,13 @@ public sealed class BusinessSession
     private BusinessSession(
         BusinessGameService game,
         BusinessSimulation simulation,
-        InvestmentTrackingSaveData? investmentTracking = null)
+        InvestmentTrackingSaveData? investmentTracking = null,
+        StoreContentCatalog? storeContent = null)
     {
         Game = game;
         Simulation = simulation;
         Strategy = new StoreStrategyService(game);
-        Investments = new StoreInvestmentService(game, simulation, investmentTracking);
+        Investments = new StoreInvestmentService(game, simulation, investmentTracking, storeContent);
     }
 
     public BusinessGameService Game { get; }
@@ -40,7 +41,8 @@ public sealed class BusinessSession
         IEnumerable<StoreEmployeeAssignment> assignments,
         IStatefulRandomSource random,
         BusinessSimulationOptions? options = null,
-        int experiencePerItemSold = 1)
+        int experiencePerItemSold = 1,
+        StoreContentCatalog? storeContent = null)
     {
         var products = productDefinitions?.ToArray()
             ?? throw new ArgumentNullException(nameof(productDefinitions));
@@ -54,10 +56,12 @@ public sealed class BusinessSession
             levelCurve,
             starterShopId,
             openingCashCents,
-            experiencePerItemSold);
+            experiencePerItemSold,
+            storeContent);
         return new BusinessSession(
             game,
-            new BusinessSimulation(game, staff, random, options));
+            new BusinessSimulation(game, staff, random, options),
+            storeContent: storeContent);
     }
 
     public static BusinessSession RestoreOrUpgrade(
@@ -69,7 +73,8 @@ public sealed class BusinessSession
         IEnumerable<StoreEmployeeAssignment> legacyAssignments,
         IStatefulRandomSource random,
         BusinessSimulationOptions? options = null,
-        int experiencePerItemSold = 1)
+        int experiencePerItemSold = 1,
+        StoreContentCatalog? storeContent = null)
     {
         ArgumentNullException.ThrowIfNull(save);
         ArgumentNullException.ThrowIfNull(random);
@@ -98,11 +103,13 @@ public sealed class BusinessSession
                 stores,
                 levelCurve,
                 save.Business,
-                experiencePerItemSold);
+                experiencePerItemSold,
+                storeContent);
             return new BusinessSession(
                 restoredGame,
                 new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options),
-                save.InvestmentTracking);
+                save.InvestmentTracking,
+                storeContent);
         }
 
         var upgradedBusiness = UpgradeLegacyBusiness(save, starterShopId);
@@ -111,7 +118,8 @@ public sealed class BusinessSession
             stores,
             levelCurve,
             upgradedBusiness,
-            experiencePerItemSold);
+            experiencePerItemSold,
+            storeContent);
         var simulationState = UpgradeLegacySimulation(
             game,
             save.Simulation.GameMinute,
@@ -122,7 +130,8 @@ public sealed class BusinessSession
         return new BusinessSession(
             game,
             new BusinessSimulation(game, simulationState, random, options),
-            save.InvestmentTracking);
+            save.InvestmentTracking,
+            storeContent);
     }
 
     public GameSaveData CaptureSaveData(DateTimeOffset? savedAtUtc = null)

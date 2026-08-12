@@ -34,10 +34,10 @@ public sealed class LongTermProgressionServiceTests
     }
 
     [Theory]
-    [InlineData(2, 200_000, ProgressionGoalId.PrepareSecondStore)]
+    [InlineData(2, 200_000, ProgressionGoalId.OpenSecondStore)]
     [InlineData(3, 79_999, ProgressionGoalId.PrepareSecondStore)]
     [InlineData(3, 80_000, ProgressionGoalId.OpenSecondStore)]
-    public void Create_SingleInvestedStoreShowsWhetherSecondStoreIsReady(
+    public void Create_SingleInvestedStoreUsesCashRatherThanLevelForReadiness(
         int level,
         long cashCents,
         ProgressionGoalId expected)
@@ -50,7 +50,7 @@ public sealed class LongTermProgressionServiceTests
 
         Assert.Equal(expected, result.CurrentGoal.Id);
         Assert.Equal("store-2", result.CurrentGoal.TargetStoreId);
-        Assert.Equal(3, result.CurrentGoal.RequiredPlayerLevel);
+        Assert.Equal(0, result.CurrentGoal.RequiredPlayerLevel);
         Assert.Equal(80_000, result.CurrentGoal.RequiredCashCents);
     }
 
@@ -70,10 +70,10 @@ public sealed class LongTermProgressionServiceTests
     }
 
     [Theory]
-    [InlineData(4, 300_000, ProgressionGoalId.PrepareThirdStore)]
+    [InlineData(4, 300_000, ProgressionGoalId.OpenThirdStore)]
     [InlineData(5, 199_999, ProgressionGoalId.PrepareThirdStore)]
     [InlineData(5, 200_000, ProgressionGoalId.OpenThirdStore)]
-    public void Create_DevelopedTwoStorePortfolioShowsThirdStoreReadiness(
+    public void Create_DevelopedTwoStorePortfolioUsesCashForThirdStoreReadiness(
         int level,
         long cashCents,
         ProgressionGoalId expected)
@@ -86,12 +86,12 @@ public sealed class LongTermProgressionServiceTests
 
         Assert.Equal(expected, result.CurrentGoal.Id);
         Assert.Equal("store-3", result.CurrentGoal.TargetStoreId);
-        Assert.Equal(5, result.CurrentGoal.RequiredPlayerLevel);
+        Assert.Equal(0, result.CurrentGoal.RequiredPlayerLevel);
         Assert.Equal(200_000, result.CurrentGoal.RequiredCashCents);
     }
 
     [Fact]
-    public void Create_ThreeStorePortfolioUnlocksStreetThenKeepsImprovingWeakestStore()
+    public void Create_AllConfiguredStoresOpenKeepsImprovingWeakestStoreWithoutLevelGate()
     {
         var beforeStreet = LongTermProgressionService.Create(
             Snapshot(playerLevel: 9, cashCents: 500_000, openStores: 3),
@@ -104,9 +104,8 @@ public sealed class LongTermProgressionServiceTests
             GrowthLevels(4, 2, 3),
             hasAnyInvestment: true);
 
-        Assert.Equal(ProgressionGoalId.UnlockCommercialBlock, beforeStreet.CurrentGoal.Id);
-        Assert.Equal(9, beforeStreet.CurrentGoal.CurrentValue);
-        Assert.Equal(10, beforeStreet.CurrentGoal.TargetValue);
+        Assert.Equal(ProgressionGoalId.ImproveWeakestStore, beforeStreet.CurrentGoal.Id);
+        Assert.Equal("store-2", beforeStreet.CurrentGoal.TargetStoreId);
         Assert.Equal(ProgressionGoalId.ImproveWeakestStore, fullStreet.CurrentGoal.Id);
         Assert.Equal("store-2", fullStreet.CurrentGoal.TargetStoreId);
         Assert.Equal(2, fullStreet.CurrentGoal.CurrentValue);

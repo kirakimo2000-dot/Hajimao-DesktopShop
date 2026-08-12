@@ -37,7 +37,7 @@ public sealed class NextActionViewModelTests
                     "station-store",
                     CurrentValue: 35_000,
                     TargetValue: 80_000,
-                    RequiredPlayerLevel: 3,
+                    RequiredPlayerLevel: 0,
                     RequiredCashCents: 80_000),
                 OpenStoreCount: 1,
                 ConfiguredStoreCount: 3,
@@ -50,7 +50,7 @@ public sealed class NextActionViewModelTests
 
         Assert.Equal("长期目标", nextAction.ContextText);
         Assert.Equal("为第二家店准备资本", nextAction.Title);
-        Assert.Equal("车站便利店 · 现金 ¥350.00/¥800.00 · Lv.2/3", nextAction.DetailText);
+        Assert.Equal("车站便利店 · 现金 ¥350.00/¥800.00", nextAction.DetailText);
         Assert.Equal("看投资", nextAction.ActionText);
         Assert.Equal(ManagementSection.Investment, nextAction.SuggestedSection);
     }

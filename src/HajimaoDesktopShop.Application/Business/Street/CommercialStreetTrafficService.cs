@@ -20,9 +20,8 @@ public sealed class CommercialStreetTrafficService
     {
         ArgumentNullException.ThrowIfNull(storeDemands);
         var stores = ValidateAndOrder(storeDemands);
-        var playerTier = CommercialStreetTrafficModel.GetTier(playerLevel);
-        var storefrontTier = CommercialStreetTrafficModel.GetTierForStorefrontCount(stores.Length);
-        var tier = (CommercialStreetTier)Math.Max((int)playerTier, (int)storefrontTier);
+        ArgumentOutOfRangeException.ThrowIfLessThan(playerLevel, 1);
+        var tier = CommercialStreetTrafficModel.GetTierForStorefrontCount(stores.Length);
 
         var weather = CommercialStreetTrafficModel.GetWeather(gameMinute);
         var traffic = CommercialStreetTrafficModel.CalculateSharedTrafficBasisPoints(
@@ -56,7 +55,8 @@ public sealed class CommercialStreetTrafficService
             CommercialStreetTrafficModel.GetVisibleVehicleCount(
                 checked((int)(gameMinute % 1_440L)),
                 weather),
-            Array.AsReadOnly(snapshots));
+            Array.AsReadOnly(snapshots),
+            CommercialStreetTrafficModel.GetVisitorOpportunityCount(stores.Length));
     }
 
     public string? TryRouteVisitor(CommercialStreetSnapshot snapshot)

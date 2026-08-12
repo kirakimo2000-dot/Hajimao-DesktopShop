@@ -44,7 +44,11 @@ public sealed record BusinessStoreSaveData(
     long WageCostCents,
     IReadOnlyList<BusinessProductSaveData> Products,
     long OperatingCostCents = 0,
-    StoreDevelopmentSaveData? Development = null);
+    StoreDevelopmentSaveData? Development = null,
+    string StoreName = "",
+    string StoreBrandId = "",
+    string StoreFormatId = "",
+    int StreetOrdinal = 0);
 
 public sealed record StoreDevelopmentSaveData(
     int ExpansionLevel,

@@ -36,6 +36,25 @@ public sealed class DesktopBusinessSessionFactoryTests
     }
 
     [Fact]
+    public void CreateNew_WithStoreContent_AppliesFamousBrandAndFormatEconomics()
+    {
+        var content = CreateStoreContent();
+
+        var start = DesktopBusinessSessionFactory.Create(
+            CreateProducts(10),
+            save: null,
+            seed: 42,
+            nowUtc: new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero),
+            storeContent: content);
+        var store = Assert.Single(start.Session.Game.GetSnapshot().Stores);
+
+        Assert.Equal("seven-eleven", store.StoreBrandId);
+        Assert.Equal("convenience", store.StoreFormatId);
+        Assert.Equal(1_100, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
+        Assert.Equal(22, store.Products.First().Capacity);
+    }
+
+    [Fact]
     public void Restore_UsesCompleteBusinessSaveAndDeterministicRandomState()
     {
         var products = CreateProducts(10);
@@ -98,4 +117,39 @@ public sealed class DesktopBusinessSessionFactoryTests
                 "ambient",
                 requiredPlayerLevel: ((index - 1) / 2) + 1))
             .ToArray();
+
+    private static StoreContentCatalog CreateStoreContent() =>
+        new(
+            [
+                new StoreFormatDefinition(
+                    "convenience",
+                    "社区便利",
+                    40_000,
+                    40_000,
+                    1_100,
+                    1_000,
+                    1_000,
+                    1_000,
+                    1_000,
+                    1_100,
+                    "steady",
+                    new Dictionary<string, int>
+                    {
+                        ["ambient"] = 1_000,
+                        ["chilled"] = 1_000,
+                        ["frozen"] = 1_000
+                    },
+                    Application.Business.Strategy.StorePricingPreset.Balanced,
+                    Application.Business.Strategy.StoreStockingPreset.Balanced)
+            ],
+            [
+                new StoreBrandDefinition(
+                    "seven-eleven",
+                    "7-Eleven",
+                    "global",
+                    "convenience",
+                    "facade-convenience-a",
+                    "real-world-name",
+                    "review-required")
+            ]);
 }

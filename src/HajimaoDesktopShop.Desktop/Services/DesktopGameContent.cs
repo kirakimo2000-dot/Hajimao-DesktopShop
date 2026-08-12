@@ -27,9 +27,27 @@ public static class DesktopGameContent
     public static IReadOnlyList<ShopDefinition> Shops { get; } = Array.AsReadOnly(
     new[]
     {
-        new ShopDefinition(new ShopId(StarterStoreId), "街角便利店", 1, new Money(ShopOpeningCostsCents[0])),
-        new ShopDefinition(new ShopId("station-store"), "车站便利店", 3, new Money(ShopOpeningCostsCents[1])),
-        new ShopDefinition(new ShopId("community-store"), "社区生活店", 5, new Money(ShopOpeningCostsCents[2]))
+        new ShopDefinition(
+            new ShopId(StarterStoreId),
+            new StoreBrandId("seven-eleven"),
+            new StoreFormatId("convenience"),
+            "7-Eleven",
+            1,
+            new Money(ShopOpeningCostsCents[0])),
+        new ShopDefinition(
+            new ShopId("station-store"),
+            new StoreBrandId("familymart"),
+            new StoreFormatId("convenience"),
+            "FamilyMart",
+            2,
+            new Money(ShopOpeningCostsCents[1])),
+        new ShopDefinition(
+            new ShopId("community-store"),
+            new StoreBrandId("lawson"),
+            new StoreFormatId("convenience"),
+            "Lawson",
+            3,
+            new Money(ShopOpeningCostsCents[2]))
     });
 
     public static LevelCurve LevelCurve { get; } =

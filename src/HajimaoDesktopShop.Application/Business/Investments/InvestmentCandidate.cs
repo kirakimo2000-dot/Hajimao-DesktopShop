@@ -23,7 +23,11 @@ public sealed record InvestmentCandidate(
     StoreBottleneck AddressedBottleneck,
     InvestmentEstimateCondition EstimateCondition,
     InvestmentAvailability Availability,
-    int RequiredPlayerLevel = 0)
+    int RequiredPlayerLevel = 0,
+    string StoreBrandId = "",
+    string StoreFormatId = "",
+    int StreetOrdinal = 0,
+    long RecommendedReserveCents = 0)
 {
     public bool IsExecutable => Availability == InvestmentAvailability.Available;
 }

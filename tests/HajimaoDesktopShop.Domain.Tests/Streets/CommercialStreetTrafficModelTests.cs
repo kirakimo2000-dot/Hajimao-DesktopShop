@@ -37,6 +37,9 @@ public sealed class CommercialStreetTrafficModelTests
     [InlineData(3, CommercialStreetTier.Street)]
     [InlineData(4, CommercialStreetTier.Street)]
     [InlineData(5, CommercialStreetTier.Block)]
+    [InlineData(6, CommercialStreetTier.Block)]
+    [InlineData(20, CommercialStreetTier.Block)]
+    [InlineData(100, CommercialStreetTier.Block)]
     public void GetTierForStorefrontCount_ProvidesAConsistentPresentationFloor(
         int openStoreCount,
         CommercialStreetTier expected)
@@ -44,6 +47,19 @@ public sealed class CommercialStreetTrafficModelTests
         Assert.Equal(
             expected,
             CommercialStreetTrafficModel.GetTierForStorefrontCount(openStoreCount));
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    [InlineData(5, 3)]
+    [InlineData(6, 4)]
+    [InlineData(100, 60)]
+    public void GetVisitorOpportunityCount_ScalesAtSixtyPercentOfStorefronts(
+        int openStoreCount,
+        int expected)
+    {
+        Assert.Equal(expected, CommercialStreetTrafficModel.GetVisitorOpportunityCount(openStoreCount));
     }
 
     [Theory]

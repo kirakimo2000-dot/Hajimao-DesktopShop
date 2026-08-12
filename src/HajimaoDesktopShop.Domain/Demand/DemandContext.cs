@@ -10,7 +10,9 @@ public sealed record DemandContext
         int cleanlinessPermille,
         int minuteOfDay,
         int attractionBasisPoints = 0,
-        int promotionBasisPoints = 0)
+        int promotionBasisPoints = 0,
+        DemandSensitivity? sensitivity = null,
+        DemandTimeCurve timeCurve = DemandTimeCurve.Steady)
     {
         if (baseBasisPoints is < 0 or > 10_000)
         {
@@ -60,6 +62,8 @@ public sealed record DemandContext
         MinuteOfDay = minuteOfDay;
         AttractionBasisPoints = attractionBasisPoints;
         PromotionBasisPoints = promotionBasisPoints;
+        Sensitivity = sensitivity ?? DemandSensitivity.Neutral;
+        TimeCurve = timeCurve;
     }
 
     public int BaseBasisPoints { get; }
@@ -77,4 +81,8 @@ public sealed record DemandContext
     public int AttractionBasisPoints { get; }
 
     public int PromotionBasisPoints { get; }
+
+    public DemandSensitivity Sensitivity { get; }
+
+    public DemandTimeCurve TimeCurve { get; }
 }
