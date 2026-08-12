@@ -112,8 +112,8 @@ try {
     if (-not $SkipVerification) {
         & dotnet restore HajimaoDesktopShop.slnx --nologo
         Assert-LastExitCode 'dotnet restore'
-        & dotnet test HajimaoDesktopShop.slnx -c Release --no-restore --nologo
-        Assert-LastExitCode 'dotnet test'
+        & (Join-Path $PSScriptRoot 'test-all.ps1') -Configuration Release -NoRestore
+        Assert-LastExitCode 'test-all.ps1'
         & dotnet build HajimaoDesktopShop.slnx -c Release --no-restore --nologo
         Assert-LastExitCode 'dotnet build'
     }

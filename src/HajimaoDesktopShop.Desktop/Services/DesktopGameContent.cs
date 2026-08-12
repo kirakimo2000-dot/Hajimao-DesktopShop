@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.StorePortfolio;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
@@ -52,6 +53,23 @@ public static class DesktopGameContent
 
     public static LevelCurve LevelCurve { get; } =
         new(LevelThresholds);
+
+    public static IReadOnlyList<ShopDefinition> CreateStarterShops(
+        StoreOpeningProposal starterStoreProposal)
+    {
+        ArgumentNullException.ThrowIfNull(starterStoreProposal);
+        return Array.AsReadOnly(
+        [
+            new ShopDefinition(
+                new ShopId(StarterStoreId),
+                new StoreBrandId(starterStoreProposal.BrandId),
+                new StoreFormatId(starterStoreProposal.FormatId),
+                starterStoreProposal.BrandName,
+                streetOrdinal: 1,
+                Money.Zero),
+            .. Shops.Skip(1)
+        ]);
+    }
 
     public static IReadOnlyList<StoreEmployeeAssignment> CreateStarterAssignments() =>
         Array.AsReadOnly(new[]

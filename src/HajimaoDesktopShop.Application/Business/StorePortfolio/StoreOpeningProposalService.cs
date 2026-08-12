@@ -6,6 +6,8 @@ namespace HajimaoDesktopShop.Application.Business.StorePortfolio;
 public sealed class StoreOpeningProposalService
 {
     private const long StreetExpansionCostCentsPerOpenStore = 40_000;
+    private static readonly IReadOnlyList<string> StarterFormatIds =
+        Array.AsReadOnly(new[] { "convenience", "discount", "premium" });
     private readonly StoreContentCatalog _catalog;
     private readonly IReadOnlyDictionary<string, StoreFormatDefinition> _formatsById;
 
@@ -21,12 +23,24 @@ public sealed class StoreOpeningProposalService
             catalog.Formats.ToDictionary(item => item.Id, StringComparer.Ordinal));
     }
 
-    public IReadOnlyList<StoreOpeningProposal> CreateStarterProposals(int seed)
+    public IReadOnlyList<StoreOpeningProposal> CreateStarterProposals(
+        int seed,
+        long openingCashCents)
     {
-        var proposals = _catalog.Formats
-            .OrderBy(item => item.Id, StringComparer.Ordinal)
-            .Select(format => SelectBrand(format.Id, seed))
-            .Select(brand => CreateProposal(brand, openStoreCount: 0, sharedCashCents: 0))
+        if (openingCashCents < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(openingCashCents));
+        }
+
+        var missingFormat = StarterFormatIds.FirstOrDefault(id => !_formatsById.ContainsKey(id));
+        if (missingFormat is not null)
+        {
+            throw new InvalidOperationException($"Starter store format '{missingFormat}' is missing.");
+        }
+
+        var proposals = StarterFormatIds
+            .Select(formatId => SelectBrand(formatId, seed))
+            .Select(brand => CreateProposal(brand, openStoreCount: 0, openingCashCents))
             .ToArray();
         return Array.AsReadOnly(proposals);
     }

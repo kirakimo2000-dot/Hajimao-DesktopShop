@@ -7,20 +7,33 @@ namespace HajimaoDesktopShop.Application.Tests.Business.StorePortfolio;
 public sealed class StoreOpeningProposalServiceTests
 {
     [Fact]
-    public void CreateStarterProposals_ReturnsOneBrandPerFormatWithNoOpeningCharge()
+    public void CreateStarterProposals_ReturnsThreeDistinctEconomicArchetypesWithOpeningCashIntact()
     {
         var service = new StoreOpeningProposalService(CreateCatalog());
 
-        var proposals = service.CreateStarterProposals(seed: 711);
+        var proposals = service.CreateStarterProposals(
+            seed: 711,
+            openingCashCents: 120_000);
 
-        Assert.Equal(4, proposals.Count);
-        Assert.Equal(4, proposals.Select(item => item.FormatId).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(
+            ["convenience", "discount", "premium"],
+            proposals.Select(item => item.FormatId));
         Assert.All(proposals, item =>
         {
             Assert.Equal("store-0001", item.ProspectiveStoreId);
             Assert.Equal(1, item.StreetOrdinal);
             Assert.Equal(0, item.OpeningCostCents);
+            Assert.Equal(120_000, item.CashAfterOpeningCents);
         });
+    }
+
+    [Fact]
+    public void CreateStarterProposals_RejectsNegativeOpeningCash()
+    {
+        var service = new StoreOpeningProposalService(CreateCatalog());
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            service.CreateStarterProposals(seed: 711, openingCashCents: -1));
     }
 
     [Fact]

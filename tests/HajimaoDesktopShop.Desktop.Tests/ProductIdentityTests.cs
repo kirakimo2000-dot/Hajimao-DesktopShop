@@ -6,7 +6,7 @@ namespace HajimaoDesktopShop.Desktop.Tests;
 public sealed class ProductIdentityTests
 {
     [Fact]
-    public void ActiveVersion_Is_0_1_25()
+    public void ActiveVersion_Is_0_1_26()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null
@@ -18,7 +18,7 @@ public sealed class ProductIdentityTests
         var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
         var props = File.ReadAllText(Path.Combine(repositoryRoot.FullName, "Directory.Build.props"));
 
-        Assert.Contains("<VersionPrefix>0.1.25</VersionPrefix>", props, StringComparison.Ordinal);
+        Assert.Contains("<VersionPrefix>0.1.26</VersionPrefix>", props, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -47,5 +47,32 @@ public sealed class ProductIdentityTests
         Assert.Equal(
             ProductIdentity.DisplayName,
             assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product);
+    }
+
+    [Fact]
+    public void Startup_WritesDiagnosticBeforeWaitingForStarterStoreChoice()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+        var diagnosticIndex = startupSource.IndexOf(
+            "\"application.starting\"",
+            StringComparison.Ordinal);
+        var selectionIndex = startupSource.IndexOf(
+            "StarterStoreStartupCoordinator.SelectForStartup",
+            StringComparison.Ordinal);
+
+        Assert.True(diagnosticIndex >= 0);
+        Assert.True(selectionIndex > diagnosticIndex);
     }
 }
