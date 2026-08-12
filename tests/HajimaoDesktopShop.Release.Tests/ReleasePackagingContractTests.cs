@@ -8,14 +8,14 @@ public sealed class ReleasePackagingContractTests
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_1_25()
+    public void ActiveVersion_Is_0_1_26()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.1.25", version.Value.Trim());
+        Assert.Equal("0.1.26", version.Value.Trim());
     }
 
     [Fact]
@@ -140,7 +140,21 @@ public sealed class ReleasePackagingContractTests
     {
         var script = File.ReadAllText(_root.File("scripts", "build-release.ps1"));
 
-        Assert.Contains("dotnet test", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("test-all.ps1", script, StringComparison.OrdinalIgnoreCase);
+        var testScript = File.ReadAllText(_root.File("scripts", "test-all.ps1"));
+        foreach (var testProject in new[]
+                 {
+                     "HajimaoDesktopShop.Domain.Tests.csproj",
+                     "HajimaoDesktopShop.Application.Tests.csproj",
+                     "HajimaoDesktopShop.Infrastructure.Tests.csproj",
+                     "HajimaoDesktopShop.Rendering.Tests.csproj",
+                     "HajimaoDesktopShop.Desktop.Tests.csproj",
+                     "HajimaoDesktopShop.Release.Tests.csproj"
+                 })
+        {
+            Assert.Contains(testProject, testScript, StringComparison.Ordinal);
+        }
+
         Assert.Contains("dotnet publish", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("--self-contained true", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("PublishSingleFile=true", script, StringComparison.OrdinalIgnoreCase);

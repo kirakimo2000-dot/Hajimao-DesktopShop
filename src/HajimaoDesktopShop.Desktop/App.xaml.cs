@@ -70,22 +70,34 @@ public partial class App : System.Windows.Application
             var savedGame = await saveStore.LoadGameAsync();
             var savedPlacement = await saveStore.LoadDesktopWindowPlacementAsync();
             var startupUtc = DateTimeOffset.UtcNow;
+            var starterStore = StarterStoreStartupCoordinator.SelectForStartup(
+                savedGame,
+                storeContent,
+                Environment.TickCount,
+                viewModel => new StarterStoreChoiceWindow(viewModel).ShowDialog());
+            if (!starterStore.ShouldContinue)
+            {
+                Shutdown();
+                return;
+            }
+
             var sessionStart = DesktopBusinessSessionFactory.Create(
                 products,
                 savedGame,
                 Environment.TickCount,
                 startupUtc,
                 storeContent,
-                peopleMarketContent);
+                peopleMarketContent,
+                starterStore.Proposal);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
             if (savedGame is null)
             {
-                var starterStore = _session.Game.GetSnapshot().Stores.Single();
-                foreach (var starter in starterStore.Products.Take(3))
+                var openedStarterStore = _session.Game.GetSnapshot().Stores.Single();
+                foreach (var starter in openedStarterStore.Products.Take(3))
                 {
                     _session.Game.PlaceProcurementOrder(
-                        starterStore.Id,
+                        openedStarterStore.Id,
                         starter.Id,
                         "local-wholesale",
                         Math.Min(5, starter.Capacity));

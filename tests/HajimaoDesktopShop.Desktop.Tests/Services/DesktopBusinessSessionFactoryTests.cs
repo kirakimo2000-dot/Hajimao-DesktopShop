@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Application.Catalog;
+using HajimaoDesktopShop.Application.Business.StorePortfolio;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Desktop.Services;
 
@@ -52,6 +53,76 @@ public sealed class DesktopBusinessSessionFactoryTests
         Assert.Equal("convenience", store.StoreFormatId);
         Assert.Equal(1_100, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
         Assert.Equal(22, store.Products.First().Capacity);
+    }
+
+    [Fact]
+    public void CreateNew_WithStarterSelection_UsesSelectedBrandFormatAndEconomics()
+    {
+        var content = CreateStoreContent();
+        var selected = CreateDiscountProposal();
+
+        var start = DesktopBusinessSessionFactory.Create(
+            CreateProducts(10),
+            save: null,
+            seed: 42,
+            nowUtc: new DateTimeOffset(2026, 8, 12, 8, 0, 0, TimeSpan.Zero),
+            storeContent: content,
+            starterStoreProposal: selected);
+        var store = Assert.Single(start.Session.Game.GetSnapshot().Stores);
+
+        Assert.Equal("corner-store", store.Id);
+        Assert.Equal("ALDI", store.Name);
+        Assert.Equal("aldi", store.StoreBrandId);
+        Assert.Equal("discount", store.StoreFormatId);
+        Assert.Equal(1, store.StreetOrdinal);
+        Assert.Equal(1_220, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
+        Assert.Equal(DesktopGameContent.OpeningCashCents, start.Session.Game.GetSnapshot().CashCents);
+    }
+
+    [Fact]
+    public void Restore_SelectedStarterIdentityBypassesNewSelectionAndSurvivesReload()
+    {
+        var content = CreateStoreContent();
+        var savedAtUtc = new DateTimeOffset(2026, 8, 12, 8, 0, 0, TimeSpan.Zero);
+        var original = DesktopBusinessSessionFactory.Create(
+            CreateProducts(10),
+            save: null,
+            seed: 42,
+            nowUtc: savedAtUtc,
+            storeContent: content,
+            starterStoreProposal: CreateDiscountProposal()).Session;
+        var save = original.CaptureSaveData(savedAtUtc);
+
+        var restored = DesktopBusinessSessionFactory.Create(
+            CreateProducts(10),
+            save,
+            seed: 999,
+            nowUtc: savedAtUtc.AddDays(30),
+            storeContent: content).Session;
+        var store = Assert.Single(restored.Game.GetSnapshot().Stores);
+
+        Assert.Equal("ALDI", store.Name);
+        Assert.Equal("aldi", store.StoreBrandId);
+        Assert.Equal("discount", store.StoreFormatId);
+        Assert.Equal(1_220, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
+    }
+
+    [Fact]
+    public void CreateNew_RejectsStarterSelectionThatDoesNotMatchLoadedCatalog()
+    {
+        var invalid = CreateDiscountProposal() with
+        {
+            BrandId = "unknown-brand",
+            BrandName = "Unknown"
+        };
+
+        Assert.Throws<ArgumentException>(() => DesktopBusinessSessionFactory.Create(
+            CreateProducts(10),
+            save: null,
+            seed: 42,
+            nowUtc: new DateTimeOffset(2026, 8, 12, 8, 0, 0, TimeSpan.Zero),
+            storeContent: CreateStoreContent(),
+            starterStoreProposal: invalid));
     }
 
     [Fact]
@@ -140,7 +211,27 @@ public sealed class DesktopBusinessSessionFactoryTests
                         ["frozen"] = 1_000
                     },
                     Application.Business.Strategy.StorePricingPreset.Balanced,
-                    Application.Business.Strategy.StoreStockingPreset.Balanced)
+                    Application.Business.Strategy.StoreStockingPreset.Balanced),
+                new StoreFormatDefinition(
+                    "discount",
+                    "平价量贩",
+                    70_000,
+                    70_000,
+                    1_220,
+                    1_450,
+                    800,
+                    1_250,
+                    800,
+                    1_300,
+                    "all-day-volume",
+                    new Dictionary<string, int>
+                    {
+                        ["ambient"] = 1_250,
+                        ["chilled"] = 1_000,
+                        ["frozen"] = 850
+                    },
+                    Application.Business.Strategy.StorePricingPreset.HighTurnover,
+                    Application.Business.Strategy.StoreStockingPreset.FullShelves)
             ],
             [
                 new StoreBrandDefinition(
@@ -150,6 +241,27 @@ public sealed class DesktopBusinessSessionFactoryTests
                     "convenience",
                     "facade-convenience-a",
                     "real-world-name",
+                    "review-required"),
+                new StoreBrandDefinition(
+                    "aldi",
+                    "ALDI",
+                    "europe",
+                    "discount",
+                    "facade-discount-a",
+                    "real-world-name",
                     "review-required")
             ]);
+
+    private static StoreOpeningProposal CreateDiscountProposal() =>
+        new(
+            "store-0001",
+            1,
+            "aldi",
+            "ALDI",
+            "discount",
+            "平价量贩",
+            0,
+            70_000,
+            DesktopGameContent.OpeningCashCents,
+            true);
 }
