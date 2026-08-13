@@ -37,6 +37,10 @@ public sealed class InvestmentPortfolioViewModelTests
         Assert.Equal("库存容量 +25%", shelf.EffectText);
         Assert.Equal("当前数据不足，暂不估算收益", shelf.EstimateConditionText);
         Assert.True(shelf.InvestCommand.CanExecute(null));
+        Assert.Equal("7-Eleven · 升级货架", viewModel.NextInvestmentTitle);
+        Assert.Equal(
+            "投入 ¥250.00 · 暂无足够数据 · 缺少完整支出基准",
+            viewModel.NextInvestmentDetailText);
     }
 
     [Fact]

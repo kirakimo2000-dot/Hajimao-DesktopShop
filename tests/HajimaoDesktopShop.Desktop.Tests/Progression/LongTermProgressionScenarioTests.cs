@@ -1,4 +1,5 @@
 using HajimaoDesktopShop.Desktop.Services;
+using HajimaoDesktopShop.Application.Business.Strategy;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Progression;
 
@@ -15,6 +16,49 @@ public sealed class LongTermProgressionScenarioTests
             session.Simulation.Employees.GetSnapshot().Candidates,
             candidate => candidate.ProfileId.StartsWith("legacy-", StringComparison.Ordinal));
         Assert.NotNull(session.Simulation.GetSnapshot().MarketEvents);
+    }
+
+    [Theory]
+    [InlineData("convenience", StorePricingPreset.Balanced, StoreStockingPreset.Balanced)]
+    [InlineData("discount", StorePricingPreset.HighTurnover, StoreStockingPreset.FullShelves)]
+    [InlineData("premium", StorePricingPreset.HighMargin, StoreStockingPreset.Lean)]
+    public void ProductionScenario_CanStartEachStoreRouteWithItsRecommendedStrategy(
+        string formatId,
+        StorePricingPreset expectedPricing,
+        StoreStockingPreset expectedStocking)
+    {
+        var session = LongTermProgressionScenarioRunner.CreateSession(seed: 8_101, formatId);
+        var store = Assert.Single(session.Game.GetSnapshot().Stores);
+        var strategy = Assert.IsType<StoreStrategyPlan>(session.Strategy.GetAppliedPlan(store.Id));
+
+        Assert.Equal(formatId, store.StoreFormatId);
+        Assert.Equal(expectedPricing, strategy.Pricing);
+        Assert.Equal(expectedStocking, strategy.Stocking);
+    }
+
+    [Theory]
+    [InlineData("convenience", LongTermProgressionPolicy.CashPreservation)]
+    [InlineData("discount", LongTermProgressionPolicy.HighTurnover)]
+    [InlineData("premium", LongTermProgressionPolicy.HighMargin)]
+    public void OneYearStarterRoutes_RemainSolventAndReachExpansionGoals(
+        string formatId,
+        LongTermProgressionPolicy policy)
+    {
+        var scenario = LongTermProgressionScenarioRunner.Run(
+            policy,
+            days: 365,
+            starterFormatId: formatId);
+
+        Assert.All(scenario.Checkpoints, checkpoint =>
+        {
+            Assert.True(checkpoint.CashCents >= 0, $"{formatId}: {checkpoint}");
+            Assert.Equal(0, checkpoint.WagePaymentFailures);
+        });
+        Assert.True(scenario.Day(7).CashCents >= 0, $"{formatId}: {scenario.Day(7)}");
+        Assert.True(scenario.Day(30).Investments > 0, $"{formatId}: {scenario.Day(30)}");
+        Assert.True(scenario.Day(90).AvailableInvestmentRoutes > 0, $"{formatId}: {scenario.Day(90)}");
+        Assert.True(scenario.Day(365).OpenStores >= 6, $"{formatId}: {scenario.Day(365)}");
+        Assert.True(scenario.Day(365).NetProfitCents > 0, $"{formatId}: {scenario.Day(365)}");
     }
 
     [Fact]

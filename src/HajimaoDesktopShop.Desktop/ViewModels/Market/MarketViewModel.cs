@@ -50,7 +50,6 @@ public sealed class MarketViewModel : ObservableObject
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
         DesktopNavigation = new DesktopNavigationViewModel(SelectStoreById);
         Onboarding = new OnboardingViewModel();
-        Overview = new MarketOverviewViewModel();
         Economy = new StoreEconomyViewModel();
         Progression = new LongTermProgressionViewModel();
         NextAction = new NextActionViewModel();
@@ -62,8 +61,6 @@ public sealed class MarketViewModel : ObservableObject
     }
 
     public ObservableCollection<StoreNavigationItemViewModel> Stores { get; } = [];
-
-    public MarketOverviewViewModel Overview { get; }
 
     public StoreEconomyViewModel Economy { get; }
 
@@ -251,7 +248,6 @@ public sealed class MarketViewModel : ObservableObject
             IsLocked,
             IsClickThrough);
         RefreshSelectedShopObject(snapshot);
-        Overview.Synchronize(Stores);
         var analysis = StoreEconomyAnalysisService.Calculate(snapshot, SelectedStoreId);
         if (analysis is not null)
         {

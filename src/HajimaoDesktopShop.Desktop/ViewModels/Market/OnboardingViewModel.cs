@@ -66,10 +66,10 @@ public sealed class OnboardingViewModel : ObservableObject
     private static OnboardingTaskPresentation GetPresentation(OnboardingTaskId taskId) =>
         taskId switch
         {
-            OnboardingTaskId.ChooseStoreStrategy => new(
-                "选择整店策略",
-                "选择高周转、高毛利或稳健备货。",
-                ManagementSection.Strategy),
+            OnboardingTaskId.ObserveFirstDay => new(
+                "先看店铺运转",
+                "先让店铺自动经营，完成第一份日结后再决定投资。",
+                ManagementSection.Overview),
             OnboardingTaskId.MakeFirstInvestment => new(
                 "完成第一次投资",
                 "比较回报与现金压力，执行一项投资。",

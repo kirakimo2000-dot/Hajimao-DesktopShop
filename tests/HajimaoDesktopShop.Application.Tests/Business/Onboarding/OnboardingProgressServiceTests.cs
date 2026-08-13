@@ -18,7 +18,7 @@ public sealed class OnboardingProgressServiceTests
     {
         Assert.Equal(
             [
-                "ChooseStoreStrategy",
+                "ObserveFirstDay",
                 "MakeFirstInvestment",
                 "ReviewInvestmentReturn"
             ],
@@ -32,14 +32,17 @@ public sealed class OnboardingProgressServiceTests
 
         Assert.Equal(3, snapshot.TotalTasks);
         Assert.Equal(0, snapshot.CompletedTasks);
-        Assert.Equal(OnboardingTaskId.ChooseStoreStrategy, snapshot.CurrentTaskId);
+        Assert.Equal(OnboardingTaskId.ObserveFirstDay, snapshot.CurrentTaskId);
     }
 
     [Fact]
     public void CreateSnapshot_CompletesAfterInvestmentHasAComparableReturn()
     {
         var snapshot = OnboardingProgressService.CreateSnapshot(
-            Simulation(gameMinute: 1, stores: [Store(salePriceCents: 230)]),
+            Simulation(
+                gameMinute: 1_440,
+                stores: [Store(salePriceCents: 230)],
+                lastCompletedDay: DayReport(netProfitCents: 50)),
             Procurement(),
             hasRecordedInvestment: true,
             hasComparableInvestmentReturn: true);
@@ -60,14 +63,13 @@ public sealed class OnboardingProgressServiceTests
     }
 
     [Fact]
-    public void CreateSnapshot_DefaultBalancedAutomationDoesNotPretendPlayerChoseStrategy()
+    public void CreateSnapshot_FirstCompletedDayFinishesObservationTask()
     {
-        var procurement = Procurement(
-            [new AutoRestockPolicy("store-1", "water", true, 3, 7, "regional-distributor", true)]);
+        var snapshot = OnboardingProgressService.CreateSnapshot(
+            Simulation(lastCompletedDay: DayReport(netProfitCents: 50)),
+            Procurement());
 
-        var snapshot = OnboardingProgressService.CreateSnapshot(Simulation(), procurement);
-
-        Assert.False(snapshot.Tasks.Single(task => task.Id == OnboardingTaskId.ChooseStoreStrategy).IsCompleted);
+        Assert.True(snapshot.Tasks.Single(task => task.Id == OnboardingTaskId.ObserveFirstDay).IsCompleted);
     }
 
     [Fact]
@@ -116,7 +118,7 @@ public sealed class OnboardingProgressServiceTests
             new OnboardingSnapshot(
                 outOfOrder,
                 completedTasks: 0,
-                currentTaskId: OnboardingTaskId.ChooseStoreStrategy));
+                currentTaskId: OnboardingTaskId.ObserveFirstDay));
     }
 
     [Fact]
@@ -126,7 +128,7 @@ public sealed class OnboardingProgressServiceTests
         var snapshot = new OnboardingSnapshot(
             tasks,
             completedTasks: 0,
-            currentTaskId: OnboardingTaskId.ChooseStoreStrategy);
+            currentTaskId: OnboardingTaskId.ObserveFirstDay);
 
         tasks[0] = tasks[0] with { IsCompleted = true };
 
@@ -137,13 +139,13 @@ public sealed class OnboardingProgressServiceTests
     public static TheoryData<OnboardingTaskId, BusinessSimulationSnapshot, ProcurementSnapshot> CompletionCases() =>
         new()
         {
-            { OnboardingTaskId.ChooseStoreStrategy, Simulation(stores: [Store(salePriceCents: 230)]), Procurement() },
+            { OnboardingTaskId.ObserveFirstDay, Simulation(lastCompletedDay: DayReport(netProfitCents: 50)), Procurement() },
             { OnboardingTaskId.MakeFirstInvestment, Simulation(stores: [Store(growth: Growth(shelfLevel: 1))]), Procurement() }
         };
 
     private static OnboardingTaskState[] FullTaskStates(bool completed = false) =>
     [
-        new(OnboardingTaskId.ChooseStoreStrategy, completed),
+        new(OnboardingTaskId.ObserveFirstDay, completed),
         new(OnboardingTaskId.MakeFirstInvestment, completed),
         new(OnboardingTaskId.ReviewInvestmentReturn, completed)
     ];

@@ -8,6 +8,7 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly string _databasePath;
     private readonly string _connectionString;
 
     static SqliteGameSaveStore()
@@ -23,12 +24,7 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         }
 
         var fullPath = Path.GetFullPath(databasePath.Trim());
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
+        _databasePath = fullPath;
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = fullPath,
@@ -43,6 +39,11 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (!File.Exists(_databasePath))
+            {
+                return null;
+            }
+
             await using var connection = await OpenMigratedConnectionAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
             command.CommandText = "SELECT schema_version, payload_json FROM game_save WHERE slot = 1;";
@@ -79,6 +80,7 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            EnsureDatabaseDirectoryExists();
             await using var connection = await OpenMigratedConnectionAsync(cancellationToken).ConfigureAwait(false);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
@@ -109,6 +111,11 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (!File.Exists(_databasePath))
+            {
+                return null;
+            }
+
             await using var connection = await OpenMigratedConnectionAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
             command.CommandText = "SELECT left_px, top_px, is_locked FROM desktop_window WHERE slot = 1;";
@@ -136,6 +143,7 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            EnsureDatabaseDirectoryExists();
             await using var connection = await OpenMigratedConnectionAsync(cancellationToken).ConfigureAwait(false);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
@@ -228,6 +236,15 @@ public sealed class SqliteGameSaveStore : IGameSaveStore
         {
             await connection.DisposeAsync().ConfigureAwait(false);
             throw;
+        }
+    }
+
+    private void EnsureDatabaseDirectoryExists()
+    {
+        var directory = Path.GetDirectoryName(_databasePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
         }
     }
 

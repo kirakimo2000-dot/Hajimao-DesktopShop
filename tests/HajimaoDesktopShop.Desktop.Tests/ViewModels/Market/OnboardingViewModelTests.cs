@@ -39,7 +39,7 @@ public sealed class OnboardingViewModelTests
     public static TheoryData<OnboardingTaskId, int, string, string, ManagementSection> TaskPresentationCases() =>
         new()
         {
-            { OnboardingTaskId.ChooseStoreStrategy, 0, "选择整店策略", "选择高周转、高毛利或稳健备货。", ManagementSection.Strategy },
+            { OnboardingTaskId.ObserveFirstDay, 0, "先看店铺运转", "先让店铺自动经营，完成第一份日结后再决定投资。", ManagementSection.Overview },
             { OnboardingTaskId.MakeFirstInvestment, 1, "完成第一次投资", "比较回报与现金压力，执行一项投资。", ManagementSection.Investment },
             { OnboardingTaskId.ReviewInvestmentReturn, 2, "查看投资回报", "等待下一次完整日结，查看投资前后变化。", ManagementSection.Investment }
         };

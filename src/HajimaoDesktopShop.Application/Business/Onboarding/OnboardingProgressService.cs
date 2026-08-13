@@ -17,8 +17,8 @@ public static class OnboardingProgressService
         var tasks = new[]
         {
             new OnboardingTaskState(
-                OnboardingTaskId.ChooseStoreStrategy,
-                HasChosenNonDefaultStrategy(simulation, procurement)),
+                OnboardingTaskId.ObserveFirstDay,
+                simulation.LastCompletedDay is not null),
             new OnboardingTaskState(
                 OnboardingTaskId.MakeFirstInvestment,
                 hasRecordedInvestment || simulation.Business.Stores.Any(store =>
@@ -36,38 +36,4 @@ public static class OnboardingProgressService
         return new OnboardingSnapshot(tasks, completedTasks, currentTaskId);
     }
 
-    private static bool HasChosenNonDefaultStrategy(
-        BusinessSimulationSnapshot simulation,
-        ProcurementSnapshot procurement)
-    {
-        var policies = procurement.AutoRestockPolicies.ToDictionary(
-            policy => (policy.StoreId, policy.ProductId));
-        foreach (var store in simulation.Business.Stores)
-        {
-            foreach (var product in store.Products)
-            {
-                if (product.SalePriceCents != product.ReferenceSalePriceCents)
-                {
-                    return true;
-                }
-
-                var balancedReorderPoint = Math.Max(1, product.Capacity * 300 / 1_000);
-                var balancedTargetQuantity = Math.Max(1, product.Capacity * 750 / 1_000);
-                if (policies.TryGetValue((store.Id, product.Id), out var policy)
-                    && (!policy.IsEnabled
-                        || policy.ReorderPoint != balancedReorderPoint
-                        || policy.TargetQuantity != balancedTargetQuantity
-                        || !string.Equals(
-                            policy.PreferredChannelId,
-                            "regional-distributor",
-                            StringComparison.Ordinal)
-                        || !policy.UseEmergencySupplierWhenOutOfStock))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
 }
