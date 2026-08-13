@@ -11,17 +11,17 @@ public sealed class NextActionViewModelTests
     public void Update_PrioritizesTheCurrentOnboardingAction()
     {
         var onboarding = new OnboardingViewModel();
-        onboarding.Refresh(OnboardingSnapshot(completedTasks: 0, OnboardingTaskId.ChooseStoreStrategy));
+        onboarding.Refresh(OnboardingSnapshot(completedTasks: 0, OnboardingTaskId.ObserveFirstDay));
         var progression = new LongTermProgressionViewModel();
         var nextAction = new NextActionViewModel();
 
         nextAction.Update(onboarding, progression);
 
         Assert.Equal("新手任务 1/3", nextAction.ContextText);
-        Assert.Equal("选择整店策略", nextAction.Title);
-        Assert.Equal("选择高周转、高毛利或稳健备货。", nextAction.DetailText);
-        Assert.Equal("选策略", nextAction.ActionText);
-        Assert.Equal(ManagementSection.Strategy, nextAction.SuggestedSection);
+        Assert.Equal("先看店铺运转", nextAction.Title);
+        Assert.Equal("先让店铺自动经营，完成第一份日结后再决定投资。", nextAction.DetailText);
+        Assert.Equal("看概览", nextAction.ActionText);
+        Assert.Equal(ManagementSection.Overview, nextAction.SuggestedSection);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.StorePortfolio;
+using HajimaoDesktopShop.Application.Business.Strategy;
 using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Desktop.Services;
 
@@ -77,6 +78,10 @@ public sealed class DesktopBusinessSessionFactoryTests
         Assert.Equal(1, store.StreetOrdinal);
         Assert.Equal(1_220, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
         Assert.Equal(DesktopGameContent.OpeningCashCents, start.Session.Game.GetSnapshot().CashCents);
+        var strategy = Assert.IsType<StoreStrategyPlan>(
+            start.Session.Strategy.GetAppliedPlan(store.Id));
+        Assert.Equal(StorePricingPreset.HighTurnover, strategy.Pricing);
+        Assert.Equal(StoreStockingPreset.FullShelves, strategy.Stocking);
     }
 
     [Fact]
@@ -92,6 +97,7 @@ public sealed class DesktopBusinessSessionFactoryTests
             storeContent: content,
             starterStoreProposal: CreateDiscountProposal()).Session;
         var save = original.CaptureSaveData(savedAtUtc);
+        var originalStore = Assert.Single(original.Game.GetSnapshot().Stores);
 
         var restored = DesktopBusinessSessionFactory.Create(
             CreateProducts(10),
@@ -105,6 +111,9 @@ public sealed class DesktopBusinessSessionFactoryTests
         Assert.Equal("aldi", store.StoreBrandId);
         Assert.Equal("discount", store.StoreFormatId);
         Assert.Equal(1_220, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
+        Assert.Equal(
+            originalStore.Products.Select(product => product.Capacity),
+            store.Products.Select(product => product.Capacity));
     }
 
     [Fact]

@@ -13,18 +13,14 @@ namespace HajimaoDesktopShop.Infrastructure.Tests.Persistence;
 public sealed class SqliteGameSaveStoreTests
 {
     [Fact]
-    public async Task NewDatabase_MigratesToCurrentSchema()
+    public async Task ReadMissingDatabase_ReturnsEmptyWithoutCreatingStorage()
     {
         using var database = new TemporaryDatabase();
         var store = new SqliteGameSaveStore(database.Path);
 
         Assert.Null(await store.LoadGameAsync());
-
-        await using var connection = new SqliteConnection($"Data Source={database.Path};Pooling=False");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA user_version;";
-        Assert.Equal(GameSaveSchema.CurrentVersion, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        Assert.Null(await store.LoadDesktopWindowPlacementAsync());
+        Assert.False(File.Exists(database.Path));
     }
 
     [Fact]

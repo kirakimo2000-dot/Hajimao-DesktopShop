@@ -15,7 +15,7 @@ public sealed class ReleasePackagingContractTests
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.1.26", version.Value.Trim());
+        Assert.Equal("0.1.28", version.Value.Trim());
     }
 
     [Fact]
@@ -216,6 +216,9 @@ public sealed class ReleasePackagingContractTests
         Assert.Contains("ALLUSERS=1", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("'/a'", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("RequireFullMsiInstall", script, StringComparison.Ordinal);
+        Assert.Contains("AutomationElement", script, StringComparison.Ordinal);
+        Assert.Contains("InvokePattern", script, StringComparison.Ordinal);
+        Assert.Contains("application.started", script, StringComparison.Ordinal);
         Assert.Contains("WindowsBuiltInRole", script, StringComparison.Ordinal);
 
         var installCompleted = script.IndexOf(

@@ -3,6 +3,7 @@ using HajimaoDesktopShop.Application.Business.Employees;
 using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.Strategy;
+using HajimaoDesktopShop.Application.Business.StorePortfolio;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Desktop.Services;
 using HajimaoDesktopShop.Infrastructure.Configuration;
@@ -131,14 +132,15 @@ internal static class LongTermProgressionScenarioRunner
     public static LongTermProgressionScenario Run(
         LongTermProgressionPolicy policy,
         int days,
-        int seed = 8_101)
+        int seed = 8_101,
+        string starterFormatId = "convenience")
     {
         if (days <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(days));
         }
 
-        var session = CreateSession(seed);
+        var session = CreateSession(seed, starterFormatId);
         var checkpoints = new List<ProgressionCheckpoint>(days);
         var investments = 0;
         for (var day = 1; day <= days; day++)
@@ -157,15 +159,22 @@ internal static class LongTermProgressionScenarioRunner
             session);
     }
 
-    public static BusinessSession CreateSession(int seed)
+    public static BusinessSession CreateSession(int seed, string starterFormatId = "convenience")
     {
+        var starterProposal = new StoreOpeningProposalService(Stores.Value)
+            .CreateStarterProposals(seed, DesktopGameContent.OpeningCashCents)
+            .Single(proposal => string.Equals(
+                proposal.FormatId,
+                starterFormatId,
+                StringComparison.Ordinal));
         var start = DesktopBusinessSessionFactory.Create(
             Products.Value,
             save: null,
             seed,
             new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero),
             Stores.Value,
-            PeopleAndEvents.Value);
+            PeopleAndEvents.Value,
+            starterProposal);
         return start.Session;
     }
 

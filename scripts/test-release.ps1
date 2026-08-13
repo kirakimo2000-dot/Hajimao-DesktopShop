@@ -8,6 +8,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
 
 Add-Type -TypeDefinition @'
 using System;
@@ -300,6 +302,43 @@ function Test-ApplicationRuntime {
     Wait-ForCondition -Description "$Label process responsiveness" -Condition {
         $Process.Refresh()
         -not $Process.HasExited -and $Process.Responding
+    }
+    Wait-ForCondition -Description "$Label starter store choice" -Condition {
+        $root = [System.Windows.Automation.AutomationElement]::RootElement
+        $processCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty,
+            $Process.Id)
+        $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [System.Windows.Automation.ControlType]::Button)
+        $windows = $root.FindAll(
+            [System.Windows.Automation.TreeScope]::Children,
+            $processCondition)
+        foreach ($window in $windows) {
+            $buttons = $window.FindAll(
+                [System.Windows.Automation.TreeScope]::Descendants,
+                $buttonCondition)
+            foreach ($button in $buttons) {
+                if ($button.Current.Name.StartsWith('选择 ', [System.StringComparison]::Ordinal)) {
+                    $invoke = [System.Windows.Automation.InvokePattern]$button.GetCurrentPattern(
+                        [System.Windows.Automation.InvokePattern]::Pattern)
+                    $invoke.Invoke()
+                    return $true
+                }
+            }
+        }
+
+        return $false
+    }
+    Wait-ForCondition -Description "$Label application session startup" -Condition {
+        $logDirectory = Join-Path $DataDirectory 'logs'
+        if (-not (Test-Path -LiteralPath $logDirectory -PathType Container)) {
+            return $false
+        }
+
+        $logs = @(Get-ChildItem -LiteralPath $logDirectory -File -ErrorAction SilentlyContinue)
+        return $null -ne ($logs | Select-String -Pattern 'application.started' -SimpleMatch |
+            Select-Object -First 1)
     }
     Wait-ForCondition -Description "$Label SQLite save" -Condition {
         Test-Path -LiteralPath (Join-Path $DataDirectory 'hajimao.db') -PathType Leaf

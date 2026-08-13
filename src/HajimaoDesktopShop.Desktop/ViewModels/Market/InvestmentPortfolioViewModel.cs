@@ -16,6 +16,8 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
     private string _latestInvestmentTitle = "暂无投资记录";
     private string _latestComparisonText = "完成投资后将在这里比较后续完整日结。";
     private string _statusMessage = "投资方案已按当前经营数据计算";
+    private string _nextInvestmentTitle = "等待经营数据形成投资建议";
+    private string _nextInvestmentDetailText = "继续挂机，系统会筛选最值得关注的资本用途。";
 
     public InvestmentPortfolioViewModel(
         BusinessSession session,
@@ -54,6 +56,18 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
         private set => SetProperty(ref _statusMessage, value);
     }
 
+    public string NextInvestmentTitle
+    {
+        get => _nextInvestmentTitle;
+        private set => SetProperty(ref _nextInvestmentTitle, value);
+    }
+
+    public string NextInvestmentDetailText
+    {
+        get => _nextInvestmentDetailText;
+        private set => SetProperty(ref _nextInvestmentDetailText, value);
+    }
+
     public void Refresh()
     {
         Candidates.Clear();
@@ -62,7 +76,24 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
             Candidates.Add(new InvestmentCandidateCardViewModel(option, Invest));
         }
 
+        RefreshNextInvestment();
+
         RefreshComparison(ResolveComparisonStoreId());
+    }
+
+    private void RefreshNextInvestment()
+    {
+        var next = Candidates.FirstOrDefault();
+        if (next is null)
+        {
+            NextInvestmentTitle = "暂时没有投资方向";
+            NextInvestmentDetailText = "继续挂机积累经营数据与现金。";
+            return;
+        }
+
+        NextInvestmentTitle = $"{next.StoreContextText} · {next.TitleText}";
+        NextInvestmentDetailText =
+            $"{next.CostText} · {next.ExpectedBenefitText} · {next.CashPressureText}";
     }
 
     private void Invest(InvestmentCandidateCardViewModel card)

@@ -121,44 +121,62 @@
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <DockPanel>
-                                    <TextBlock Text="经营概览" FontSize="18" FontWeight="Bold" />
+                                    <StackPanel>
+                                        <TextBlock Text="具体店铺" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
+                                        <TextBlock Text="{Binding SelectedStoreName}" FontSize="18" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Brush.Primary}" />
+                                    </StackPanel>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding Economy.PeriodText}"
                                                Foreground="{DynamicResource Brush.TextMuted}" />
                                 </DockPanel>
-                                <UniformGrid Columns="3" Margin="0,10,0,0">
-                                    <StackPanel Margin="5"><TextBlock Text="营业收入" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Economy.RevenueText}" Style="{DynamicResource MetricText}"/></StackPanel>
-                                    <StackPanel Margin="5"><TextBlock Text="毛利 / 毛利率" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Economy.GrossProfitText}" Foreground="{DynamicResource Brush.Success}"/></StackPanel>
-                                    <StackPanel Margin="5"><TextBlock Text="净利润 / 净利率" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Economy.NetProfitText}" Style="{DynamicResource MetricText}"/></StackPanel>
-                                    <StackPanel Margin="5"><TextBlock Text="工资" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Economy.WageCostText}"/></StackPanel>
-                                    <StackPanel Margin="5"><TextBlock Text="运营成本" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Economy.OperatingCostText}"/></StackPanel>
-                                    <StackPanel Margin="5"><TextBlock Text="现金续航" Foreground="{DynamicResource Brush.TextMuted}"/><TextBlock Text="{Binding Economy.CashRunwayText}"/></StackPanel>
-                                </UniformGrid>
-                                <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}"
-                                        BorderThickness="2" Padding="9" Margin="5,8,5,10">
+                                <Border Background="{DynamicResource Brush.SurfaceElevated}"
+                                        BorderBrush="{DynamicResource Brush.Success}"
+                                        BorderThickness="2" Padding="10" Margin="0,12,0,8">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Economy.BottleneckText}" Foreground="{DynamicResource Brush.Primary}" FontWeight="Bold"/>
-                                        <TextBlock Text="{Binding Economy.CustomerFlowText}" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,4,0,0"/>
+                                        <TextBlock Text="本店表现" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                                        <TextBlock Text="{Binding Economy.PerformanceHeadlineText}" FontSize="17" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Brush.Success}" Margin="0,4,0,0" />
+                                        <TextBlock Text="{Binding Economy.PerformanceDetailText}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,0" />
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="店铺组合" FontWeight="Bold" Margin="5,0,5,7" />
-                                <ItemsControl ItemsSource="{Binding Overview.Stores}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}"
-                                                    BorderThickness="2" Padding="9" Margin="5,0,5,7">
-                                                <DockPanel>
-                                                    <Button DockPanel.Dock="Right" Content="查看" Style="{DynamicResource PixelButton}"
-                                                            Command="{Binding DataContext.SelectStoreCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" />
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-                                                        <TextBlock Text="{Binding StoreFormatText}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
-                                                    </StackPanel>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <Border Background="{DynamicResource Brush.SurfaceElevated}"
+                                        BorderBrush="{DynamicResource Brush.Primary}"
+                                        BorderThickness="2" Padding="10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="主要原因" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                                        <TextBlock Text="{Binding Economy.ReasonHeadlineText}" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Brush.Primary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                        <TextBlock Text="{Binding Economy.ReasonDetailText}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,0" />
+                                        <TextBlock Text="{Binding EventTicker.Text}" TextWrapping="Wrap"
+                                                   Visibility="{Binding EventTicker.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                   Foreground="{DynamicResource Brush.Warning}" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{DynamicResource Brush.SurfaceElevated}"
+                                        BorderBrush="{DynamicResource Brush.Border}"
+                                        BorderThickness="2" Padding="10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="下一项投资" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                                            <TextBlock Text="{Binding Investment.NextInvestmentTitle}" FontWeight="Bold"
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+                                            <TextBlock Text="{Binding Investment.NextInvestmentDetailText}" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,0" />
+                                            <TextBlock Text="{Binding Investment.LatestComparisonText}" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource Brush.Primary}" FontSize="12" Margin="0,6,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="比较投资" Style="{DynamicResource PrimaryPixelButton}"
+                                                Command="{Binding NavigateCommand}"
+                                                CommandParameter="{x:Static market:ManagementSection.Investment}"
+                                                Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
 

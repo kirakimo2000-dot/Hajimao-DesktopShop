@@ -46,6 +46,27 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
+    public void Overview_LeadsWithOneStoreDecisionSummaryInsteadOfAnAccountingGrid()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+
+        Assert.Contains("Text=\"本店表现\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"主要原因\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"下一项投资\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Economy.PerformanceHeadlineText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Economy.PerformanceDetailText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Economy.ReasonHeadlineText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Economy.ReasonDetailText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Investment.NextInvestmentTitle}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Investment.NextInvestmentDetailText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding EventTicker.Text}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Investment.LatestComparisonText}\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("<UniformGrid Columns=\"3\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("ItemsSource=\"{Binding Overview.Stores}\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"店铺组合\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManagementWindow_ContainsOneScrollableAccessibleNextActionRail()
     {
         RunOnSta(() =>
@@ -73,7 +94,7 @@ public sealed class ManagementWindowTests
                 Assert.Equal(Visibility.Visible, panel.Visibility);
 
                 var action = Assert.IsType<Button>(window.FindName("NextActionButton"));
-                Assert.Equal("选策略", viewModel.NextAction.ActionText);
+                Assert.Equal("看概览", viewModel.NextAction.ActionText);
                 Assert.Equal(
                     "NextAction.ActionText",
                     BindingOperations.GetBindingExpression(

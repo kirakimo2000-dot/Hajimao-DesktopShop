@@ -224,6 +224,7 @@ public sealed class BusinessGameService :
         foreach (var savedStore in savedStores)
         {
             var shop = _business.GetShop(new ShopId(savedStore.StoreId));
+            var format = CreateFormatEconomics(_shopDefinitions[savedStore.StoreId].FormatId.Value);
             var savedProducts = savedStore.Products?.ToArray()
                 ?? throw new ArgumentException("Restored products are required.", nameof(restoredState));
             var duplicateProduct = savedProducts
@@ -252,7 +253,7 @@ public sealed class BusinessGameService :
                         definition.Name,
                         new Money(definition.WholesalePriceCents),
                         new Money(savedProduct.SalePriceCents)),
-                    definition.Capacity,
+                    ScaleCapacity(definition.Capacity, format.InventoryCapacityPermille),
                     savedProduct.Quantity);
             }
 
@@ -773,12 +774,22 @@ public sealed class BusinessGameService :
     private void ConfigureDefaultAutomaticStocking(string storeId)
     {
         var store = CreateStoreSnapshot(new ShopId(storeId));
+        var (pricing, stocking) = _storeFormats.TryGetValue(store.StoreFormatId, out var format)
+            ? (format.RecommendedPricing, format.RecommendedStocking)
+            : (StorePricingPreset.Balanced, StoreStockingPreset.Balanced);
         var plan = StoreStrategyPlanner.Create(
             store,
-            StorePricingPreset.Balanced,
-            StoreStockingPreset.Balanced);
+            pricing,
+            stocking);
         foreach (var product in plan.Products)
         {
+            var priceResult = ChangePrice(storeId, product.ProductId, product.SalePriceCents);
+            if (priceResult.Status != PriceChangeStatus.Success)
+            {
+                throw new InvalidOperationException(
+                    $"Default strategy price failed for product '{product.ProductId}': {priceResult.Status}.");
+            }
+
             _procurement.ConfigureAutoRestock(new AutoRestockPolicy(
                 storeId,
                 product.ProductId,
