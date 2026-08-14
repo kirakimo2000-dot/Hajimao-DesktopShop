@@ -51,14 +51,42 @@ public sealed class StoreStrategyViewModel : ObservableObject
     public string CurrentPricingText
     {
         get => _currentPricingText;
-        private set => SetProperty(ref _currentPricingText, value);
+        private set
+        {
+            if (!SetProperty(ref _currentPricingText, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(IsHighTurnoverPricing));
+            OnPropertyChanged(nameof(IsBalancedPricing));
+            OnPropertyChanged(nameof(IsHighMarginPricing));
+        }
     }
+
+    public bool IsHighTurnoverPricing => CurrentPricingText == "高周转";
+    public bool IsBalancedPricing => CurrentPricingText == "均衡";
+    public bool IsHighMarginPricing => CurrentPricingText == "高毛利";
 
     public string CurrentStockingText
     {
         get => _currentStockingText;
-        private set => SetProperty(ref _currentStockingText, value);
+        private set
+        {
+            if (!SetProperty(ref _currentStockingText, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(IsLeanStocking));
+            OnPropertyChanged(nameof(IsBalancedStocking));
+            OnPropertyChanged(nameof(IsFullShelvesStocking));
+        }
     }
+
+    public bool IsLeanStocking => CurrentStockingText == "精益库存";
+    public bool IsBalancedStocking => CurrentStockingText == "均衡备货";
+    public bool IsFullShelvesStocking => CurrentStockingText == "充足货架";
 
     public string StatusMessage
     {

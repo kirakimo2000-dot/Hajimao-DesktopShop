@@ -15,6 +15,8 @@
     <SolidColorBrush x:Key="Brush.Warning" Color="#FF9187" />
     <SolidColorBrush x:Key="Brush.Text" Color="#F5F7FA" />
     <SolidColorBrush x:Key="Brush.TextMuted" Color="#C4CBD5" />
+    <SolidColorBrush x:Key="Brush.OverlaySurface" Color="#E623252B" />
+    <SolidColorBrush x:Key="Brush.OverlayBorder" Color="#B0687383" />
     <SolidColorBrush x:Key="Brush.SceneWall" Color="#4B3940" />
     <SolidColorBrush x:Key="Brush.SceneFloor" Color="#B7784E" />
     <SolidColorBrush x:Key="Brush.SceneFloorDark" Color="#8E583D" />

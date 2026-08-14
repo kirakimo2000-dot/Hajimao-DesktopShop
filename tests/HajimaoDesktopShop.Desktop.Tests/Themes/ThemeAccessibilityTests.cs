@@ -40,10 +40,28 @@ public sealed class ThemeAccessibilityTests
         Assert.Contains("x:Key=\"SectionCard\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"PageTitleText\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"EyebrowText\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ChoiceCard\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SurfaceActionButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SelectedOptionButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("TargetType=\"ContextMenu\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("TargetType=\"MenuItem\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<Setter Property=\"MinHeight\" Value=\"44\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Stroke=\"{DynamicResource Brush.Focus}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("StrokeDashArray", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Value=\"#", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopViews_KeepRawColorsInsideThePaletteOnly()
+    {
+        var desktopRoot = Path.GetDirectoryName(FindDesktopPath("Themes", "Colors.xaml"))!;
+        var sourceRoot = Directory.GetParent(desktopRoot)!.FullName;
+        var offenders = Directory.EnumerateFiles(sourceRoot, "*.xaml", SearchOption.AllDirectories)
+            .Where(path => !path.EndsWith(Path.Combine("Themes", "Colors.xaml"), StringComparison.OrdinalIgnoreCase))
+            .Where(path => File.ReadAllText(path).Contains("=\"#", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Empty(offenders);
     }
 
     private static IReadOnlyDictionary<string, Rgb> ReadSolidColorBrushes()

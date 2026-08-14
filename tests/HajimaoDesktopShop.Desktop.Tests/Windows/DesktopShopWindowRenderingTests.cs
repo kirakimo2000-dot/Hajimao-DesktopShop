@@ -44,6 +44,22 @@ public sealed class DesktopShopWindowRenderingTests
     }
 
     [Fact]
+    public void DesktopSurface_UsesSemanticCompactControlsAndReadableEventCopy()
+    {
+        var xaml = File.ReadAllText(FindDesktopShopWindowPath());
+
+        Assert.Contains("x:Key=\"SurfaceHitTarget\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"MinHeight\" Value=\"44\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"MinWidth\" Value=\"44\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("FontSize=\"12\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"点击店铺进入\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavigationAndStreetGrowth_ResizeWithoutResettingTheHorizontalPosition()
     {
         var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
@@ -73,6 +89,7 @@ public sealed class DesktopShopWindowRenderingTests
                 var street = Assert.IsType<CommercialStreetSceneControl>(root.FindName("StreetScene"));
                 Assert.True(street.UsesLogicalPixelScaling);
                 Assert.Equal(System.Windows.Visibility.Visible, streetPage.Visibility);
+                UiSnapshotRenderer.Render(window, 248, 180, "desktop-street.png");
 
                 var storePage = Assert.IsType<Grid>(root.FindName("StorePage"));
                 var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.FindName("StoreSurface"));
@@ -87,6 +104,7 @@ public sealed class DesktopShopWindowRenderingTests
                 Assert.Equal(280, window.Height);
                 Assert.Equal(System.Windows.Visibility.Collapsed, streetPage.Visibility);
                 Assert.Equal(System.Windows.Visibility.Visible, storePage.Visibility);
+                UiSnapshotRenderer.Render(window, 420, 280, "desktop-store.png");
 
                 viewModel.DesktopNavigation.BackToStreetCommand.Execute(null);
                 Assert.Equal(248, window.Width);

@@ -20,6 +20,10 @@ public sealed class StoreStrategyViewModelTests
         Assert.Equal(StoreStockingPreset.FullShelves, applied.Stocking);
         Assert.Equal("高毛利", viewModel.CurrentPricingText);
         Assert.Equal("充足货架", viewModel.CurrentStockingText);
+        Assert.True(viewModel.IsHighMarginPricing);
+        Assert.False(viewModel.IsBalancedPricing);
+        Assert.True(viewModel.IsFullShelvesStocking);
+        Assert.False(viewModel.IsBalancedStocking);
         Assert.Single(viewModel.Products);
     }
 

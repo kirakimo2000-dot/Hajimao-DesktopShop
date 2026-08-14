@@ -27,7 +27,9 @@ public sealed class StarterStoreChoiceWindowTests
                 window.UpdateLayout();
 
                 Assert.False(window.ShowInTaskbar);
-                Assert.Equal(ResizeMode.NoResize, window.ResizeMode);
+                Assert.Equal(ResizeMode.CanResize, window.ResizeMode);
+                Assert.True(window.MinWidth <= 760);
+                Assert.True(window.MinHeight <= 560);
                 Assert.Null(viewModel.SelectedProposal);
                 var choices = Assert.IsType<ItemsControl>(window.FindName("StarterStoreChoices"));
                 Assert.Equal(
@@ -40,11 +42,22 @@ public sealed class StarterStoreChoiceWindowTests
                     ["选择 7-Eleven", "选择 ALDI", "选择 银座三越"],
                     viewModel.Choices.Select(choice => $"选择 {choice.BrandName}"));
                 var xaml = File.ReadAllText(FindWindowPath());
+                Assert.Contains("x:Name=\"StarterChoiceScrollViewer\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Style=\"{DynamicResource PageTitleText}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Style=\"{DynamicResource ChoiceCard}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"赚钱方式\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"主要风险\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"适合你\"", xaml, StringComparison.Ordinal);
                 Assert.Contains("Tag=\"starter-store-choice\"", xaml, StringComparison.Ordinal);
                 Assert.Contains(
                     "AutomationProperties.Name=\"{Binding BrandName, StringFormat=选择 {0}}\"",
                     xaml,
                     StringComparison.Ordinal);
+                Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
+                Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
+                UiSnapshotRenderer.Render(window, 960, 600, "starter-store-choice.png");
             }
             finally
             {

@@ -4,7 +4,7 @@
              xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
              UseLayoutRounding="True" SnapsToDevicePixels="True"
              Loaded="OnLoaded" Unloaded="OnUnloaded">
-    <Grid Background="#17191D" ClipToBounds="True">
+    <Grid Background="{DynamicResource Brush.Background}" ClipToBounds="True">
         <skia:SKElement x:Name="SceneSurface"
                         PaintSurface="OnPaintSurface"
                         MouseLeftButtonUp="OnMouseLeftButtonUp"

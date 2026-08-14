@@ -31,6 +31,31 @@
         <Setter Property="HasDropShadow" Value="False" />
     </Style>
 
+    <Style TargetType="ContextMenu">
+        <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
+
+    <Style TargetType="MenuItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Style.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter Property="Background" Value="{DynamicResource Brush.SurfaceHover}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="PixelPanel" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
@@ -45,6 +70,12 @@
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="Padding" Value="12" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="ChoiceCard" TargetType="Border" BasedOn="{StaticResource SectionCard}">
+        <Setter Property="Margin" Value="6" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="MinWidth" Value="210" />
     </Style>
 
     <Style x:Key="PixelButton" TargetType="Button">
@@ -115,6 +146,23 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
         <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <Style x:Key="SurfaceActionButton" TargetType="Button" BasedOn="{StaticResource PixelButton}">
+        <Setter Property="Background" Value="{DynamicResource Brush.OverlaySurface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.OverlayBorder}" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style x:Key="SelectedOptionButton" TargetType="Button" BasedOn="{StaticResource PixelButton}">
+        <Style.Triggers>
+            <Trigger Property="Tag" Value="True">
+                <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.OnPrimary}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Focus}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="PixelScrollThumb" TargetType="Thumb">

@@ -4,8 +4,6 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
@@ -82,6 +80,9 @@ public sealed class ManagementWindowTests
         Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
+        Assert.Equal(6, CountOccurrences(xaml, "Style=\"{DynamicResource SelectedOptionButton}\""));
+        Assert.Contains("Tag=\"{Binding Strategy.IsBalancedPricing}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"{Binding Strategy.IsBalancedStocking}\"", xaml, StringComparison.Ordinal);
 
         var nextActionIndex = xaml.IndexOf("x:Name=\"NextActionPanel\"", StringComparison.Ordinal);
         var objectCardIndex = xaml.IndexOf("x:Name=\"SelectedObjectCard\"", StringComparison.Ordinal);
@@ -409,46 +410,11 @@ public sealed class ManagementWindowTests
             var window = new ManagementWindow(viewModel);
             try
             {
-                window.Resources.MergedDictionaries.Add(new ResourceDictionary
-                {
-                    Source = new Uri(
-                        "pack://application:,,,/HajimaoDesktopShop.Desktop;component/Themes/Colors.xaml",
-                        UriKind.Absolute)
-                });
-                window.Resources.MergedDictionaries.Add(new ResourceDictionary
-                {
-                    Source = new Uri(
-                        "pack://application:,,,/HajimaoDesktopShop.Desktop;component/Themes/Controls.xaml",
-                        UriKind.Absolute)
-                });
-
-                var surface = Assert.IsAssignableFrom<FrameworkElement>(window.Content);
-                surface.Measure(new Size(1180, 720));
-                surface.Arrange(new Rect(0, 0, 1180, 720));
-                surface.UpdateLayout();
-
-                var bitmap = new RenderTargetBitmap(
-                    1180,
-                    720,
-                    96,
-                    96,
-                    PixelFormats.Pbgra32);
-                bitmap.Render(surface);
-
-                Assert.Equal(1180, bitmap.PixelWidth);
-                Assert.Equal(720, bitmap.PixelHeight);
-                var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
-                bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
-                Assert.True(pixels.Count(value => value != 0) > pixels.Length / 3);
-
-                if (Environment.GetEnvironmentVariable("HAJIMAO_UI_SNAPSHOT") is { Length: > 0 } outputPath)
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-                    var encoder = new PngBitmapEncoder();
-                    encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                    using var stream = File.Create(outputPath);
-                    encoder.Save(stream);
-                }
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-overview.png");
+                viewModel.NavigateCommand.Execute(ManagementSection.Strategy);
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-strategy.png");
+                viewModel.NavigateCommand.Execute(ManagementSection.Investment);
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-investment.png");
             }
             finally
             {

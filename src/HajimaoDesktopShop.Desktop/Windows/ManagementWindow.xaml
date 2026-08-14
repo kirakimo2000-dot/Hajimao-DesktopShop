@@ -9,6 +9,7 @@
         Width="1180" Height="720" MinWidth="960" MinHeight="640"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Background}"
+        Foreground="{DynamicResource Brush.Text}"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -203,15 +204,15 @@
                                 </Border>
                                 <TextBlock FontWeight="Bold"><Run Text="定价："/><Run Text="{Binding Strategy.CurrentPricingText, Mode=OneWay}"/></TextBlock>
                                 <WrapPanel Margin="0,7,0,12">
-                                    <Button Content="高周转" Style="{DynamicResource PixelButton}" Command="{Binding Strategy.UseHighTurnoverPricingCommand}" />
-                                    <Button Content="均衡" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseBalancedPricingCommand}" />
-                                    <Button Content="高毛利" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseHighMarginPricingCommand}" />
+                                    <Button Content="高周转" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsHighTurnoverPricing}" Command="{Binding Strategy.UseHighTurnoverPricingCommand}" />
+                                    <Button Content="均衡" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsBalancedPricing}" Margin="8,0,0,0" Command="{Binding Strategy.UseBalancedPricingCommand}" />
+                                    <Button Content="高毛利" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsHighMarginPricing}" Margin="8,0,0,0" Command="{Binding Strategy.UseHighMarginPricingCommand}" />
                                 </WrapPanel>
                                 <TextBlock FontWeight="Bold"><Run Text="备货："/><Run Text="{Binding Strategy.CurrentStockingText, Mode=OneWay}"/></TextBlock>
                                 <WrapPanel Margin="0,7,0,12">
-                                    <Button Content="精益库存" Style="{DynamicResource PixelButton}" Command="{Binding Strategy.UseLeanStockingCommand}" />
-                                    <Button Content="均衡备货" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseBalancedStockingCommand}" />
-                                    <Button Content="充足货架" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseFullShelvesStockingCommand}" />
+                                    <Button Content="精益库存" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsLeanStocking}" Command="{Binding Strategy.UseLeanStockingCommand}" />
+                                    <Button Content="均衡备货" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsBalancedStocking}" Margin="8,0,0,0" Command="{Binding Strategy.UseBalancedStockingCommand}" />
+                                    <Button Content="充足货架" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsFullShelvesStocking}" Margin="8,0,0,0" Command="{Binding Strategy.UseFullShelvesStockingCommand}" />
                                 </WrapPanel>
                                 <ItemsControl ItemsSource="{Binding Strategy.Products}">
                                     <ItemsControl.ItemTemplate>
@@ -279,7 +280,7 @@
                                                     <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding EffectText}"
                                                                TextWrapping="Wrap" Margin="0,6,0,0" />
                                                     <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="{Binding EstimateConditionText}"
-                                                               Foreground="{DynamicResource Brush.TextMuted}" FontSize="11"
+                                                               Foreground="{DynamicResource Brush.TextMuted}" FontSize="12"
                                                                TextWrapping="Wrap" Margin="0,4,0,0" />
                                                 </Grid>
                                             </Border>
@@ -339,7 +340,7 @@
                             <TextBlock Text="{Binding SelectedShopObject.SummaryText}" TextWrapping="Wrap" Margin="0,6,0,0" />
                             <TextBlock Text="{Binding SelectedShopObject.StatusText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,4,0,0" />
                             <TextBlock Text="{Binding SelectedShopObject.ActionHintText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Primary}" FontSize="12" Margin="0,6,0,0" />
-                            <TextBlock Text="对象详情仅用于观察，经营调整请使用整店策略。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" Margin="0,7,0,0" />
+                            <TextBlock Text="对象详情仅用于观察，经营调整请使用整店策略。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,7,0,0" />
                         </StackPanel>
                     </Border>
                   </StackPanel>
