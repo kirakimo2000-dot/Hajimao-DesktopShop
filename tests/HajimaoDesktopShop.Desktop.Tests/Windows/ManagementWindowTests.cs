@@ -67,6 +67,29 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
+    public void ManagementWindow_UsesOneAccessiblePixelHierarchyWithoutAdHocColors()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+
+        Assert.Equal(3, CountOccurrences(xaml, "Style=\"{DynamicResource NavigationPixelButton}\""));
+        Assert.Contains("x:Name=\"TopMetricsPanel\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ManagementContent\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{DynamicResource PageTitleText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{DynamicResource EyebrowText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
+        Assert.Equal(6, CountOccurrences(xaml, "Style=\"{DynamicResource SelectedOptionButton}\""));
+        Assert.Contains("Tag=\"{Binding Strategy.IsBalancedPricing}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"{Binding Strategy.IsBalancedStocking}\"", xaml, StringComparison.Ordinal);
+
+        var nextActionIndex = xaml.IndexOf("x:Name=\"NextActionPanel\"", StringComparison.Ordinal);
+        var objectCardIndex = xaml.IndexOf("x:Name=\"SelectedObjectCard\"", StringComparison.Ordinal);
+        Assert.True(nextActionIndex >= 0 && nextActionIndex < objectCardIndex);
+    }
+
+    [Fact]
     public void ManagementWindow_ContainsOneScrollableAccessibleNextActionRail()
     {
         RunOnSta(() =>
@@ -336,6 +359,81 @@ public sealed class ManagementWindowTests
                 yield return descendant;
             }
         }
+    }
+
+    [Fact]
+    public void ManagementWindow_RemainsOperableAtItsMinimumDesktopSize()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                window.ApplyTemplate();
+                window.Measure(new Size(960, 640));
+                window.Arrange(new Rect(0, 0, 960, 640));
+                window.UpdateLayout();
+
+                var navigation = FindLogicalChildren<Button>(window)
+                    .Where(button => Equals(button.Tag, "management-navigation"))
+                    .ToArray();
+                Assert.Equal(3, navigation.Length);
+                Assert.All(navigation, button => Assert.True(button.MinHeight >= 44));
+
+                var primaryActions = FindLogicalChildren<Button>(window)
+                    .Where(button => button.Name is "NextActionButton" or "ApplyRecoveryAction")
+                    .ToArray();
+                Assert.All(primaryActions, button => Assert.True(button.MinHeight >= 44));
+
+                var content = Assert.IsType<Grid>(window.FindName("ManagementContent"));
+                Assert.True(content.MinWidth >= 440);
+
+                var rightRail = Assert.IsType<ScrollViewer>(window.FindName("RightRailScrollViewer"));
+                Assert.True(rightRail.MinWidth >= 260);
+                Assert.Equal(ScrollBarVisibility.Auto, rightRail.VerticalScrollBarVisibility);
+                Assert.Equal(ScrollBarVisibility.Disabled, rightRail.HorizontalScrollBarVisibility);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ManagementWindow_RendersOffscreenWithTheSharedTheme()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-overview.png");
+                viewModel.NavigateCommand.Execute(ManagementSection.Strategy);
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-strategy.png");
+                viewModel.NavigateCommand.Execute(ManagementSection.Investment);
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-investment.png");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var offset = 0;
+        while ((offset = value.IndexOf(search, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += search.Length;
+        }
+
+        return count;
     }
 
     private static string FindManagementWindowPath()

@@ -9,13 +9,14 @@
         Width="1180" Height="720" MinWidth="960" MinHeight="640"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Background}"
+        Foreground="{DynamicResource Brush.Text}"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
+            <RowDefinition Height="72" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -34,7 +35,7 @@
                     <TextBlock Text="传统桌面放置经营" FontSize="12"
                                Foreground="{DynamicResource Brush.TextMuted}" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel x:Name="TopMetricsPanel" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <StackPanel Margin="0,0,28,0">
                         <TextBlock Text="现金" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
                         <TextBlock Text="{Binding CashText}" Style="{DynamicResource MetricText}" FontSize="18" />
@@ -49,7 +50,7 @@
                     </StackPanel>
                 </StackPanel>
                 <Button Grid.Column="2" Tag="desktop-control" Content="切换鼠标穿透"
-                        Style="{DynamicResource PixelButton}"
+                        Style="{DynamicResource UtilityPixelButton}"
                         Command="{Binding ToggleClickThroughCommand}"
                         AutomationProperties.Name="切换桌面挂机鼠标穿透" />
             </Grid>
@@ -57,18 +58,19 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="154" />
+                <ColumnDefinition Width="168" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="250" />
+                <ColumnDefinition Width="272" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Background="{DynamicResource Brush.Surface}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,2,0" Padding="8">
                 <StackPanel>
-                    <TextBlock Text="经营决策" FontWeight="Bold" Margin="8,8,8,10" />
+                    <TextBlock Text="经营决策" Style="{DynamicResource EyebrowText}" Margin="8,8,8,10" />
                     <Grid>
                         <Button Tag="management-navigation" Content="经营概览"
-                                Style="{DynamicResource PixelButton}"
+                                Style="{DynamicResource NavigationPixelButton}"
+                                MinHeight="44"
                                 Command="{Binding NavigateCommand}"
                                 CommandParameter="{x:Static market:ManagementSection.Overview}" />
                         <Border x:Name="OverviewSelectionIndicator" Width="5"
@@ -79,7 +81,8 @@
                     </Grid>
                     <Grid Margin="0,7,0,0">
                         <Button Tag="management-navigation" Content="经营策略"
-                                Style="{DynamicResource PixelButton}"
+                                Style="{DynamicResource NavigationPixelButton}"
+                                MinHeight="44"
                                 Command="{Binding NavigateCommand}"
                                 CommandParameter="{x:Static market:ManagementSection.Strategy}" />
                         <Border x:Name="StrategySelectionIndicator" Width="5"
@@ -90,7 +93,8 @@
                     </Grid>
                     <Grid Margin="0,7,0,0">
                         <Button Tag="management-navigation" Content="投资决策"
-                                Style="{DynamicResource PixelButton}"
+                                Style="{DynamicResource NavigationPixelButton}"
+                                MinHeight="44"
                                 Command="{Binding NavigateCommand}"
                                 CommandParameter="{x:Static market:ManagementSection.Investment}" />
                         <Border x:Name="InvestmentSelectionIndicator" Width="5"
@@ -102,10 +106,10 @@
                 </StackPanel>
             </Border>
 
-            <Grid Grid.Column="1" Margin="12">
+            <Grid x:Name="ManagementContent" Grid.Column="1" MinWidth="440" Margin="16,12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="210" />
-                    <RowDefinition Height="10" />
+                    <RowDefinition Height="12" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border Grid.Row="0" Style="{DynamicResource PixelPanel}" Padding="0">
@@ -118,33 +122,32 @@
                 <Border Grid.Row="2" Style="{DynamicResource PixelPanel}" Padding="12">
                     <Grid>
                         <ScrollViewer Visibility="{Binding IsOverviewSection, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                      VerticalScrollBarVisibility="Auto">
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
                             <StackPanel>
                                 <DockPanel>
                                     <StackPanel>
-                                        <TextBlock Text="具体店铺" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}" />
-                                        <TextBlock Text="{Binding SelectedStoreName}" FontSize="18" FontWeight="Bold"
+                                        <TextBlock Text="具体店铺" Style="{DynamicResource EyebrowText}" />
+                                        <TextBlock Text="{Binding SelectedStoreName}" Style="{DynamicResource PageTitleText}"
                                                    Foreground="{DynamicResource Brush.Primary}" />
                                     </StackPanel>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding Economy.PeriodText}"
                                                Foreground="{DynamicResource Brush.TextMuted}" />
                                 </DockPanel>
-                                <Border Background="{DynamicResource Brush.SurfaceElevated}"
-                                        BorderBrush="{DynamicResource Brush.Success}"
-                                        BorderThickness="2" Padding="10" Margin="0,12,0,8">
+                                <Border Style="{DynamicResource SectionCard}"
+                                        BorderBrush="{DynamicResource Brush.Success}" Margin="0,12,0,8">
                                     <StackPanel>
-                                        <TextBlock Text="本店表现" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                                        <TextBlock Text="本店表现" Style="{DynamicResource EyebrowText}" />
                                         <TextBlock Text="{Binding Economy.PerformanceHeadlineText}" FontSize="17" FontWeight="Bold"
                                                    Foreground="{DynamicResource Brush.Success}" Margin="0,4,0,0" />
                                         <TextBlock Text="{Binding Economy.PerformanceDetailText}" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,0" />
                                     </StackPanel>
                                 </Border>
-                                <Border Background="{DynamicResource Brush.SurfaceElevated}"
-                                        BorderBrush="{DynamicResource Brush.Primary}"
-                                        BorderThickness="2" Padding="10" Margin="0,0,0,8">
+                                <Border Style="{DynamicResource SectionCard}"
+                                        BorderBrush="{DynamicResource Brush.Primary}" Margin="0,0,0,8">
                                     <StackPanel>
-                                        <TextBlock Text="主要原因" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                                        <TextBlock Text="主要原因" Style="{DynamicResource EyebrowText}" />
                                         <TextBlock Text="{Binding Economy.ReasonHeadlineText}" FontWeight="Bold"
                                                    Foreground="{DynamicResource Brush.Primary}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                         <TextBlock Text="{Binding Economy.ReasonDetailText}" TextWrapping="Wrap"
@@ -154,16 +157,14 @@
                                                    Foreground="{DynamicResource Brush.Warning}" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Border>
-                                <Border Background="{DynamicResource Brush.SurfaceElevated}"
-                                        BorderBrush="{DynamicResource Brush.Border}"
-                                        BorderThickness="2" Padding="10">
+                                <Border Style="{DynamicResource SectionCard}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="下一项投资" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
+                                            <TextBlock Text="下一项投资" Style="{DynamicResource EyebrowText}" />
                                             <TextBlock Text="{Binding Investment.NextInvestmentTitle}" FontWeight="Bold"
                                                        TextWrapping="Wrap" Margin="0,4,0,0" />
                                             <TextBlock Text="{Binding Investment.NextInvestmentDetailText}" TextWrapping="Wrap"
@@ -181,18 +182,20 @@
                         </ScrollViewer>
 
                         <ScrollViewer Visibility="{Binding IsStrategySection, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                      VerticalScrollBarVisibility="Auto">
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
                             <StackPanel>
-                                <TextBlock Text="经营策略" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="经营策略" Style="{DynamicResource PageTitleText}" />
                                 <TextBlock Text="定价决定周转与单件毛利，备货决定占用现金与缺货风险；日常执行由系统负责。"
                                            TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,12" />
                                 <Border x:Name="RecoveryPanel"
                                         Visibility="{Binding Strategy.HasRecoveryRecommendation, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        Background="#3A292C" BorderBrush="{DynamicResource Brush.Warning}"
+                                        Background="{DynamicResource Brush.SurfaceWarning}" BorderBrush="{DynamicResource Brush.Warning}"
                                         BorderThickness="2" Padding="9" Margin="0,0,0,12">
                                     <DockPanel>
                                         <Button x:Name="ApplyRecoveryAction" DockPanel.Dock="Right"
                                                 Content="采用保守方案" Style="{DynamicResource PrimaryPixelButton}"
+                                                MinHeight="44"
                                                 Command="{Binding Strategy.ApplyRecoveryCommand}" Margin="10,0,0,0" />
                                         <TextBlock Text="{Binding Strategy.RecoveryGuidanceText}"
                                                    TextWrapping="Wrap" Foreground="{DynamicResource Brush.Warning}"
@@ -201,15 +204,15 @@
                                 </Border>
                                 <TextBlock FontWeight="Bold"><Run Text="定价："/><Run Text="{Binding Strategy.CurrentPricingText, Mode=OneWay}"/></TextBlock>
                                 <WrapPanel Margin="0,7,0,12">
-                                    <Button Content="高周转" Style="{DynamicResource PixelButton}" Command="{Binding Strategy.UseHighTurnoverPricingCommand}" />
-                                    <Button Content="均衡" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseBalancedPricingCommand}" />
-                                    <Button Content="高毛利" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseHighMarginPricingCommand}" />
+                                    <Button Content="高周转" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsHighTurnoverPricing}" Command="{Binding Strategy.UseHighTurnoverPricingCommand}" />
+                                    <Button Content="均衡" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsBalancedPricing}" Margin="8,0,0,0" Command="{Binding Strategy.UseBalancedPricingCommand}" />
+                                    <Button Content="高毛利" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsHighMarginPricing}" Margin="8,0,0,0" Command="{Binding Strategy.UseHighMarginPricingCommand}" />
                                 </WrapPanel>
                                 <TextBlock FontWeight="Bold"><Run Text="备货："/><Run Text="{Binding Strategy.CurrentStockingText, Mode=OneWay}"/></TextBlock>
                                 <WrapPanel Margin="0,7,0,12">
-                                    <Button Content="精益库存" Style="{DynamicResource PixelButton}" Command="{Binding Strategy.UseLeanStockingCommand}" />
-                                    <Button Content="均衡备货" Style="{DynamicResource PrimaryPixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseBalancedStockingCommand}" />
-                                    <Button Content="充足货架" Style="{DynamicResource PixelButton}" Margin="6,0,0,0" Command="{Binding Strategy.UseFullShelvesStockingCommand}" />
+                                    <Button Content="精益库存" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsLeanStocking}" Command="{Binding Strategy.UseLeanStockingCommand}" />
+                                    <Button Content="均衡备货" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsBalancedStocking}" Margin="8,0,0,0" Command="{Binding Strategy.UseBalancedStockingCommand}" />
+                                    <Button Content="充足货架" Style="{DynamicResource SelectedOptionButton}" Tag="{Binding Strategy.IsFullShelvesStocking}" Margin="8,0,0,0" Command="{Binding Strategy.UseFullShelvesStockingCommand}" />
                                 </WrapPanel>
                                 <ItemsControl ItemsSource="{Binding Strategy.Products}">
                                     <ItemsControl.ItemTemplate>
@@ -229,9 +232,10 @@
                         </ScrollViewer>
 
                         <ScrollViewer Visibility="{Binding IsInvestmentSection, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                      VerticalScrollBarVisibility="Auto">
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
                             <StackPanel>
-                                <TextBlock Text="投资决策" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="投资决策" Style="{DynamicResource PageTitleText}" />
                                 <TextBlock Text="每次只比较稳住弱店、提高回报、扩张街区三种资本用途。"
                                            TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,12" />
                                 <ItemsControl x:Name="InvestmentCandidateList"
@@ -243,6 +247,7 @@
                                                     BorderThickness="2" Padding="10" Margin="0,0,0,8">
                                                 <Grid>
                                                     <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
@@ -275,7 +280,7 @@
                                                     <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding EffectText}"
                                                                TextWrapping="Wrap" Margin="0,6,0,0" />
                                                     <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="{Binding EstimateConditionText}"
-                                                               Foreground="{DynamicResource Brush.TextMuted}" FontSize="11"
+                                                               Foreground="{DynamicResource Brush.TextMuted}" FontSize="12"
                                                                TextWrapping="Wrap" Margin="0,4,0,0" />
                                                 </Grid>
                                             </Border>
@@ -283,7 +288,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <Border x:Name="LatestInvestmentPanel"
-                                        Background="#302A35" BorderBrush="{DynamicResource Brush.Primary}"
+                                        Background="{DynamicResource Brush.SurfacePrimarySubtle}" BorderBrush="{DynamicResource Brush.Primary}"
                                         BorderThickness="2" Padding="10" Margin="0,2,0,12">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Investment.LatestInvestmentTitle}" FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" />
@@ -300,31 +305,17 @@
             <Border Grid.Column="2" Background="{DynamicResource Brush.Surface}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2,0,0,0">
                 <ScrollViewer x:Name="RightRailScrollViewer"
+                              MinWidth="260"
                               Padding="12"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                   <StackPanel>
-                    <TextBlock Text="当前店铺" FontSize="17" FontWeight="Bold" />
+                    <TextBlock Text="当前店铺" Style="{DynamicResource EyebrowText}" />
                     <TextBlock Text="{Binding SelectedStoreName}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6,0,12" />
-                    <Border x:Name="SelectedObjectCard"
-                            Visibility="{Binding HasSelectedShopObject, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Background="{DynamicResource Brush.SurfaceElevated}"
-                            BorderBrush="{DynamicResource Brush.Primary}"
-                            BorderThickness="2" Padding="10" Margin="0,0,0,12"
-                            AutomationProperties.Name="当前店铺对象详情">
-                        <StackPanel>
-                            <TextBlock Text="{Binding SelectedShopObject.Title}" FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" />
-                            <TextBlock Text="{Binding SelectedShopObject.CategoryText}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,3,0,0" />
-                            <TextBlock Text="{Binding SelectedShopObject.SummaryText}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                            <TextBlock Text="{Binding SelectedShopObject.StatusText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,4,0,0" />
-                            <TextBlock Text="{Binding SelectedShopObject.ActionHintText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Primary}" FontSize="12" Margin="0,6,0,0" />
-                            <TextBlock Text="对象详情仅用于观察，经营调整请使用整店策略。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" Margin="0,7,0,0" />
-                        </StackPanel>
-                    </Border>
                     <Border x:Name="NextActionPanel"
-                            Background="{DynamicResource Brush.SurfaceElevated}"
+                            Style="{DynamicResource SectionCard}"
                             BorderBrush="{DynamicResource Brush.Primary}"
-                            BorderThickness="2" Padding="10" Margin="0,0,0,12"
+                            Margin="0,0,0,12"
                             AutomationProperties.Name="当前下一步">
                         <StackPanel>
                             <TextBlock Text="{Binding NextAction.ContextText}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" />
@@ -332,8 +323,24 @@
                             <TextBlock Text="{Binding NextAction.DetailText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,5,0,8" />
                             <Button x:Name="NextActionButton" Content="{Binding NextAction.ActionText}"
                                     Style="{DynamicResource PrimaryPixelButton}"
+                                    MinHeight="44"
                                     Command="{Binding GoToNextActionCommand}"
                                     AutomationProperties.Name="{Binding NextAction.ActionText}" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="SelectedObjectCard"
+                            Visibility="{Binding HasSelectedShopObject, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{DynamicResource SectionCard}"
+                            BorderBrush="{DynamicResource Brush.Primary}"
+                            Margin="0,0,0,12"
+                            AutomationProperties.Name="当前店铺对象详情">
+                        <StackPanel>
+                            <TextBlock Text="{Binding SelectedShopObject.Title}" FontWeight="Bold" Foreground="{DynamicResource Brush.Primary}" />
+                            <TextBlock Text="{Binding SelectedShopObject.CategoryText}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,3,0,0" />
+                            <TextBlock Text="{Binding SelectedShopObject.SummaryText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding SelectedShopObject.StatusText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding SelectedShopObject.ActionHintText}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Primary}" FontSize="12" Margin="0,6,0,0" />
+                            <TextBlock Text="对象详情仅用于观察，经营调整请使用整店策略。" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,7,0,0" />
                         </StackPanel>
                     </Border>
                   </StackPanel>

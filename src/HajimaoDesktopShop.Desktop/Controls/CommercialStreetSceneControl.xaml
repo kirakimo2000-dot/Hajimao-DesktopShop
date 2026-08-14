@@ -6,7 +6,7 @@
              Loaded="OnLoaded" Unloaded="OnUnloaded"
              MouseLeftButtonUp="OnMouseLeftButtonUp"
              MouseWheel="OnMouseWheel">
-    <Grid Background="#17191D" ClipToBounds="True">
+    <Grid Background="{DynamicResource Brush.Background}" ClipToBounds="True">
         <skia:SKElement x:Name="SceneSurface"
                         PaintSurface="OnPaintSurface"
                         IgnorePixelScaling="True" />

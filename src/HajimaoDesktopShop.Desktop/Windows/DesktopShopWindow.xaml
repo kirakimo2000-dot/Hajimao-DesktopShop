@@ -7,6 +7,7 @@
         Width="248" Height="180"
         WindowStyle="None" ResizeMode="NoResize"
         AllowsTransparency="True" Background="Transparent"
+        Foreground="{DynamicResource Brush.Text}"
         Topmost="True" ShowInTaskbar="False"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
@@ -18,6 +19,8 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="MinWidth" Value="44" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -27,10 +30,10 @@
                                 BorderThickness="{TemplateBinding BorderThickness}" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="FocusFrame" Property="BorderBrush" Value="#F4EBDD" />
+                                <Setter TargetName="FocusFrame" Property="BorderBrush" Value="{DynamicResource Brush.Focus}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="FocusFrame" Property="BorderBrush" Value="#88F4EBDD" />
+                                <Setter TargetName="FocusFrame" Property="BorderBrush" Value="{DynamicResource Brush.OverlayBorder}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -38,7 +41,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Grid x:Name="SurfaceRoot" Background="#17191D" MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown">
+    <Grid x:Name="SurfaceRoot" Background="{DynamicResource Brush.Background}" MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown">
         <Grid.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="打开经营管理" Click="OnOpenManagementClick" />
@@ -54,17 +57,31 @@
             <controls:CommercialStreetSceneControl x:Name="StreetScene"
                                                    Frame="{Binding CommercialStreet.SceneFrame}"
                                                    StorefrontClicked="OnStorefrontClicked" />
+            <Border HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="6"
+                    Padding="7,4"
+                    Background="{DynamicResource Brush.OverlaySurface}"
+                    BorderBrush="{DynamicResource Brush.OverlayBorder}"
+                    BorderThickness="1"
+                    IsHitTestVisible="False">
+                <TextBlock Text="点击店铺进入"
+                           Foreground="{DynamicResource Brush.Text}"
+                           FontSize="12" />
+            </Border>
             <Border VerticalAlignment="Bottom"
                     Margin="6"
-                    Padding="6,3"
-                    Background="#E623252B"
-                    BorderBrush="#886E8094"
-                    BorderThickness="1"
+                    Padding="8,5"
+                    Background="{DynamicResource Brush.OverlaySurface}"
+                    BorderBrush="{DynamicResource Brush.OverlayBorder}"
+                    BorderThickness="2"
                     IsHitTestVisible="False"
+                    AutomationProperties.LiveSetting="Polite"
+                    AutomationProperties.Name="当前街区事件"
                     Visibility="{Binding EventTicker.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <TextBlock Text="{Binding EventTicker.Text}"
-                           Foreground="#F4EBDD"
-                           FontSize="11"
+                           Foreground="{DynamicResource Brush.Text}"
+                           FontSize="12"
                            TextTrimming="CharacterEllipsis"
                            ToolTip="{Binding EventTicker.Text}" />
             </Border>
@@ -76,25 +93,23 @@
                                                         Frame="{Binding DesktopFrame}"
                                                         ObjectClicked="OnShopObjectClicked" />
             <Canvas>
-                <Button Canvas.Left="6" Canvas.Top="5" Width="68" Height="30"
-                        Background="#D931262A" Foreground="#F4EBDD"
-                        BorderBrush="#88F4EBDD" BorderThickness="1"
-                        FontSize="12" FontWeight="SemiBold"
+                <Button Canvas.Left="6" Canvas.Top="4" Width="78" Height="44"
+                        Style="{DynamicResource SurfaceActionButton}"
                         Content="← 街区"
                         Command="{Binding DesktopNavigation.BackToStreetCommand}"
                         ToolTip="返回街区"
                         AutomationProperties.Name="返回街区" />
-                <Button Canvas.Left="307" Canvas.Top="5" Width="48" Height="34"
+                <Button Canvas.Left="310" Canvas.Top="4" Width="46" Height="44"
                         Style="{StaticResource SurfaceHitTarget}"
                         Command="{Binding ToggleLockCommand}"
                         ToolTip="锁定或解锁窗口位置"
                         AutomationProperties.Name="锁定或解锁窗口位置" />
-                <Button Canvas.Left="361" Canvas.Top="5" Width="49" Height="34"
+                <Button Canvas.Left="364" Canvas.Top="4" Width="50" Height="44"
                         Style="{StaticResource SurfaceHitTarget}"
                         Click="OnOpenManagementClick"
                         ToolTip="打开经营管理窗口"
                         AutomationProperties.Name="打开经营管理窗口" />
-                <Button Canvas.Left="364" Canvas.Top="243" Width="48" Height="32"
+                <Button Canvas.Left="364" Canvas.Top="232" Width="50" Height="44"
                         Style="{StaticResource SurfaceHitTarget}"
                         Click="OnClickThroughClick"
                         ToolTip="开启前先打开管理窗口，便于恢复鼠标交互"

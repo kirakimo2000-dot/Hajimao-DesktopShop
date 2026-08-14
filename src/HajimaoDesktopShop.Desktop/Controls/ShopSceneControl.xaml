@@ -7,14 +7,15 @@
              Focusable="False"
              Loaded="OnLoaded"
              Unloaded="OnUnloaded">
-    <Grid Background="#17191D" ClipToBounds="True">
+    <Grid Background="{DynamicResource Brush.Background}" ClipToBounds="True">
         <skia:SKElement x:Name="SceneSurface" PaintSurface="OnPaintSurface" IgnorePixelScaling="True" />
         <Border HorizontalAlignment="Left" VerticalAlignment="Top"
                 Margin="6" Padding="5,2"
-                Background="#D917191D" BorderBrush="#8A6B5A" BorderThickness="1"
+                Background="{DynamicResource Brush.OverlaySurface}"
+                BorderBrush="{DynamicResource Brush.Primary}" BorderThickness="1"
                 IsHitTestVisible="False">
             <TextBlock Text="HAJIMAO 24H" FontFamily="Consolas" FontWeight="Bold"
-                       Foreground="#F1B844" FontSize="11" />
+                       Foreground="{DynamicResource Brush.Primary}" FontSize="12" />
         </Border>
     </Grid>
 </UserControl>
