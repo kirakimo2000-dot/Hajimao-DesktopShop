@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
@@ -64,6 +66,26 @@ public sealed class ManagementWindowTests
         Assert.DoesNotContain("<UniformGrid Columns=\"3\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("ItemsSource=\"{Binding Overview.Stores}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"店铺组合\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ManagementWindow_UsesOneAccessiblePixelHierarchyWithoutAdHocColors()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+
+        Assert.Equal(3, CountOccurrences(xaml, "Style=\"{DynamicResource NavigationPixelButton}\""));
+        Assert.Contains("x:Name=\"TopMetricsPanel\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ManagementContent\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{DynamicResource PageTitleText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{DynamicResource EyebrowText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
+
+        var nextActionIndex = xaml.IndexOf("x:Name=\"NextActionPanel\"", StringComparison.Ordinal);
+        var objectCardIndex = xaml.IndexOf("x:Name=\"SelectedObjectCard\"", StringComparison.Ordinal);
+        Assert.True(nextActionIndex >= 0 && nextActionIndex < objectCardIndex);
     }
 
     [Fact]
@@ -336,6 +358,116 @@ public sealed class ManagementWindowTests
                 yield return descendant;
             }
         }
+    }
+
+    [Fact]
+    public void ManagementWindow_RemainsOperableAtItsMinimumDesktopSize()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                window.ApplyTemplate();
+                window.Measure(new Size(960, 640));
+                window.Arrange(new Rect(0, 0, 960, 640));
+                window.UpdateLayout();
+
+                var navigation = FindLogicalChildren<Button>(window)
+                    .Where(button => Equals(button.Tag, "management-navigation"))
+                    .ToArray();
+                Assert.Equal(3, navigation.Length);
+                Assert.All(navigation, button => Assert.True(button.MinHeight >= 44));
+
+                var primaryActions = FindLogicalChildren<Button>(window)
+                    .Where(button => button.Name is "NextActionButton" or "ApplyRecoveryAction")
+                    .ToArray();
+                Assert.All(primaryActions, button => Assert.True(button.MinHeight >= 44));
+
+                var content = Assert.IsType<Grid>(window.FindName("ManagementContent"));
+                Assert.True(content.MinWidth >= 440);
+
+                var rightRail = Assert.IsType<ScrollViewer>(window.FindName("RightRailScrollViewer"));
+                Assert.True(rightRail.MinWidth >= 260);
+                Assert.Equal(ScrollBarVisibility.Auto, rightRail.VerticalScrollBarVisibility);
+                Assert.Equal(ScrollBarVisibility.Disabled, rightRail.HorizontalScrollBarVisibility);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ManagementWindow_RendersOffscreenWithTheSharedTheme()
+    {
+        RunOnSta(() =>
+        {
+            var viewModel = new MarketViewModel(MarketTestSession.Create());
+            var window = new ManagementWindow(viewModel);
+            try
+            {
+                window.Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri(
+                        "pack://application:,,,/HajimaoDesktopShop.Desktop;component/Themes/Colors.xaml",
+                        UriKind.Absolute)
+                });
+                window.Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri(
+                        "pack://application:,,,/HajimaoDesktopShop.Desktop;component/Themes/Controls.xaml",
+                        UriKind.Absolute)
+                });
+
+                var surface = Assert.IsAssignableFrom<FrameworkElement>(window.Content);
+                surface.Measure(new Size(1180, 720));
+                surface.Arrange(new Rect(0, 0, 1180, 720));
+                surface.UpdateLayout();
+
+                var bitmap = new RenderTargetBitmap(
+                    1180,
+                    720,
+                    96,
+                    96,
+                    PixelFormats.Pbgra32);
+                bitmap.Render(surface);
+
+                Assert.Equal(1180, bitmap.PixelWidth);
+                Assert.Equal(720, bitmap.PixelHeight);
+                var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+                bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+                Assert.True(pixels.Count(value => value != 0) > pixels.Length / 3);
+
+                if (Environment.GetEnvironmentVariable("HAJIMAO_UI_SNAPSHOT") is { Length: > 0 } outputPath)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                    using var stream = File.Create(outputPath);
+                    encoder.Save(stream);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var offset = 0;
+        while ((offset = value.IndexOf(search, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += search.Length;
+        }
+
+        return count;
     }
 
     private static string FindManagementWindowPath()

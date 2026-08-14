@@ -18,7 +18,7 @@ public sealed class ProductIdentityTests
         var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
         var props = File.ReadAllText(Path.Combine(repositoryRoot.FullName, "Directory.Build.props"));
 
-        Assert.Contains("<VersionPrefix>0.1.28</VersionPrefix>", props, StringComparison.Ordinal);
+        Assert.Contains("<VersionPrefix>0.1.29</VersionPrefix>", props, StringComparison.Ordinal);
     }
 
     [Fact]
