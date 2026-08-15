@@ -1,6 +1,7 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.Investments;
 using HajimaoDesktopShop.Application.Business.Strategy;
+using HajimaoDesktopShop.Application.Business.Combat;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
@@ -15,11 +16,16 @@ public sealed class BusinessSession
     private BusinessSession(
         BusinessGameService game,
         BusinessSimulation simulation,
+        BusinessCombatService? combat = null,
         InvestmentTrackingSaveData? investmentTracking = null,
         StoreContentCatalog? storeContent = null)
     {
         Game = game;
         Simulation = simulation;
+        Combat = combat;
+        CombatExpansion = storeContent is null
+            ? null
+            : new CombatStoreExpansionService(game, storeContent);
         Strategy = new StoreStrategyService(game);
         Investments = new StoreInvestmentService(game, simulation, investmentTracking, storeContent);
     }
@@ -27,6 +33,10 @@ public sealed class BusinessSession
     public BusinessGameService Game { get; }
 
     public BusinessSimulation Simulation { get; }
+
+    public BusinessCombatService? Combat { get; }
+
+    public CombatStoreExpansionService? CombatExpansion { get; }
 
     public StoreStrategyService Strategy { get; }
 
@@ -44,7 +54,8 @@ public sealed class BusinessSession
         int experiencePerItemSold = 1,
         StoreContentCatalog? storeContent = null,
         IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles = null,
-        IReadOnlyList<Business.Events.MarketEventDefinition>? marketEvents = null)
+        IReadOnlyList<Business.Events.MarketEventDefinition>? marketEvents = null,
+        CombatContentCatalog? combatContent = null)
     {
         var products = productDefinitions?.ToArray()
             ?? throw new ArgumentNullException(nameof(productDefinitions));
@@ -60,9 +71,17 @@ public sealed class BusinessSession
             openingCashCents,
             experiencePerItemSold,
             storeContent);
+        var simulation = new BusinessSimulation(
+                game,
+                staff,
+                random,
+                options,
+                employeeProfiles,
+                marketEvents);
         return new BusinessSession(
             game,
-            new BusinessSimulation(game, staff, random, options, employeeProfiles, marketEvents),
+            simulation,
+            combatContent is null ? null : new BusinessCombatService(game, combatContent, random),
             storeContent: storeContent);
     }
 
@@ -78,7 +97,8 @@ public sealed class BusinessSession
         int experiencePerItemSold = 1,
         StoreContentCatalog? storeContent = null,
         IReadOnlyList<EmployeeProfileDefinition>? employeeProfiles = null,
-        IReadOnlyList<Business.Events.MarketEventDefinition>? marketEvents = null)
+        IReadOnlyList<Business.Events.MarketEventDefinition>? marketEvents = null,
+        CombatContentCatalog? combatContent = null)
     {
         ArgumentNullException.ThrowIfNull(save);
         ArgumentNullException.ThrowIfNull(random);
@@ -109,9 +129,13 @@ public sealed class BusinessSession
                 save.Business,
                 experiencePerItemSold,
                 storeContent);
+            var restoredSimulation = new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options, employeeProfiles, marketEvents);
             return new BusinessSession(
                 restoredGame,
-                new BusinessSimulation(restoredGame, save.BusinessSimulation, random, options, employeeProfiles, marketEvents),
+                restoredSimulation,
+                combatContent is null
+                    ? null
+                    : new BusinessCombatService(restoredGame, combatContent, random, save.Combat),
                 save.InvestmentTracking,
                 storeContent);
         }
@@ -134,6 +158,7 @@ public sealed class BusinessSession
         return new BusinessSession(
             game,
             new BusinessSimulation(game, simulationState, random, options, employeeProfiles, marketEvents),
+            combatContent is null ? null : new BusinessCombatService(game, combatContent, random, save.Combat),
             save.InvestmentTracking,
             storeContent);
     }
@@ -172,8 +197,19 @@ public sealed class BusinessSession
                 null),
             business,
             simulation,
-            Investments.CaptureTrackingSaveData());
+            Investments.CaptureTrackingSaveData(),
+            Combat?.CaptureSaveData());
     }
+
+    public BusinessCombatSnapshot AdvanceCombatRealSecond(
+        int localHour,
+        IReadOnlyCollection<string> activeEventTags) =>
+        Combat?.Tick(localHour, activeEventTags)
+        ?? throw new InvalidOperationException("Combat content was not configured for this session.");
+
+    public BusinessCombatSnapshot AdvanceCombatRealSecond(int localHour) =>
+        Combat?.Tick(localHour)
+        ?? throw new InvalidOperationException("Combat content was not configured for this session.");
 
     private static BusinessSaveData UpgradeLegacyBusiness(GameSaveData save, string starterShopId)
     {

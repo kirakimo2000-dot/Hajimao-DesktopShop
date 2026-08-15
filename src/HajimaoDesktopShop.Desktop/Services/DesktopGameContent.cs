@@ -1,7 +1,6 @@
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.StorePortfolio;
 using HajimaoDesktopShop.Domain.Economy;
-using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Shops;
 
@@ -13,9 +12,6 @@ public static class DesktopGameContent
     public const long OpeningCashCents = 120_000;
     public const int ExperiencePerItemSold = 1;
     public const int BaseArrivalBasisPoints = 6_000;
-    public const int StarterShiftStartMinute = 480;
-    public const int StarterShiftEndMinute = 960;
-
     public static BusinessSimulationOptions SimulationOptions { get; } =
         new(baseArrivalBasisPoints: BaseArrivalBasisPoints);
 
@@ -70,25 +66,4 @@ public static class DesktopGameContent
             .. Shops.Skip(1)
         ]);
     }
-
-    public static IReadOnlyList<StoreEmployeeAssignment> CreateStarterAssignments() =>
-        Array.AsReadOnly(new[]
-        {
-            new StoreEmployeeAssignment(
-                StarterStoreId,
-                new Employee(
-                    new EmployeeId("starter-cashier"),
-                    "小葵",
-                    EmployeeRole.Cashier,
-                    1_000,
-                    new Money(400))),
-            new StoreEmployeeAssignment(
-                StarterStoreId,
-                new Employee(
-                    new EmployeeId("starter-restocker"),
-                    "阿澄",
-                    EmployeeRole.Restocker,
-                    950,
-                    new Money(350)))
-        });
 }

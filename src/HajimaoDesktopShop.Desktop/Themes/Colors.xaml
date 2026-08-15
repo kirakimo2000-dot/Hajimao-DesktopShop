@@ -13,6 +13,9 @@
     <SolidColorBrush x:Key="Brush.Focus" Color="#FFF1B8" />
     <SolidColorBrush x:Key="Brush.Success" Color="#7AD99A" />
     <SolidColorBrush x:Key="Brush.Warning" Color="#FF9187" />
+    <SolidColorBrush x:Key="Brush.FormatConvenience" Color="#66D39A" />
+    <SolidColorBrush x:Key="Brush.FormatDiscount" Color="#68B8E8" />
+    <SolidColorBrush x:Key="Brush.FormatPremium" Color="#D79BE8" />
     <SolidColorBrush x:Key="Brush.Text" Color="#F5F7FA" />
     <SolidColorBrush x:Key="Brush.TextMuted" Color="#C4CBD5" />
     <SolidColorBrush x:Key="Brush.OverlaySurface" Color="#E623252B" />
@@ -20,9 +23,6 @@
     <SolidColorBrush x:Key="Brush.SceneWall" Color="#4B3940" />
     <SolidColorBrush x:Key="Brush.SceneFloor" Color="#B7784E" />
     <SolidColorBrush x:Key="Brush.SceneFloorDark" Color="#8E583D" />
-    <SolidColorBrush x:Key="Brush.ShelfAmbient" Color="#D8A95A" />
-    <SolidColorBrush x:Key="Brush.ShelfChilled" Color="#6DB7C7" />
-    <SolidColorBrush x:Key="Brush.ShelfFrozen" Color="#7897CF" />
     <SolidColorBrush x:Key="Brush.Customer" Color="#E8D6A7" />
     <SolidColorBrush x:Key="Brush.Cashier" Color="#F2B84B" />
     <SolidColorBrush x:Key="Brush.Restocker" Color="#69C784" />

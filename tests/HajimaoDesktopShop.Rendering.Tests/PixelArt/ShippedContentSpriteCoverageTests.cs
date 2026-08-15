@@ -6,11 +6,10 @@ namespace HajimaoDesktopShop.Rendering.Tests.PixelArt;
 public sealed class ShippedContentSpriteCoverageTests
 {
     [Fact]
-    public void ShippedContent_ResolvesEveryProductFacadeAndEmployeeAppearanceKey()
+    public void ShippedContent_ResolvesEveryProductAndFacadeKey()
     {
         using var products = LoadJson("Assets", "Config", "products.json");
         using var brands = LoadJson("Assets", "Config", "store-brands.json");
-        using var employees = LoadJson("Assets", "Content", "employees", "employee-profiles.json");
 
         Assert.All(
             products.RootElement.GetProperty("products").EnumerateArray(),
@@ -18,15 +17,6 @@ public sealed class ShippedContentSpriteCoverageTests
         Assert.All(
             brands.RootElement.GetProperty("brands").EnumerateArray(),
             item => ContentSpriteKey.ResolveFacade(item.GetProperty("facadeStyleKey").GetString()!));
-        Assert.All(
-            employees.RootElement.GetProperty("profiles").EnumerateArray(),
-            item =>
-            {
-                var appearance = ContentSpriteKey.ResolveEmployee(
-                    item.GetProperty("appearanceKey").GetString()!);
-                Assert.Equal(PixelArtBudget.CharacterAnimationFrameCount, appearance.LogicalFrameCount);
-                Assert.Equal(PixelArtBudget.StoredCharacterCelCount, appearance.StoredCelCount);
-            });
     }
 
     private static JsonDocument LoadJson(params string[] pathSegments)

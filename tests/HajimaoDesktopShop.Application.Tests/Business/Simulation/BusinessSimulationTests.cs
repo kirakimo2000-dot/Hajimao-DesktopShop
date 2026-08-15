@@ -210,8 +210,8 @@ public sealed class BusinessSimulationTests
 
         var snapshot = simulation.GetSnapshot();
         Assert.Equal(StreetWeather.Rain, snapshot.Street.Weather);
-        Assert.Equal(6_700, Assert.Single(snapshot.Stores).ArrivalDemand.FinalBasisPoints);
-        Assert.Equal(4_690, snapshot.Street.SharedTrafficBasisPoints);
+        Assert.Equal(6_000, Assert.Single(snapshot.Stores).ArrivalDemand.FinalBasisPoints);
+        Assert.Equal(4_200, snapshot.Street.SharedTrafficBasisPoints);
         Assert.Equal(720, snapshot.GameMinute);
     }
 
@@ -237,7 +237,7 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
-    public void OffShiftEmployee_DoesNotReceiveWageOrServiceCreditAndRecovers()
+    public void ConfiguredClockShift_DoesNotInterruptContinuousDuty()
     {
         var service = CreateService();
         var employee = CreateEmployee("cashier", EmployeeRole.Cashier, 1_000, 6_000);
@@ -253,10 +253,10 @@ public sealed class BusinessSimulationTests
         var store = Assert.Single(simulation.GetSnapshot().Stores);
         var employeeSnapshot = Assert.Single(simulation.Employees.GetSnapshot().Employees);
 
-        Assert.Equal(0, employee.WorkedMinutes);
-        Assert.Equal(1_000, employeeSnapshot.EnergyPermille);
-        Assert.Equal(0, store.ServicePermille);
-        Assert.Equal(0, Assert.Single(simulation.GetSnapshot().Business.Stores).WageCostCents);
+        Assert.Equal(1, employee.WorkedMinutes);
+        Assert.Equal(996, employeeSnapshot.EnergyPermille);
+        Assert.Equal(959, store.ServicePermille);
+        Assert.Equal(100, Assert.Single(simulation.GetSnapshot().Business.Stores).WageCostCents);
     }
 
     [Fact]
@@ -302,7 +302,7 @@ public sealed class BusinessSimulationTests
     }
 
     [Fact]
-    public void Snapshot_ReportsOffShiftEmployeeAsResting()
+    public void Snapshot_IgnoresClockShiftAndReportsEmployeeWorking()
     {
         var simulation = new BusinessSimulation(
             CreateService(),
@@ -313,8 +313,8 @@ public sealed class BusinessSimulationTests
 
         var employee = Assert.Single(simulation.GetSnapshot().Employees.Employees);
 
-        Assert.Equal(EmployeeTaskKind.Rest, employee.CurrentTask?.Kind);
-        Assert.True(employee.CurrentTask?.IsResting);
+        Assert.Equal(EmployeeTaskKind.CustomerService, employee.CurrentTask?.Kind);
+        Assert.False(employee.CurrentTask?.IsResting);
     }
 
     [Fact]
@@ -883,7 +883,6 @@ public sealed class BusinessSimulationTests
             new StoreFormatDefinition(
                 "discount", "平价量贩", 70_000, 70_000,
                 1_220, 1_450, 800, 1_250, 800, 1_300,
-                "all-day-volume",
                 new Dictionary<string, int>
                 {
                     ["ambient"] = 1_250,
@@ -895,7 +894,6 @@ public sealed class BusinessSimulationTests
             new StoreFormatDefinition(
                 "premium", "精品食品", 90_000, 55_000,
                 780, 600, 1_500, 900, 1_500, 800,
-                "afternoon-select",
                 new Dictionary<string, int>
                 {
                     ["ambient"] = 750,

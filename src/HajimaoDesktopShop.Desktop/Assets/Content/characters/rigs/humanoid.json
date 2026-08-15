@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "rigs": [
+    {
+      "id": "humanoid-v1",
+      "bones": [
+        { "id": "root", "parentId": null, "pivotX": 0, "pivotY": 0, "zIndex": 0 },
+        { "id": "pelvis", "parentId": "root", "pivotX": 0, "pivotY": -10, "zIndex": 5 },
+        { "id": "torso", "parentId": "pelvis", "pivotX": 0, "pivotY": -9, "zIndex": 6 },
+        { "id": "head", "parentId": "torso", "pivotX": 0, "pivotY": -10, "zIndex": 10 },
+        { "id": "upper-arm-left", "parentId": "torso", "pivotX": -5, "pivotY": -7, "zIndex": 4 },
+        { "id": "lower-arm-left", "parentId": "upper-arm-left", "pivotX": -5, "pivotY": 1, "zIndex": 3 },
+        { "id": "hand-left", "parentId": "lower-arm-left", "pivotX": -4, "pivotY": 1, "zIndex": 2 },
+        { "id": "upper-arm-right", "parentId": "torso", "pivotX": 5, "pivotY": -7, "zIndex": 12 },
+        { "id": "lower-arm-right", "parentId": "upper-arm-right", "pivotX": 5, "pivotY": 1, "zIndex": 13 },
+        { "id": "hand-right", "parentId": "lower-arm-right", "pivotX": 4, "pivotY": 1, "zIndex": 14 },
+        { "id": "upper-leg-left", "parentId": "pelvis", "pivotX": -3, "pivotY": 1, "zIndex": 4 },
+        { "id": "lower-leg-left", "parentId": "upper-leg-left", "pivotX": 0, "pivotY": 7, "zIndex": 3 },
+        { "id": "foot-left", "parentId": "lower-leg-left", "pivotX": -1, "pivotY": 6, "zIndex": 2 },
+        { "id": "upper-leg-right", "parentId": "pelvis", "pivotX": 3, "pivotY": 1, "zIndex": 8 },
+        { "id": "lower-leg-right", "parentId": "upper-leg-right", "pivotX": 0, "pivotY": 7, "zIndex": 7 },
+        { "id": "foot-right", "parentId": "lower-leg-right", "pivotX": 1, "pivotY": 6, "zIndex": 6 }
+      ],
+      "sockets": [
+        { "id": "product_socket", "boneId": "hand-right", "offsetX": 3, "offsetY": 0 }
+      ]
+    }
+  ]
+}

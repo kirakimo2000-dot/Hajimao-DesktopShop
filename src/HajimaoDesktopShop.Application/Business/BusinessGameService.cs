@@ -95,7 +95,6 @@ public sealed class BusinessGameService :
         RegisterUnlockedProducts(_business.GetShop(starterDefinition.Id));
         _procurement = new BusinessProcurementService(this);
         _storeGrowth = new StoreGrowthService(this);
-        ConfigureDefaultAutomaticStocking(starterDefinition.Id.Value);
     }
 
     public BusinessGameService(
@@ -357,6 +356,30 @@ public sealed class BusinessGameService :
         }
     }
 
+    public void RecordCombatServiceRevenue(string shopId, long revenueCents)
+    {
+        if (string.IsNullOrWhiteSpace(shopId))
+        {
+            throw new ArgumentException("Shop ID is required.", nameof(shopId));
+        }
+
+        if (revenueCents <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(revenueCents));
+        }
+
+        lock (_gate)
+        {
+            var previousLevel = _business.Player.Level;
+            _business.RecordCustomerServiceRevenue(new ShopId(shopId), new Money(revenueCents));
+            _business.Player.GainExperience(_experiencePerItemSold);
+            if (_business.Player.Level != previousLevel)
+            {
+                RegisterUnlockedProductsForAllStores();
+            }
+        }
+    }
+
     public PriceChangeResult ChangePrice(string shopId, string productId, long salePriceCents)
     {
         lock (_gate)
@@ -398,7 +421,6 @@ public sealed class BusinessGameService :
             if (result.Status == OpenShopStatus.Success)
             {
                 RegisterUnlockedProducts(_business.GetShop(id));
-                ConfigureDefaultAutomaticStocking(id.Value);
             }
 
             return result;
@@ -423,7 +445,6 @@ public sealed class BusinessGameService :
             {
                 _shopDefinitions.Add(definition.Id.Value, definition);
                 RegisterUnlockedProducts(_business.GetShop(definition.Id));
-                ConfigureDefaultAutomaticStocking(definition.Id.Value);
             }
 
             return result;
@@ -469,6 +490,9 @@ public sealed class BusinessGameService :
             return _storeGrowth.GetSnapshot(shopId);
         }
     }
+
+    public IReadOnlyList<ProductDefinition> GetProductDefinitions() =>
+        Array.AsReadOnly(_productDefinitions.ToArray());
 
     public BusinessSnapshot GetSnapshot()
     {
@@ -741,15 +765,6 @@ public sealed class BusinessGameService :
                 format.ServiceSensitivityPermille,
                 format.QueueSensitivityPermille,
                 format.CleanlinessSensitivityPermille),
-            format.TimeProfile switch
-            {
-                "steady" => DemandTimeCurve.Steady,
-                "all-day-volume" => DemandTimeCurve.AllDayVolume,
-                "afternoon-select" => DemandTimeCurve.AfternoonSelect,
-                "commuter-peaks" => DemandTimeCurve.CommuterPeaks,
-                _ => throw new InvalidOperationException(
-                    $"Unknown store time profile '{format.TimeProfile}'.")
-            },
             format.InventoryCapacityPermille,
             format.ProductShelfWeights);
     }
@@ -770,36 +785,6 @@ public sealed class BusinessGameService :
         _storeBrands.TryGetValue(brandId, out var brand)
             ? brand.FacadeStyleKey
             : "facade-convenience-a";
-
-    private void ConfigureDefaultAutomaticStocking(string storeId)
-    {
-        var store = CreateStoreSnapshot(new ShopId(storeId));
-        var (pricing, stocking) = _storeFormats.TryGetValue(store.StoreFormatId, out var format)
-            ? (format.RecommendedPricing, format.RecommendedStocking)
-            : (StorePricingPreset.Balanced, StoreStockingPreset.Balanced);
-        var plan = StoreStrategyPlanner.Create(
-            store,
-            pricing,
-            stocking);
-        foreach (var product in plan.Products)
-        {
-            var priceResult = ChangePrice(storeId, product.ProductId, product.SalePriceCents);
-            if (priceResult.Status != PriceChangeStatus.Success)
-            {
-                throw new InvalidOperationException(
-                    $"Default strategy price failed for product '{product.ProductId}': {priceResult.Status}.");
-            }
-
-            _procurement.ConfigureAutoRestock(new AutoRestockPolicy(
-                storeId,
-                product.ProductId,
-                IsEnabled: true,
-                product.ReorderPoint,
-                product.TargetQuantity,
-                product.PreferredChannelId,
-                product.UseEmergencySupplierWhenOutOfStock));
-        }
-    }
 
     private static ProductSnapshot CreateProductSnapshot(Shop shop, ProductDefinition definition)
     {

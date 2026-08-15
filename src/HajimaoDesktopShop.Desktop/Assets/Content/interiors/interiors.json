@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "interiors": [
+    { "storeId": "seven-eleven", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "familymart", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "lawson", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "aldi", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "lidl", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "walmart", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "ginza-mitsukoshi", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "harrods", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "muji", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "circle-k", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "boots", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "watsons", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "oxxo", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "wawa", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "ministop", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "carrefour", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "costco", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "target", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "selfridges", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "kadewe", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "isetan", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "marks-spencer", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "monoprix", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" },
+    { "storeId": "don-quijote", "backgroundAssetPath": "Assets/Content/interiors/placeholders/default-shop.png" }
+  ]
+}

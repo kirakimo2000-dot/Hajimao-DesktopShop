@@ -25,6 +25,24 @@ public sealed class StarterStoreChoiceCardViewModel
 
     public string FormatName => Proposal.FormatName;
 
+    public string FormatId => Proposal.FormatId;
+
+    public string ReturnProfileText => Proposal.FormatId switch
+    {
+        "convenience" => "稳定现金流",
+        "discount" => "高周转扩张",
+        "premium" => "高毛利回报",
+        _ => Proposal.FormatName
+    };
+
+    public string DecisionPromptText => Proposal.FormatId switch
+    {
+        "convenience" => "稳健起步",
+        "discount" => "用规模换增长",
+        "premium" => "用服务换利润",
+        _ => "选择投资方向"
+    };
+
     public string EarningText { get; }
 
     public string RiskText { get; }

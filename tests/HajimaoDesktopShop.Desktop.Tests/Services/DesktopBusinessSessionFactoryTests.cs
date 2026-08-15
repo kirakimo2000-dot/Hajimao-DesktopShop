@@ -1,7 +1,5 @@
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.StorePortfolio;
-using HajimaoDesktopShop.Application.Business.Strategy;
-using HajimaoDesktopShop.Domain.Employees;
 using HajimaoDesktopShop.Desktop.Services;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Services;
@@ -9,7 +7,7 @@ namespace HajimaoDesktopShop.Desktop.Tests.Services;
 public sealed class DesktopBusinessSessionFactoryTests
 {
     [Fact]
-    public void CreateNew_StartsOneStoreWithCatalogProductsAndTwoStarterEmployees()
+    public void CreateNew_StartsOneStoreWithoutLegacyEmployeeRoles()
     {
         var products = CreateProducts(10);
 
@@ -25,16 +23,8 @@ public sealed class DesktopBusinessSessionFactoryTests
         var store = Assert.Single(snapshot.Business.Stores);
         Assert.Equal("corner-store", store.Id);
         Assert.Equal(2, store.Products.Count);
-        Assert.Equal(
-            [EmployeeRole.Cashier, EmployeeRole.Restocker],
-            snapshot.Employees.Employees.Select(employee => employee.Role));
+        Assert.Empty(snapshot.Employees.Employees);
         Assert.Equal(DesktopGameContent.OpeningCashCents, snapshot.Business.CashCents);
-        Assert.All(snapshot.Employees.Employees, employee =>
-        {
-            Assert.False(employee.IsAlwaysOn);
-            Assert.Equal(DesktopGameContent.StarterShiftStartMinute, employee.ShiftStartMinute);
-            Assert.Equal(DesktopGameContent.StarterShiftEndMinute, employee.ShiftEndMinute);
-        });
     }
 
     [Fact]
@@ -78,10 +68,6 @@ public sealed class DesktopBusinessSessionFactoryTests
         Assert.Equal(1, store.StreetOrdinal);
         Assert.Equal(1_220, store.FormatEconomics!.DemandSensitivity.BaseDemandPermille);
         Assert.Equal(DesktopGameContent.OpeningCashCents, start.Session.Game.GetSnapshot().CashCents);
-        var strategy = Assert.IsType<StoreStrategyPlan>(
-            start.Session.Strategy.GetAppliedPlan(store.Id));
-        Assert.Equal(StorePricingPreset.HighTurnover, strategy.Pricing);
-        Assert.Equal(StoreStockingPreset.FullShelves, strategy.Stocking);
     }
 
     [Fact]
@@ -212,7 +198,6 @@ public sealed class DesktopBusinessSessionFactoryTests
                     1_000,
                     1_000,
                     1_100,
-                    "steady",
                     new Dictionary<string, int>
                     {
                         ["ambient"] = 1_000,
@@ -232,7 +217,6 @@ public sealed class DesktopBusinessSessionFactoryTests
                     1_250,
                     800,
                     1_300,
-                    "all-day-volume",
                     new Dictionary<string, int>
                     {
                         ["ambient"] = 1_250,

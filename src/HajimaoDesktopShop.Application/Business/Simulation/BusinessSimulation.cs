@@ -15,6 +15,7 @@ namespace HajimaoDesktopShop.Application.Business.Simulation;
 
 public sealed class BusinessSimulation
 {
+    private const int LaborChargeIntervalTicks = 4;
     private readonly object _gate = new();
     private readonly BusinessGameService _game;
     private readonly IRandomSource _random;
@@ -40,7 +41,6 @@ public sealed class BusinessSimulation
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(random);
-
         _game = game;
         _random = random;
         _statefulRandom = random as IStatefulRandomSource;
@@ -529,17 +529,21 @@ public sealed class BusinessSimulation
         var paid = new HashSet<EmployeeId>();
         foreach (var assignment in _employeeOperations.GetRuntimeAssignments().Where(assignment =>
                      string.Equals(assignment.StoreId, runtime.StoreId, StringComparison.Ordinal)
-                     && (!assignment.Shift.ContainsMinute(CurrentMinuteOfDay)
-                         || !assignment.Employee.CanWork)))
+                     && !assignment.Employee.CanWork))
         {
             _lastRestingEmployees.Add(assignment.Employee.Id);
         }
 
-        var available = _employeeOperations.ResolveAvailableEmployees(
-            runtime.StoreId,
-            CurrentMinuteOfDay);
+        var available = _employeeOperations.ResolveAvailableEmployees(runtime.StoreId);
+        var chargeLaborThisTick = _clock.GameMinute % LaborChargeIntervalTicks == 0;
         foreach (var employee in available)
         {
+            if (!chargeLaborThisTick)
+            {
+                paid.Add(employee.Id);
+                continue;
+            }
+
             var payment = _game.PayEmployeeMinute(runtime.StoreId, employee);
             if (payment.Status == WagePaymentStatus.Success)
             {
@@ -632,7 +636,6 @@ public sealed class BusinessSimulation
     private EmployeeTaskAvailability ResolveTaskAvailability(EmployeeRuntimeAssignment assignment)
     {
         if (_lastRestingEmployees.Contains(assignment.Employee.Id)
-            || !assignment.Shift.ContainsMinute(CurrentMinuteOfDay)
             || !assignment.Employee.CanWork)
         {
             return EmployeeTaskAvailability.Resting;
@@ -818,10 +821,8 @@ public sealed class BusinessSimulation
             runtime.ServicePermille,
             CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
             runtime.CleanlinessPermille,
-            CurrentMinuteOfDay,
             promotionBasisPoints: growth.PromotionPurchaseBonusBasisPoints,
-            sensitivity: format.DemandSensitivity,
-            timeCurve: format.TimeCurve));
+            sensitivity: format.DemandSensitivity));
         if (_random.NextDouble() >= purchase.FinalBasisPoints / 10_000d)
         {
             runtime.LostSales++;
@@ -876,11 +877,9 @@ public sealed class BusinessSimulation
             runtime.ServicePermille,
             CalculateEffectiveQueueLength(runtime.QueueLength, growth.QueueComfortCapacity),
             runtime.CleanlinessPermille,
-            CurrentMinuteOfDay,
             growth.AttractionBonusBasisPoints,
             growth.PromotionArrivalBonusBasisPoints,
-            format.DemandSensitivity,
-            format.TimeCurve));
+            format.DemandSensitivity));
     }
 
     private static int CalculateEffectiveQueueLength(int queueLength, int comfortCapacity) =>
@@ -891,8 +890,6 @@ public sealed class BusinessSimulation
 
     private static int ScalePermille(int value, int modifierPermille) =>
         checked((int)Math.Clamp((long)value * modifierPermille / 1_000L, 1L, 10_000L));
-
-    private int CurrentMinuteOfDay => checked((int)(_clock.GameMinute % 1_440L));
 
     private static int CalculateAveragePriceIndex(IReadOnlyList<ProductSnapshot> products)
     {

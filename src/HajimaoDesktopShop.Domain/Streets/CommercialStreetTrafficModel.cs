@@ -54,14 +54,14 @@ public static class CommercialStreetTrafficModel
         return checked(Math.Max(1, (openStoreCount * 3 + 4) / 5));
     }
 
-    public static StreetWeather GetWeather(long gameMinute)
+    public static StreetWeather GetWeather(long activeRuntimeTick)
     {
-        if (gameMinute < 0)
+        if (activeRuntimeTick < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(gameMinute));
+            throw new ArgumentOutOfRangeException(nameof(activeRuntimeTick));
         }
 
-        return ((gameMinute / WeatherPeriodMinutes) % 4L) switch
+        return ((activeRuntimeTick / WeatherPeriodMinutes) % 4L) switch
         {
             0 => StreetWeather.Clear,
             1 => StreetWeather.Cloudy,
@@ -115,19 +115,19 @@ public static class CommercialStreetTrafficModel
         return Math.Min(6, checked((trafficBasisPoints + 1_666) / 1_667));
     }
 
-    public static int GetVisibleVehicleCount(int minuteOfDay, StreetWeather weather)
+    public static int GetVisibleVehicleCount(int trafficBasisPoints, StreetWeather weather)
     {
-        if (minuteOfDay is < 0 or >= 1_440)
+        if (trafficBasisPoints is < 0 or > MaximumBasisPoints)
         {
-            throw new ArgumentOutOfRangeException(nameof(minuteOfDay));
+            throw new ArgumentOutOfRangeException(nameof(trafficBasisPoints));
         }
 
-        var count = minuteOfDay switch
+        var count = trafficBasisPoints switch
         {
-            >= 420 and < 600 => 2,
-            >= 960 and < 1_140 => 2,
-            >= 360 and < 1_320 => 1,
-            _ => 0
+            0 => 0,
+            <= 3_333 => 1,
+            <= 6_666 => 2,
+            _ => 3
         };
         return weather == StreetWeather.Wind ? Math.Max(0, count - 1) : count;
     }

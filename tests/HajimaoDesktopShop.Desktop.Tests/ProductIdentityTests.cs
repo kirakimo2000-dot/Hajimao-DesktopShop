@@ -6,7 +6,7 @@ namespace HajimaoDesktopShop.Desktop.Tests;
 public sealed class ProductIdentityTests
 {
     [Fact]
-    public void ActiveVersion_Is_0_1_30()
+    public void ActiveVersion_Is_0_2_0()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null
@@ -18,7 +18,7 @@ public sealed class ProductIdentityTests
         var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
         var props = File.ReadAllText(Path.Combine(repositoryRoot.FullName, "Directory.Build.props"));
 
-        Assert.Contains("<VersionPrefix>0.1.30</VersionPrefix>", props, StringComparison.Ordinal);
+        Assert.Contains("<VersionPrefix>0.2.0</VersionPrefix>", props, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -26,13 +26,13 @@ public sealed class ProductIdentityTests
     {
         Assert.Equal("Hajimao DesktopShop", ProductIdentity.DisplayName);
         Assert.Equal("HAJIMAO DESKTOPSHOP", ProductIdentity.BrandHeader);
-        Assert.Equal("Hajimao DesktopShop · 桌面小店", ProductIdentity.DesktopWindowTitle);
-        Assert.Equal("Hajimao DesktopShop · 经营管理", ProductIdentity.ManagementWindowTitle);
-        Assert.Equal("Hajimao DesktopShop · 持续经营中", ProductIdentity.TrayTooltip);
+        Assert.Equal("Hajimao DesktopShop · 挂机街区", ProductIdentity.DesktopWindowTitle);
+        Assert.Equal("Hajimao DesktopShop · 战斗管理", ProductIdentity.ManagementWindowTitle);
+        Assert.Equal("Hajimao DesktopShop · 挂机战斗中", ProductIdentity.TrayTooltip);
         Assert.Equal("退出 Hajimao DesktopShop", ProductIdentity.ExitMenuText);
         Assert.Equal("Hajimao DesktopShop 启动错误", ProductIdentity.StartupErrorTitle);
         Assert.Equal(
-            "你已经掌握 Hajimao DesktopShop 的核心经营循环。",
+            "你已经掌握 Hajimao DesktopShop 的核心挂机战斗。",
             ProductIdentity.OnboardingCompletionGuidance);
     }
 
@@ -74,5 +74,62 @@ public sealed class ProductIdentityTests
 
         Assert.True(diagnosticIndex >= 0);
         Assert.True(selectionIndex > diagnosticIndex);
+    }
+
+    [Fact]
+    public void Startup_FlushesInitialSaveBeforeStartingAutosaveTimer()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+        var coordinatorIndex = startupSource.IndexOf(
+            "_autosaveCoordinator = new AutosaveCoordinator",
+            StringComparison.Ordinal);
+        var initialFlushIndex = startupSource.IndexOf(
+            "await _autosaveCoordinator.FlushAsync()",
+            coordinatorIndex,
+            StringComparison.Ordinal);
+        var timerIndex = startupSource.IndexOf(
+            "_autosaveTimer = new DispatcherTimer",
+            coordinatorIndex,
+            StringComparison.Ordinal);
+
+        Assert.True(coordinatorIndex >= 0);
+        Assert.True(initialFlushIndex > coordinatorIndex);
+        Assert.True(timerIndex > initialFlushIndex);
+    }
+
+    [Fact]
+    public void StartupFailure_MessageDoesNotMisdiagnoseEveryFailureAsProductCatalogDamage()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+
+        Assert.DoesNotContain(
+            "请确认 Assets/Config/products.json 完整可读。",
+            startupSource,
+            StringComparison.Ordinal);
+        Assert.Contains("诊断日志", startupSource, StringComparison.Ordinal);
     }
 }
