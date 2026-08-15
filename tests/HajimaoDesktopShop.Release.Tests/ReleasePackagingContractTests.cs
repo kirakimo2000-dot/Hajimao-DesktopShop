@@ -8,20 +8,22 @@ public sealed class ReleasePackagingContractTests
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_1_30()
+    public void ActiveVersion_Is_0_2_0()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.1.30", version.Value.Trim());
+        Assert.Equal("0.2.0", version.Value.Trim());
     }
 
     [Fact]
     public void PackagingSources_Exist()
     {
         Assert.True(File.Exists(_root.File("scripts", "build-release.ps1")));
+        Assert.True(File.Exists(_root.File("scripts", "build-portable.ps1")));
+        Assert.True(File.Exists(_root.File("scripts", "clean-workspace.ps1")));
         Assert.True(File.Exists(_root.File("scripts", "test-release.ps1")));
         Assert.True(File.Exists(_root.File(".github", "workflows", "release-gate.yml")));
         Assert.True(File.Exists(_root.File(
@@ -182,6 +184,28 @@ public sealed class ReleasePackagingContractTests
 
         Assert.Contains("$portableFiles.Count -ne 1", script, StringComparison.Ordinal);
         Assert.Contains("Hajimao DesktopShop.exe", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PortableBuild_KeepsLatestExecutableAtRepositoryRoot()
+    {
+        var buildScript = File.ReadAllText(_root.File("scripts", "build-portable.ps1"));
+        var cleanScript = File.ReadAllText(_root.File("scripts", "clean-workspace.ps1"));
+        var gitIgnore = File.ReadAllText(_root.File(".gitignore"));
+
+        Assert.Contains(
+            "$latestExecutable = Join-Path $repoRoot 'Hajimao DesktopShop.exe'",
+            buildScript,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Copy-Item -LiteralPath $friendlyExe -Destination $latestExecutable -Force",
+            buildScript,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Remove-Item -LiteralPath $latestExecutable",
+            cleanScript,
+            StringComparison.Ordinal);
+        Assert.Contains("/Hajimao DesktopShop.exe", gitIgnore, StringComparison.Ordinal);
     }
 
     [Fact]

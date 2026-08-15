@@ -13,6 +13,6 @@ public static class CharacterAnimation
             (presentationFrame % PixelArtBudget.CharacterAnimationFrameCount
                 + PixelArtBudget.CharacterAnimationFrameCount)
             % PixelArtBudget.CharacterAnimationFrameCount);
-        return logicalFrame / PixelArtBudget.CharacterFramesPerCel;
+        return logicalFrame % PixelArtBudget.StoredCharacterCelCount;
     }
 }

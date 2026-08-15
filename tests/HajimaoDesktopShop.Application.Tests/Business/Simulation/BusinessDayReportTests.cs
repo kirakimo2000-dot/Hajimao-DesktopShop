@@ -12,6 +12,26 @@ namespace HajimaoDesktopShop.Application.Tests.Business.Simulation;
 public sealed class BusinessDayReportTests
 {
     [Fact]
+    public void OperatingReport_UsesActiveRuntimeWithoutAClockOffset()
+    {
+        var simulation = new BusinessSimulation(
+            CreateService(),
+            [],
+            new ScriptedRandomSource());
+
+        simulation.AdvanceRealSeconds(1_439);
+        Assert.Null(simulation.GetSnapshot().LastCompletedDay);
+
+        simulation.AdvanceRealSecond();
+        Assert.Equal(1, Assert.IsType<BusinessDayReport>(
+            simulation.GetSnapshot().LastCompletedDay).DayNumber);
+
+        simulation.AdvanceRealSeconds(1_440);
+        Assert.Equal(2, Assert.IsType<BusinessDayReport>(
+            simulation.GetSnapshot().LastCompletedDay).DayNumber);
+    }
+
+    [Fact]
     public void DayClose_ReportsOperationalAndFinancialDeltas()
     {
         var service = CreateService();

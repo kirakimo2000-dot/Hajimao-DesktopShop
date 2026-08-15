@@ -104,7 +104,6 @@ public sealed class StoreOpeningProposalServiceTests
             queueSensitivityPermille: 1_000,
             cleanlinessSensitivityPermille: 1_000,
             inventoryCapacityPermille: 1_000,
-            timeProfile: "steady",
             new Dictionary<string, int>
             {
                 ["ambient"] = 1_000,

@@ -375,9 +375,7 @@ public sealed class EmployeeOperationsService
         }
     }
 
-    internal IReadOnlyList<Employee> ResolveAvailableEmployees(
-        string storeId,
-        int localMinute)
+    internal IReadOnlyList<Employee> ResolveAvailableEmployees(string storeId)
     {
         var normalizedStoreId = NormalizeId(storeId, nameof(storeId));
         lock (_gate)
@@ -390,12 +388,6 @@ public sealed class EmployeeOperationsService
                              StringComparison.Ordinal))
                          .OrderBy(employee => employee.Id.Value, StringComparer.Ordinal))
             {
-                if (!_roster.IsScheduled(employee.Id.Value, normalizedStoreId, localMinute))
-                {
-                    employee.RecordRestMinute();
-                    continue;
-                }
-
                 if (employee.CanWork)
                 {
                     available.Add(employee);

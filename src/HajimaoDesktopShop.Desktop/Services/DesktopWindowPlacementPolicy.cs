@@ -116,6 +116,24 @@ public static class DesktopWindowPlacementPolicy
         return true;
     }
 
+    public static DesktopPoint ConstrainToWorkArea(
+        DesktopRect window,
+        DesktopRect workArea,
+        double margin)
+    {
+        if (!double.IsFinite(margin) || margin < 0d)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(margin),
+                margin,
+                "Margin must be non-negative and finite.");
+        }
+
+        return new DesktopPoint(
+            ConstrainAxis(window.X, window.Width, workArea.X, workArea.Width, margin),
+            ConstrainAxis(window.Y, window.Height, workArea.Y, workArea.Height, margin));
+    }
+
     private static double SquaredDistance(DesktopPoint point, DesktopRect rectangle)
     {
         var horizontal = point.X < rectangle.X
@@ -146,5 +164,23 @@ public static class DesktopWindowPlacementPolicy
         return snapToStart
             ? workAreaStart + margin
             : workAreaStart + workAreaLength - windowLength - margin;
+    }
+
+    private static double ConstrainAxis(
+        double windowStart,
+        double windowLength,
+        double workAreaStart,
+        double workAreaLength,
+        double margin)
+    {
+        if (windowLength + (2d * margin) > workAreaLength)
+        {
+            return workAreaStart + ((workAreaLength - windowLength) / 2d);
+        }
+
+        return Math.Clamp(
+            windowStart,
+            workAreaStart + margin,
+            workAreaStart + workAreaLength - windowLength - margin);
     }
 }

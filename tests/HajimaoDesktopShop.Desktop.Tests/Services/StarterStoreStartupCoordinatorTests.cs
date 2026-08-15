@@ -79,7 +79,6 @@ public sealed class StarterStoreStartupCoordinatorTests
     private static StoreFormatDefinition Format(string id, string name) =>
         new(
             id, name, 40_000, 40_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000,
-            "steady",
             new Dictionary<string, int>
             {
                 ["ambient"] = 1_000,

@@ -6,7 +6,7 @@ namespace HajimaoDesktopShop.Application.Persistence;
 
 public static class GameSaveSchema
 {
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 8;
 }
 
 public sealed record GameSaveData(
@@ -16,7 +16,8 @@ public sealed record GameSaveData(
     SimulationSaveData Simulation,
     BusinessSaveData? Business = null,
     BusinessSimulationSaveData? BusinessSimulation = null,
-    InvestmentTrackingSaveData? InvestmentTracking = null);
+    InvestmentTrackingSaveData? InvestmentTracking = null,
+    CombatSaveData? Combat = null);
 
 public sealed record InvestmentTrackingSaveData(
     IReadOnlyList<LatestInvestmentSaveData> LatestInvestments);

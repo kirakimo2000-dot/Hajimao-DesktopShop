@@ -22,12 +22,7 @@ public sealed class PixelSpriteAtlas : IDisposable
         _frames = new ReadOnlyDictionary<PixelSpriteId, IReadOnlyList<PixelSpriteFrame>>(
             new Dictionary<PixelSpriteId, IReadOnlyList<PixelSpriteFrame>>
             {
-                [PixelSpriteId.Cashier] = CharacterFrames(0),
-                [PixelSpriteId.Restocker] = CharacterFrames(40),
-                [PixelSpriteId.Customer] = CharacterFrames(80),
-                [PixelSpriteId.ShelfAmbient] = SingleFrame(0, 120, 64, 56),
-                [PixelSpriteId.ShelfChilled] = SingleFrame(64, 120, 64, 56),
-                [PixelSpriteId.ShelfFrozen] = SingleFrame(128, 120, 64, 56)
+                [PixelSpriteId.Customer] = CharacterFrames(80)
             });
     }
 
@@ -89,9 +84,7 @@ public sealed class PixelSpriteAtlas : IDisposable
         long presentationFrame,
         bool reduceMotion)
     {
-        if (spriteId is not PixelSpriteId.Cashier
-            and not PixelSpriteId.Restocker
-            and not PixelSpriteId.Customer)
+        if (spriteId is not PixelSpriteId.Customer)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(spriteId),
@@ -137,12 +130,7 @@ public sealed class PixelSpriteAtlas : IDisposable
 
     private void ValidateCharacterFrames()
     {
-        foreach (var spriteId in new[]
-                 {
-                     PixelSpriteId.Cashier,
-                     PixelSpriteId.Restocker,
-                     PixelSpriteId.Customer
-                 })
+        foreach (var spriteId in new[] { PixelSpriteId.Customer })
         {
             var frames = _frames[spriteId];
             for (var index = 0; index < frames.Count; index++)
@@ -166,7 +154,4 @@ public sealed class PixelSpriteAtlas : IDisposable
             Enumerable.Range(0, PixelArtBudget.StoredCharacterCelCount)
                 .Select(index => new PixelSpriteFrame(index * 32, y, 32, 40, 16, 40))
                 .ToArray());
-
-    private static IReadOnlyList<PixelSpriteFrame> SingleFrame(int x, int y, int width, int height) =>
-        Array.AsReadOnly([new PixelSpriteFrame(x, y, width, height, width / 2, height)]);
 }

@@ -48,17 +48,17 @@ public sealed class StarterStoreChoiceViewModel
         public static StarterStoreCopy ForFormat(string formatId) => formatId switch
         {
             "convenience" => new(
-                "靠全天稳定客流与均衡商品持续赚钱",
-                "高峰排队和缺货会慢慢吃掉薄利",
-                "适合稳健起步，先把一家店经营顺畅"),
+                "客流、顾客需求与单次收益均衡",
+                "没有明显短板，成长速度稳定",
+                "适合第一次体验挂机战斗"),
             "discount" => new(
-                "靠低价走量与更大的库存周转赚钱",
-                "备货占用现金，卖不动时压力来得更快",
-                "适合愿意承受现金波动、追求规模的人"),
+                "顾客来得更多，靠招待数量积累收益",
+                "单次收益较低且顾客移动更快，容易漏客",
+                "适合偏重攻击速度与群体效果的商品组合"),
             "premium" => new(
-                "靠高毛利商品与优质服务赚取单笔回报",
-                "客流较少，服务或整洁不足会明显掉单",
-                "适合耐心经营、重视利润质量的人"),
+                "顾客较少，但每次成功招待的收益更高",
+                "顾客需求更高，威力不足时更容易失败",
+                "适合高威力与高收益倍率的商品组合"),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(formatId),
                 formatId,

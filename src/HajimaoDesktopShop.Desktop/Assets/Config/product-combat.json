@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "products": [
+    { "productId": "water", "basePower": 12, "attackIntervalTicks": 28, "revenueModifierPermille": 1000, "effect": "none", "effectStrengthPermille": 0, "tags": ["liquid", "basic"], "dropWeight": 150 },
+    { "productId": "soda", "basePower": 15, "attackIntervalTicks": 27, "revenueModifierPermille": 1010, "effect": "splash", "effectStrengthPermille": 160, "tags": ["liquid", "sweet"], "dropWeight": 135 },
+    { "productId": "coffee_beans", "basePower": 23, "attackIntervalTicks": 34, "revenueModifierPermille": 1060, "effect": "bonusDrop", "effectStrengthPermille": 90, "tags": ["dry", "aromatic"], "dropWeight": 75 },
+    { "productId": "green_tea", "basePower": 14, "attackIntervalTicks": 24, "revenueModifierPermille": 1020, "effect": "slow", "effectStrengthPermille": 120, "tags": ["liquid", "tea"], "dropWeight": 128 },
+    { "productId": "cold_brew", "basePower": 22, "attackIntervalTicks": 30, "revenueModifierPermille": 1080, "effect": "slow", "effectStrengthPermille": 180, "tags": ["liquid", "cold"], "dropWeight": 82 },
+    { "productId": "tea_bottle", "basePower": 16, "attackIntervalTicks": 25, "revenueModifierPermille": 1030, "effect": "none", "effectStrengthPermille": 0, "tags": ["liquid", "tea", "bottle"], "dropWeight": 122 },
+    { "productId": "juice", "basePower": 21, "attackIntervalTicks": 29, "revenueModifierPermille": 1070, "effect": "splash", "effectStrengthPermille": 200, "tags": ["liquid", "fruit"], "dropWeight": 88 },
+    { "productId": "sparkling_water", "basePower": 17, "attackIntervalTicks": 26, "revenueModifierPermille": 1040, "effect": "splash", "effectStrengthPermille": 140, "tags": ["liquid", "fizzy"], "dropWeight": 116 },
+    { "productId": "oat_latte", "basePower": 25, "attackIntervalTicks": 31, "revenueModifierPermille": 1110, "effect": "bonusDrop", "effectStrengthPermille": 110, "tags": ["liquid", "creamy"], "dropWeight": 68 },
+    { "productId": "coconut_water", "basePower": 19, "attackIntervalTicks": 27, "revenueModifierPermille": 1050, "effect": "slow", "effectStrengthPermille": 100, "tags": ["liquid", "tropical"], "dropWeight": 101 },
+    { "productId": "chips", "basePower": 18, "attackIntervalTicks": 23, "revenueModifierPermille": 1025, "effect": "splash", "effectStrengthPermille": 120, "tags": ["crunchy", "salty"], "dropWeight": 130 },
+    { "productId": "chocolate", "basePower": 26, "attackIntervalTicks": 32, "revenueModifierPermille": 1090, "effect": "slow", "effectStrengthPermille": 150, "tags": ["sweet", "dense"], "dropWeight": 78 },
+    { "productId": "cookies", "basePower": 24, "attackIntervalTicks": 27, "revenueModifierPermille": 1075, "effect": "splash", "effectStrengthPermille": 180, "tags": ["sweet", "crumbly"], "dropWeight": 86 },
+    { "productId": "energy_bar", "basePower": 29, "attackIntervalTicks": 35, "revenueModifierPermille": 1120, "effect": "none", "effectStrengthPermille": 0, "tags": ["dense", "protein"], "dropWeight": 62 },
+    { "productId": "rice_crackers", "basePower": 15, "attackIntervalTicks": 21, "revenueModifierPermille": 1015, "effect": "splash", "effectStrengthPermille": 100, "tags": ["crunchy", "rice"], "dropWeight": 142 },
+    { "productId": "trail_mix", "basePower": 28, "attackIntervalTicks": 30, "revenueModifierPermille": 1100, "effect": "bonusDrop", "effectStrengthPermille": 140, "tags": ["dry", "protein"], "dropWeight": 66 },
+    { "productId": "gummy_candy", "basePower": 13, "attackIntervalTicks": 20, "revenueModifierPermille": 1005, "effect": "slow", "effectStrengthPermille": 90, "tags": ["sweet", "sticky"], "dropWeight": 148 },
+    { "productId": "popcorn", "basePower": 16, "attackIntervalTicks": 22, "revenueModifierPermille": 1035, "effect": "splash", "effectStrengthPermille": 220, "tags": ["light", "sweet"], "dropWeight": 124 },
+    { "productId": "wasabi_peas", "basePower": 27, "attackIntervalTicks": 29, "revenueModifierPermille": 1085, "effect": "none", "effectStrengthPermille": 0, "tags": ["spicy", "crunchy"], "dropWeight": 72 },
+    { "productId": "dried_mango", "basePower": 20, "attackIntervalTicks": 25, "revenueModifierPermille": 1065, "effect": "bonusDrop", "effectStrengthPermille": 100, "tags": ["fruit", "sticky"], "dropWeight": 94 },
+    { "productId": "instant_noodles", "basePower": 31, "attackIntervalTicks": 38, "revenueModifierPermille": 1140, "effect": "splash", "effectStrengthPermille": 240, "tags": ["dense", "meal"], "dropWeight": 58 },
+    { "productId": "cereal", "basePower": 22, "attackIntervalTicks": 26, "revenueModifierPermille": 1072, "effect": "bonusDrop", "effectStrengthPermille": 125, "tags": ["dry", "grain"], "dropWeight": 84 },
+    { "productId": "rice", "basePower": 35, "attackIntervalTicks": 40, "revenueModifierPermille": 1180, "effect": "none", "effectStrengthPermille": 0, "tags": ["heavy", "rice"], "dropWeight": 48 },
+    { "productId": "pasta", "basePower": 30, "attackIntervalTicks": 33, "revenueModifierPermille": 1130, "effect": "slow", "effectStrengthPermille": 170, "tags": ["dry", "meal"], "dropWeight": 56 }
+  ]
+}

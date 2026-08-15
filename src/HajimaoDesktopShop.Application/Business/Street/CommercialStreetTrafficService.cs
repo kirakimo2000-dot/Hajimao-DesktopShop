@@ -14,7 +14,7 @@ public sealed class CommercialStreetTrafficService
     }
 
     public CommercialStreetSnapshot CreateSnapshot(
-        long gameMinute,
+        long activeRuntimeTick,
         int playerLevel,
         IEnumerable<StreetStoreDemand> storeDemands)
     {
@@ -23,7 +23,7 @@ public sealed class CommercialStreetTrafficService
         ArgumentOutOfRangeException.ThrowIfLessThan(playerLevel, 1);
         var tier = CommercialStreetTrafficModel.GetTierForStorefrontCount(stores.Length);
 
-        var weather = CommercialStreetTrafficModel.GetWeather(gameMinute);
+        var weather = CommercialStreetTrafficModel.GetWeather(activeRuntimeTick);
         var traffic = CommercialStreetTrafficModel.CalculateSharedTrafficBasisPoints(
             stores.Max(store => store.AttractionBasisPoints),
             stores.Length,
@@ -53,9 +53,7 @@ public sealed class CommercialStreetTrafficService
             weather,
             traffic,
             CommercialStreetTrafficModel.GetVisiblePedestrianCount(traffic),
-            CommercialStreetTrafficModel.GetVisibleVehicleCount(
-                checked((int)(gameMinute % 1_440L)),
-                weather),
+            CommercialStreetTrafficModel.GetVisibleVehicleCount(traffic, weather),
             Array.AsReadOnly(snapshots),
             CommercialStreetTrafficModel.GetVisitorOpportunityCount(stores.Length));
     }

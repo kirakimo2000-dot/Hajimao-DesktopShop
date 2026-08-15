@@ -15,7 +15,6 @@ public sealed record StoreFormatDefinition
         int queueSensitivityPermille,
         int cleanlinessSensitivityPermille,
         int inventoryCapacityPermille,
-        string timeProfile,
         IReadOnlyDictionary<string, int> productShelfWeights,
         StorePricingPreset recommendedPricing,
         StoreStockingPreset recommendedStocking)
@@ -49,11 +48,6 @@ public sealed record StoreFormatDefinition
             throw new ArgumentOutOfRangeException(nameof(baseDemandPermille));
         }
 
-        if (string.IsNullOrWhiteSpace(timeProfile))
-        {
-            throw new ArgumentException("Store time profile is required.", nameof(timeProfile));
-        }
-
         ArgumentNullException.ThrowIfNull(productShelfWeights);
         var requiredShelfKinds = new[] { "ambient", "chilled", "frozen" };
         if (productShelfWeights.Count != requiredShelfKinds.Length
@@ -74,7 +68,6 @@ public sealed record StoreFormatDefinition
         QueueSensitivityPermille = queueSensitivityPermille;
         CleanlinessSensitivityPermille = cleanlinessSensitivityPermille;
         InventoryCapacityPermille = inventoryCapacityPermille;
-        TimeProfile = timeProfile.Trim();
         ProductShelfWeights = new Dictionary<string, int>(productShelfWeights, StringComparer.Ordinal);
         RecommendedPricing = recommendedPricing;
         RecommendedStocking = recommendedStocking;
@@ -90,7 +83,6 @@ public sealed record StoreFormatDefinition
     public int QueueSensitivityPermille { get; }
     public int CleanlinessSensitivityPermille { get; }
     public int InventoryCapacityPermille { get; }
-    public string TimeProfile { get; }
     public IReadOnlyDictionary<string, int> ProductShelfWeights { get; }
     public StorePricingPreset RecommendedPricing { get; }
     public StoreStockingPreset RecommendedStocking { get; }

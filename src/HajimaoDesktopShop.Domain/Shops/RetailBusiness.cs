@@ -154,4 +154,14 @@ public sealed class RetailBusiness
         shop.RecordWagePayment(charged);
         return new WagePaymentResult(WagePaymentStatus.Success, charged);
     }
+
+    public void RecordCustomerServiceRevenue(ShopId shopId, Money revenue)
+    {
+        if (!_stores.TryGetValue(shopId, out var shop))
+        {
+            throw new KeyNotFoundException($"Store '{shopId.Value}' is not open.");
+        }
+
+        shop.RecordCustomerServiceRevenue(revenue);
+    }
 }
