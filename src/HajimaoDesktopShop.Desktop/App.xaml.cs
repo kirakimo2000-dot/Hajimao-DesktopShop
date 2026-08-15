@@ -101,6 +101,11 @@ public partial class App : System.Windows.Application
                 combatContent: combatContent);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
+            await saveStore.SaveGameAsync(_session.CaptureSaveData());
+            ReportDiagnostic(
+                "persistence.initial_save.completed",
+                GameDiagnosticLevel.Information,
+                "Initial game state saved before desktop UI initialization.");
             _viewModel = new MarketViewModel(
                 _session,
                 reduceMotion: () => !SystemParameters.ClientAreaAnimation);
@@ -131,7 +136,6 @@ public partial class App : System.Windows.Application
                 saveStore,
                 () => _session.CaptureSaveData(),
                 CaptureDesktopWindowPlacement);
-            await _autosaveCoordinator.FlushAsync();
 
             _simulationLoop = new SimulationLoop(
                 () => _session.AdvanceCombatRealSecond(DateTimeOffset.Now.Hour),

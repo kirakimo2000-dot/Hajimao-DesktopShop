@@ -77,7 +77,7 @@ public sealed class ProductIdentityTests
     }
 
     [Fact]
-    public void Startup_FlushesInitialSaveBeforeStartingAutosaveTimer()
+    public void Startup_WritesInitialSaveBeforeCreatingUiAndStartingCombat()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null
@@ -92,26 +92,26 @@ public sealed class ProductIdentityTests
             "src",
             "HajimaoDesktopShop.Desktop",
             "App.xaml.cs"));
-        var coordinatorIndex = startupSource.IndexOf(
-            "_autosaveCoordinator = new AutosaveCoordinator",
+        var sessionStartIndex = startupSource.IndexOf(
+            "ReportSessionStart(sessionStart)",
             StringComparison.Ordinal);
-        var initialFlushIndex = startupSource.IndexOf(
-            "await _autosaveCoordinator.FlushAsync()",
-            coordinatorIndex,
+        var initialSaveIndex = startupSource.IndexOf(
+            "await saveStore.SaveGameAsync(_session.CaptureSaveData())",
+            sessionStartIndex,
             StringComparison.Ordinal);
-        var timerIndex = startupSource.IndexOf(
-            "_autosaveTimer = new DispatcherTimer",
-            coordinatorIndex,
+        var viewModelIndex = startupSource.IndexOf(
+            "_viewModel = new MarketViewModel",
+            sessionStartIndex,
             StringComparison.Ordinal);
         var simulationStartIndex = startupSource.IndexOf(
             "_simulationLoop.Start()",
-            coordinatorIndex,
+            sessionStartIndex,
             StringComparison.Ordinal);
 
-        Assert.True(coordinatorIndex >= 0);
-        Assert.True(initialFlushIndex > coordinatorIndex);
-        Assert.True(simulationStartIndex > initialFlushIndex);
-        Assert.True(timerIndex > initialFlushIndex);
+        Assert.True(sessionStartIndex >= 0);
+        Assert.True(initialSaveIndex > sessionStartIndex);
+        Assert.True(viewModelIndex > initialSaveIndex);
+        Assert.True(simulationStartIndex > initialSaveIndex);
     }
 
     [Fact]

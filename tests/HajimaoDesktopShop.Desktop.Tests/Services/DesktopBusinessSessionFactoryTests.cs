@@ -2,6 +2,7 @@ using System.IO;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.StorePortfolio;
 using HajimaoDesktopShop.Desktop.Services;
+using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Infrastructure.Configuration;
 using HajimaoDesktopShop.Infrastructure.Persistence;
 
@@ -39,6 +40,8 @@ public sealed class DesktopBusinessSessionFactoryTests
             storeContent,
             starterStoreProposal: proposal,
             combatContent: combat).Session;
+        var market = new MarketViewModel(session);
+        Assert.Equal("corner-store", market.SelectedStoreId);
         var tempRoot = Path.Combine(Path.GetTempPath(), $"hajimao-initial-save-{Guid.NewGuid():N}");
         try
         {
