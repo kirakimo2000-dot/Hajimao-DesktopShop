@@ -2,6 +2,7 @@ using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Application.Simulation;
 using HajimaoDesktopShop.Application.Business.Simulation;
 using HajimaoDesktopShop.Application.Business.Events;
+using HajimaoDesktopShop.Application.Business.Procurement;
 using HajimaoDesktopShop.Infrastructure.Persistence;
 using HajimaoDesktopShop.Domain.Employees;
 using Microsoft.Data.Sqlite;
@@ -71,7 +72,9 @@ public sealed class SqliteGameSaveStoreTests
         Assert.NotNull(migrated);
         Assert.Equal(GameSaveSchema.CurrentVersion, migrated.SchemaVersion);
         Assert.Equal(88, migrated.Simulation.GameMinute);
-        Assert.Equal(7, Assert.Single(migrated.Shop.Products).Quantity);
+        Assert.Equal(0, Assert.Single(migrated.Shop.Products).Quantity);
+        Assert.Equal(2, migrated.Combat!.Collection.Entries.Single().MasteryLevel);
+        Assert.Equal(4, migrated.Combat.Collection.Entries.Single().StoredCopies);
 
         await using var connection = new SqliteConnection($"Data Source={database.Path};Pooling=False");
         await connection.OpenAsync();
@@ -94,7 +97,9 @@ public sealed class SqliteGameSaveStoreTests
         Assert.NotNull(migrated);
         Assert.Equal(GameSaveSchema.CurrentVersion, migrated.SchemaVersion);
         Assert.Equal(51_250, migrated.Shop.CashCents);
-        Assert.Equal(7, Assert.Single(migrated.Shop.Products).Quantity);
+        Assert.Equal(0, Assert.Single(migrated.Shop.Products).Quantity);
+        Assert.Equal(2, migrated.Combat!.Collection.Entries.Single().MasteryLevel);
+        Assert.Equal(4, migrated.Combat.Collection.Entries.Single().StoredCopies);
         Assert.Equal(88, migrated.Simulation.GameMinute);
         Assert.Equal(4, migrated.Simulation.CompletedSales);
         Assert.Null(migrated.Business);
@@ -107,7 +112,7 @@ public sealed class SqliteGameSaveStoreTests
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
         Assert.Equal(GameSaveSchema.CurrentVersion, reader.GetInt32(0));
-        Assert.Contains("\"schemaVersion\":7", reader.GetString(1), StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\":8", reader.GetString(1), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,11 +143,10 @@ public sealed class SqliteGameSaveStoreTests
         Assert.NotNull(migrated);
         Assert.Equal(GameSaveSchema.CurrentVersion, migrated.SchemaVersion);
         var simulation = Assert.IsType<BusinessSimulationSaveData>(migrated.BusinessSimulation);
-        var employee = Assert.Single(simulation.Employees);
-        Assert.Equal(0, employee.TrainingLevel);
-        Assert.Equal(1_000, employee.EnergyPermille);
-        Assert.Equal(700, employee.SatisfactionPermille);
-        Assert.True(employee.IsAlwaysOn);
+        Assert.Empty(simulation.Employees);
+        var employee = Assert.Single(migrated.Combat!.Compatibility.Employees);
+        Assert.Equal("cashier", employee.EmployeeId);
+        Assert.Equal("maomao-default", employee.CharacterId);
         Assert.Null(simulation.EmployeeOperations);
     }
 
@@ -159,7 +163,9 @@ public sealed class SqliteGameSaveStoreTests
         var business = Assert.IsType<BusinessSaveData>(migrated.Business);
         var store = Assert.Single(business.Stores);
         Assert.Equal(51_250, business.CashCents);
-        Assert.Equal(7, Assert.Single(store.Products).Quantity);
+        Assert.Equal(0, Assert.Single(store.Products).Quantity);
+        Assert.Equal(2, migrated.Combat!.Collection.Entries.Single().MasteryLevel);
+        Assert.Equal(4, migrated.Combat.Collection.Entries.Single().StoredCopies);
         Assert.Equal(0, store.OperatingCostCents);
         Assert.Null(store.Development);
         Assert.Empty(business.Promotions ?? []);
@@ -188,6 +194,39 @@ public sealed class SqliteGameSaveStoreTests
         Assert.Equal(1, store.StreetOrdinal);
         Assert.Equal(51_250, migrated.Business!.CashCents);
         Assert.Equal(88, migrated.BusinessSimulation!.GameMinute);
+    }
+
+    [Fact]
+    public async Task VersionSevenSave_MigratesToCombatAndRefundsProcurementExactlyOnce()
+    {
+        using var database = new TemporaryDatabase();
+        await CreateVersionSevenDatabaseAsync(database.Path);
+        var store = new SqliteGameSaveStore(database.Path);
+
+        var migrated = await store.LoadGameAsync();
+
+        Assert.NotNull(migrated);
+        Assert.Equal(8, migrated.SchemaVersion);
+        Assert.NotNull(migrated.Combat);
+        Assert.Equal(51_650, migrated.Shop.CashCents);
+        Assert.Equal(51_650, migrated.Business!.CashCents);
+        Assert.Empty(migrated.Business.Procurement!.PendingOrders);
+        Assert.Empty(migrated.Business.Procurement.AutoRestockPolicies);
+        Assert.All(migrated.Business.Stores.SelectMany(item => item.Products), product => Assert.Equal(0, product.Quantity));
+        Assert.Equal(0, Assert.Single(migrated.Business.Stores).Development!.ShelfLevel);
+        Assert.Empty(migrated.BusinessSimulation!.Employees);
+
+        var water = migrated.Combat.Collection.Entries.Single(entry => entry.ProductId == "water");
+        Assert.Equal(2, water.MasteryLevel);
+        Assert.Equal(4, water.StoredCopies);
+        Assert.Single(migrated.Combat.Loadouts);
+        Assert.Single(migrated.Combat.Stores);
+        Assert.Contains(
+            migrated.Combat.Compatibility.Employees,
+            employee => employee.EmployeeId == "cashier" && employee.CharacterId == "maomao-default");
+
+        var loadedAgain = await store.LoadGameAsync();
+        Assert.Equal(51_650, loadedAgain!.Business!.CashCents);
     }
 
     private static GameSaveData CreateSave() =>
@@ -555,6 +594,59 @@ public sealed class SqliteGameSaveStoreTests
             PRAGMA user_version = 6;
             """;
         command.Parameters.AddWithValue("$payload", payloadNode.ToJsonString());
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task CreateVersionSevenDatabaseAsync(string path)
+    {
+        var current = CreateSave();
+        var order = new ProcurementOrderSaveData(
+            1,
+            "corner-store",
+            "water",
+            "regional-distributor",
+            4,
+            100,
+            20,
+            ProcurementOrderStatus.InTransit,
+            IsAutomatic: false);
+        var legacy = current with
+        {
+            SchemaVersion = 7,
+            Business = current.Business! with
+            {
+                Procurement = new BusinessProcurementSaveData(
+                    2,
+                    [order],
+                    [new AutoRestockPolicySaveData(
+                        "corner-store", "water", true, 4, 10, "regional-distributor", true)])
+            }
+        };
+        var payload = JsonSerializer.Serialize(
+            legacy,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        await using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE game_save (
+                slot INTEGER NOT NULL PRIMARY KEY CHECK(slot = 1),
+                schema_version INTEGER NOT NULL,
+                saved_at_utc TEXT NOT NULL,
+                payload_json TEXT NOT NULL
+            );
+            CREATE TABLE desktop_window (
+                slot INTEGER NOT NULL PRIMARY KEY CHECK(slot = 1),
+                left_px REAL NOT NULL,
+                top_px REAL NOT NULL,
+                is_locked INTEGER NOT NULL CHECK(is_locked IN (0, 1))
+            );
+            INSERT INTO game_save(slot, schema_version, saved_at_utc, payload_json)
+            VALUES(1, 7, '2026-08-03T13:00:00.0000000+00:00', $payload);
+            PRAGMA user_version = 7;
+            """;
+        command.Parameters.AddWithValue("$payload", payload);
         await command.ExecuteNonQueryAsync();
     }
 

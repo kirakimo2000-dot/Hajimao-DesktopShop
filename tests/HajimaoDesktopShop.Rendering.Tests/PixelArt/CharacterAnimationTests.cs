@@ -6,15 +6,14 @@ public sealed class CharacterAnimationTests
 {
     [Theory]
     [InlineData(0, 0)]
-    [InlineData(1, 0)]
-    [InlineData(2, 0)]
-    [InlineData(3, 1)]
-    [InlineData(21, 7)]
-    [InlineData(22, 7)]
+    [InlineData(1, 1)]
+    [InlineData(7, 7)]
+    [InlineData(8, 0)]
+    [InlineData(16, 0)]
     [InlineData(23, 7)]
     [InlineData(24, 0)]
     [InlineData(-1, 7)]
-    public void CelIndex_MapsTwentyFourFrameTimelineToEightStoredCels(
+    public void CelIndex_PlaysEveryStoredPoseWithinTheTwentyFourFrameTimeline(
         long presentationFrame,
         int expected)
     {

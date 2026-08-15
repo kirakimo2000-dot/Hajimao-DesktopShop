@@ -6,7 +6,6 @@ using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
 using HajimaoDesktopShop.Rendering;
-using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
@@ -28,8 +27,21 @@ public sealed class DesktopShopWindowRenderingTests
         Assert.True(nextHandlerStart > handlerStart);
         var dragHandler = source[handlerStart..nextHandlerStart];
         Assert.Contains("DragMove();", dragHandler, StringComparison.Ordinal);
-        Assert.Contains("SnapAboveTaskbarIfNear();", dragHandler, StringComparison.Ordinal);
+        Assert.Contains("AdjustAfterDrag();", dragHandler, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplySurfaceLayout", dragHandler, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DragAndNavigation_ConstrainTheResizedSurfaceToTheCurrentWorkArea()
+    {
+        var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
+
+        Assert.Contains("private void AdjustAfterDrag()", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "DesktopWindowPlacementPolicy.ConstrainToWorkArea",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("private void SnapAboveTaskbarIfNear()", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -53,10 +65,40 @@ public sealed class DesktopShopWindowRenderingTests
         Assert.Contains("<Setter Property=\"MinWidth\" Value=\"44\"", xaml, StringComparison.Ordinal);
         Assert.Contains("FontSize=\"12\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"点击店铺进入\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"IdleFeedbackBar\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding IdleFeedback.SessionProfitShortText}\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("DayCountdown", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StreetSurface_HidesTasksAndPlacesSpecialEventsAtTheTop()
+    {
+        var xaml = File.ReadAllText(FindDesktopShopWindowPath());
+
+        Assert.DoesNotContain(
+            "Text=\"{Binding IdleFeedback.RecentActivityText}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Text=\"{Binding IdleFeedback.MilestoneProgressText}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Value=\"{Binding IdleFeedback.MilestoneProgressPercent, Mode=OneWay}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Text=\"{Binding IdleFeedback.GoalText}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StreetEventPopup\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("VerticalAlignment=\"Top\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Panel.ZIndex=\"2\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"特殊事件\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding EventTicker.Text}\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -92,7 +134,7 @@ public sealed class DesktopShopWindowRenderingTests
                 UiSnapshotRenderer.Render(window, 248, 180, "desktop-street.png");
 
                 var storePage = Assert.IsType<Grid>(root.FindName("StorePage"));
-                var surface = Assert.IsType<BusinessDesktopShopSurfaceControl>(root.FindName("StoreSurface"));
+                var surface = Assert.IsType<CombatDesktopShopSurfaceControl>(root.FindName("StoreSurface"));
                 Assert.True(surface.UsesLogicalPixelScaling);
                 Assert.Equal(System.Windows.Visibility.Collapsed, storePage.Visibility);
 
@@ -143,43 +185,6 @@ public sealed class DesktopShopWindowRenderingTests
 
                 management.Close();
                 desktop.Close();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(15)), "WPF verification thread timed out.");
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
-    }
-
-    [Fact]
-    public void SelectShopObject_OpensReadOnlyOverviewAndRequestsManagementWindow()
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                var viewModel = new MarketViewModel(MarketTestSession.Create());
-                var window = new DesktopShopWindow(viewModel);
-                var requestCount = 0;
-                window.OpenManagementRequested += (_, _) => requestCount++;
-
-                window.SelectShopObject(new BusinessShopInteractionTarget(
-                    BusinessShopInteractionKind.Shelf,
-                    "ambient",
-                    new LogicalPixelRect(0, 0, 1, 1)));
-
-                Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
-                Assert.Equal("常温货架", viewModel.SelectedShopObject?.Title);
-                Assert.Equal(1, requestCount);
-                window.Close();
             }
             catch (Exception exception)
             {

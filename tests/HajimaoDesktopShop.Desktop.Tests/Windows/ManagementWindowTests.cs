@@ -9,7 +9,6 @@ using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.Windows;
 using HajimaoDesktopShop.Rendering;
-using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
@@ -50,9 +49,9 @@ public sealed class ManagementWindowTests
     {
         var xaml = File.ReadAllText(FindManagementWindowPath());
 
-        Assert.Contains("Text=\"本店表现\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"主要原因\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"下一项投资\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"累计战果\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"当前状态\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"下一家店\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Economy.PerformanceHeadlineText}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Economy.PerformanceDetailText}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Economy.ReasonHeadlineText}\"", xaml, StringComparison.Ordinal);
@@ -80,13 +79,12 @@ public sealed class ManagementWindowTests
         Assert.DoesNotContain("Background=\"#", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Foreground=\"#", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("BorderBrush=\"#", xaml, StringComparison.Ordinal);
-        Assert.Equal(6, CountOccurrences(xaml, "Style=\"{DynamicResource SelectedOptionButton}\""));
-        Assert.Contains("Tag=\"{Binding Strategy.IsBalancedPricing}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Tag=\"{Binding Strategy.IsBalancedStocking}\"", xaml, StringComparison.Ordinal);
+        Assert.Equal(0, CountOccurrences(xaml, "Style=\"{DynamicResource SelectedOptionButton}\""));
+        Assert.Contains("ItemsSource=\"{Binding Loadout.Slots}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Collection.Products}\"", xaml, StringComparison.Ordinal);
 
-        var nextActionIndex = xaml.IndexOf("x:Name=\"NextActionPanel\"", StringComparison.Ordinal);
-        var objectCardIndex = xaml.IndexOf("x:Name=\"SelectedObjectCard\"", StringComparison.Ordinal);
-        Assert.True(nextActionIndex >= 0 && nextActionIndex < objectCardIndex);
+        Assert.Contains("x:Name=\"NextActionPanel\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("SelectedObjectCard", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -117,7 +115,7 @@ public sealed class ManagementWindowTests
                 Assert.Equal(Visibility.Visible, panel.Visibility);
 
                 var action = Assert.IsType<Button>(window.FindName("NextActionButton"));
-                Assert.Equal("看概览", viewModel.NextAction.ActionText);
+                Assert.Equal("查看战斗", viewModel.NextAction.ActionText);
                 Assert.Equal(
                     "NextAction.ActionText",
                     BindingOperations.GetBindingExpression(
@@ -149,6 +147,20 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
+    public void ManagementOverview_LeadsWithCombatIdleRewards()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+
+        Assert.Contains("x:Name=\"IdleRewardPanel\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding IdleFeedback.SessionProfitText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding IdleFeedback.SessionCustomerText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding IdleFeedback.SessionDropText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding IdleFeedback.EscapedCustomerText}\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReportProgress", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"回到挂机街区\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManagementWindow_HasOnlyTheRequiredDesktopControlAndNoStatusOrSpeedText()
     {
         RunOnSta(() =>
@@ -167,7 +179,7 @@ public sealed class ManagementWindowTests
                     3,
                     FindLogicalChildren<Button>(window)
                         .Count(button => Equals(button.Tag, "management-navigation")));
-                var scene = Assert.IsType<BusinessShopSceneControl>(window.FindName("LiveScene"));
+                var scene = Assert.IsType<CombatShopSceneControl>(window.FindName("LiveScene"));
                 Assert.Equal("实时像素店铺场景", AutomationProperties.GetName(scene));
                 Assert.DoesNotContain(
                     FindLogicalChildren<Button>(window),
@@ -175,7 +187,7 @@ public sealed class ManagementWindowTests
                 var desktopControl = Assert.Single(
                     FindLogicalChildren<Button>(window),
                     button => Equals(button.Tag, "desktop-control"));
-                Assert.Equal("切换鼠标穿透", desktopControl.Content);
+                Assert.Equal("鼠标穿透", desktopControl.Content);
                 Assert.Equal(
                     nameof(MarketViewModel.ToggleClickThroughCommand),
                     BindingOperations.GetBindingExpression(
@@ -237,9 +249,8 @@ public sealed class ManagementWindowTests
                     Assert.Contains($"Text=\"{{Binding {property}}}\"", xaml, StringComparison.Ordinal);
                 }
 
-                Assert.IsType<Border>(window.FindName("LatestInvestmentPanel"));
                 Assert.Contains(
-                    "每次只比较稳住弱店、提高回报、扩张街区三种资本用途。",
+                    "从候选店型中选择下一家店；利润方式、客流规模和风险各不相同。",
                     xaml,
                     StringComparison.Ordinal);
                 Assert.DoesNotContain("StoreGrowth.Upgrade", xaml, StringComparison.Ordinal);
@@ -255,12 +266,11 @@ public sealed class ManagementWindowTests
     }
 
     [Fact]
-    public void StrategySection_ShowsConditionalRecoveryAction()
+    public void StrategySection_OnlyExposesLoadoutAndCollectionDecisions()
     {
         RunOnSta(() =>
         {
             var session = MarketTestSession.Create();
-            session.Simulation.AdvanceRealSeconds(1_440);
             var viewModel = new MarketViewModel(session);
             viewModel.NavigateCommand.Execute(ManagementSection.Strategy);
             var window = new ManagementWindow(viewModel);
@@ -271,55 +281,26 @@ public sealed class ManagementWindowTests
                 window.Arrange(new Rect(0, 0, 1180, 720));
                 window.UpdateLayout();
 
-                var recovery = Assert.IsType<Button>(window.FindName("ApplyRecoveryAction"));
-                Assert.Equal("采用保守方案", recovery.Content);
+                var loadout = Assert.IsType<ItemsControl>(window.FindName("StoreLoadoutSlots"));
                 Assert.Equal(
-                    $"{nameof(MarketViewModel.Strategy)}.{nameof(StoreStrategyViewModel.ApplyRecoveryCommand)}",
+                    $"{nameof(MarketViewModel.Loadout)}.{nameof(StoreLoadoutViewModel.Slots)}",
                     BindingOperations.GetBindingExpression(
-                        recovery,
-                        Button.CommandProperty)?.ParentBinding.Path.Path);
-                var recoveryPanel = Assert.IsType<Border>(window.FindName("RecoveryPanel"));
-                Assert.Equal(Visibility.Visible, recoveryPanel.Visibility);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
+                        loadout,
+                        ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path);
+                var collection = Assert.IsType<ItemsControl>(window.FindName("ProductCollectionList"));
+                Assert.Equal(
+                    $"{nameof(MarketViewModel.Collection)}.{nameof(ProductCollectionViewModel.Products)}",
+                    BindingOperations.GetBindingExpression(
+                        collection,
+                        ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path);
 
-    [Fact]
-    public void SelectShopObject_ShowsAccessibleReadOnlyDetailCardInOverview()
-    {
-        RunOnSta(() =>
-        {
-            var viewModel = new MarketViewModel(MarketTestSession.Create());
-            var window = new ManagementWindow(viewModel);
-            try
-            {
-                window.SelectShopObject(new BusinessShopInteractionTarget(
-                    BusinessShopInteractionKind.Employee,
-                    "starter-restocker",
-                    new LogicalPixelRect(0, 0, 1, 1)));
-                window.ApplyTemplate();
-                window.Measure(new Size(1180, 720));
-                window.Arrange(new Rect(0, 0, 1180, 720));
-                window.UpdateLayout();
-
-                Assert.Equal(ManagementSection.Overview, viewModel.SelectedSection);
-                var card = Assert.IsType<Border>(window.FindName("SelectedObjectCard"));
-                Assert.Equal(Visibility.Visible, card.Visibility);
-                Assert.Equal("当前店铺对象详情", AutomationProperties.GetName(card));
-                Assert.Equal("阿澄", viewModel.SelectedShopObject?.Title);
-                Assert.Equal("补货员", viewModel.SelectedShopObject?.CategoryText);
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(card),
-                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                        == $"{nameof(MarketViewModel.SelectedShopObject)}.{nameof(ShopObjectDetailViewModel.Title)}");
-                Assert.Contains(
-                    FindLogicalChildren<TextBlock>(card),
-                    textBlock => BindingOperations.GetBindingExpression(textBlock, TextBlock.TextProperty)?.ParentBinding.Path.Path
-                        == $"{nameof(MarketViewModel.SelectedShopObject)}.{nameof(ShopObjectDetailViewModel.CategoryText)}");
+                var xaml = File.ReadAllText(FindManagementWindowPath());
+                Assert.Contains("Command=\"{Binding Loadout.UseRecommendedLoadoutCommand}\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Command=\"{Binding DataContext.Collection.EquipProductCommand, RelativeSource={RelativeSource AncestorType=Window}}\"", xaml, StringComparison.Ordinal);
+                foreach (var removedTerm in new[] { "当前定价", "当前备货", "补货", "货架", "缺货" })
+                {
+                    Assert.DoesNotContain(removedTerm, xaml, StringComparison.Ordinal);
+                }
             }
             finally
             {

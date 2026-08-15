@@ -30,11 +30,29 @@
     <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Config\store-brands.json"
           Link="TestData\store-brands.json"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\employees\employee-profiles.json"
-          Link="TestData\employee-profiles.json"
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\rigs\humanoid.json"
+          Link="TestData\character-rigs.json"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\events\market-events.json"
-          Link="TestData\market-events.json"
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\animations\humanoid-clips.json"
+          Link="TestData\character-clips.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\skins.json"
+          Link="TestData\character-skins.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Config\product-combat.json"
+          Link="TestData\product-combat.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\customers\customer-archetypes.json"
+          Link="TestData\customer-archetypes.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\customers\customer-spawn-pools.json"
+          Link="TestData\customer-spawn-pools.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\characters.json"
+          Link="TestData\characters.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\interiors\interiors.json"
+          Link="TestData\interiors.json"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

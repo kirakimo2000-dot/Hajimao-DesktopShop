@@ -10,7 +10,7 @@ public sealed class RefreshCadencePolicyTests
     public void GetInterval_UsesDedicatedPresentationCadenceWithoutChangingSimulation(bool managementOpen)
     {
         Assert.Equal(
-            TimeSpan.FromMilliseconds(125),
+            TimeSpan.FromSeconds(1d / 24d),
             RefreshCadencePolicy.GetInterval(managementOpen));
     }
 }

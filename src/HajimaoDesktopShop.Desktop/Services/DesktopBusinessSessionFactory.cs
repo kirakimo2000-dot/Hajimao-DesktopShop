@@ -16,7 +16,8 @@ public static class DesktopBusinessSessionFactory
         DateTimeOffset nowUtc,
         StoreContentCatalog? storeContent = null,
         PeopleMarketContent? peopleMarketContent = null,
-        StoreOpeningProposal? starterStoreProposal = null)
+        StoreOpeningProposal? starterStoreProposal = null,
+        CombatContentCatalog? combatContent = null)
     {
         ArgumentNullException.ThrowIfNull(products);
         if (products.Count == 0)
@@ -36,14 +37,14 @@ public static class DesktopBusinessSessionFactory
                 DesktopGameContent.LevelCurve,
                 DesktopGameContent.StarterStoreId,
                 DesktopGameContent.OpeningCashCents,
-                DesktopGameContent.CreateStarterAssignments(),
+                [],
                 random,
                 DesktopGameContent.SimulationOptions,
                 experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold,
                 storeContent,
                 peopleMarketContent?.EmployeeProfiles,
-                peopleMarketContent?.MarketEvents);
-            ConfigureStarterShifts(newSession);
+                peopleMarketContent?.MarketEvents,
+                combatContent);
             return new DesktopBusinessSessionStartResult(
                 newSession,
                 IsNewGame: true);
@@ -55,13 +56,14 @@ public static class DesktopBusinessSessionFactory
                 DesktopGameContent.LevelCurve,
                 DesktopGameContent.StarterStoreId,
                 save,
-                DesktopGameContent.CreateStarterAssignments(),
+                [],
                 random,
                 DesktopGameContent.SimulationOptions,
                 experiencePerItemSold: DesktopGameContent.ExperiencePerItemSold,
                 storeContent,
                 peopleMarketContent?.EmployeeProfiles,
-                peopleMarketContent?.MarketEvents);
+                peopleMarketContent?.MarketEvents,
+                combatContent);
         return new DesktopBusinessSessionStartResult(
             restoredSession,
             IsNewGame: false);
@@ -99,19 +101,4 @@ public static class DesktopBusinessSessionFactory
         return DesktopGameContent.CreateStarterShops(normalized);
     }
 
-    private static void ConfigureStarterShifts(BusinessSession session)
-    {
-        foreach (var employee in session.Simulation.GetSnapshot().Employees.Employees)
-        {
-            var result = session.Simulation.Employees.SetShift(
-                employee.EmployeeId,
-                DesktopGameContent.StarterShiftStartMinute,
-                DesktopGameContent.StarterShiftEndMinute);
-            if (result.Status != EmployeeCommandStatus.Success)
-            {
-                throw new InvalidOperationException(
-                    $"Starter shift configuration failed for '{employee.EmployeeId}': {result.Status}.");
-            }
-        }
-    }
 }

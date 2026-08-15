@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "clips": [
+    {
+      "id": "maomao-idle", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationY": 0 },
+          { "frame": 6, "translationY": -1 },
+          { "frame": 12, "translationY": 0 },
+          { "frame": 18, "translationY": 1 }
+        ],
+        "head": [
+          { "frame": 0, "rotationDegrees": -1 },
+          { "frame": 12, "rotationDegrees": 1 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "maomao-walk", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationY": 0 },
+          { "frame": 6, "translationY": -1 },
+          { "frame": 12, "translationY": 0 },
+          { "frame": 18, "translationY": -1 }
+        ],
+        "upper-leg-left": [
+          { "frame": 0, "rotationDegrees": -18 },
+          { "frame": 12, "rotationDegrees": 18 }
+        ],
+        "upper-leg-right": [
+          { "frame": 0, "rotationDegrees": 18 },
+          { "frame": 12, "rotationDegrees": -18 }
+        ],
+        "upper-arm-left": [
+          { "frame": 0, "rotationDegrees": 12 },
+          { "frame": 12, "rotationDegrees": -12 }
+        ],
+        "upper-arm-right": [
+          { "frame": 0, "rotationDegrees": -12 },
+          { "frame": 12, "rotationDegrees": 12 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "maomao-wind-up", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "torso": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 18, "rotationDegrees": -8 }
+        ],
+        "upper-arm-right": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 18, "rotationDegrees": -70 }
+        ],
+        "lower-arm-right": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 18, "rotationDegrees": -55 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "maomao-throw", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "torso": [
+          { "frame": 0, "rotationDegrees": -8 },
+          { "frame": 8, "rotationDegrees": 10 },
+          { "frame": 23, "rotationDegrees": 0 }
+        ],
+        "upper-arm-right": [
+          { "frame": 0, "rotationDegrees": -70 },
+          { "frame": 8, "rotationDegrees": 58 },
+          { "frame": 23, "rotationDegrees": 0 }
+        ],
+        "lower-arm-right": [
+          { "frame": 0, "rotationDegrees": -55 },
+          { "frame": 8, "rotationDegrees": 18 },
+          { "frame": 23, "rotationDegrees": 0 }
+        ]
+      },
+      "markers": [
+        { "frame": 8, "id": "release_product" }
+      ]
+    },
+    {
+      "id": "maomao-recovery", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "torso": [
+          { "frame": 0, "rotationDegrees": 10 },
+          { "frame": 23, "rotationDegrees": 0 }
+        ],
+        "upper-arm-right": [
+          { "frame": 0, "rotationDegrees": 58 },
+          { "frame": 23, "rotationDegrees": 0 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "maomao-celebrate", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationY": 0 },
+          { "frame": 8, "translationY": -3 },
+          { "frame": 16, "translationY": 0 }
+        ],
+        "upper-arm-left": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 8, "rotationDegrees": 145 },
+          { "frame": 20, "rotationDegrees": 0 }
+        ],
+        "upper-arm-right": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 8, "rotationDegrees": -145 },
+          { "frame": 20, "rotationDegrees": 0 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "customer-walk", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationY": 0 },
+          { "frame": 6, "translationY": -1 },
+          { "frame": 12, "translationY": 0 },
+          { "frame": 18, "translationY": -1 }
+        ],
+        "upper-leg-left": [
+          { "frame": 0, "rotationDegrees": -14 },
+          { "frame": 12, "rotationDegrees": 14 }
+        ],
+        "upper-leg-right": [
+          { "frame": 0, "rotationDegrees": 14 },
+          { "frame": 12, "rotationDegrees": -14 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "customer-hit", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationX": 0 },
+          { "frame": 4, "translationX": 3 },
+          { "frame": 10, "translationX": -1 },
+          { "frame": 23, "translationX": 0 }
+        ],
+        "torso": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 4, "rotationDegrees": 12 },
+          { "frame": 23, "rotationDegrees": 0 }
+        ]
+      },
+      "markers": []
+    },
+    {
+      "id": "customer-served", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationY": 0 },
+          { "frame": 8, "translationY": -2 },
+          { "frame": 16, "translationY": 0 }
+        ],
+        "head": [
+          { "frame": 0, "rotationDegrees": 0 },
+          { "frame": 8, "rotationDegrees": -8 },
+          { "frame": 16, "rotationDegrees": 8 }
+        ]
+      },
+      "markers": [
+        { "frame": 8, "id": "reward_burst" }
+      ]
+    },
+    {
+      "id": "customer-leave", "rigId": "humanoid-v1", "logicalFrameCount": 24,
+      "boneTracks": {
+        "root": [
+          { "frame": 0, "translationY": 0 },
+          { "frame": 6, "translationY": -1 },
+          { "frame": 12, "translationY": 0 },
+          { "frame": 18, "translationY": -1 }
+        ],
+        "upper-leg-left": [
+          { "frame": 0, "rotationDegrees": 16 },
+          { "frame": 12, "rotationDegrees": -16 }
+        ],
+        "upper-leg-right": [
+          { "frame": 0, "rotationDegrees": -16 },
+          { "frame": 12, "rotationDegrees": 16 }
+        ]
+      },
+      "markers": []
+    }
+  ]
+}

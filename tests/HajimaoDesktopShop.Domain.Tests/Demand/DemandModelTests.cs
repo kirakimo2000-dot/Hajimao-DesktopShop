@@ -5,12 +5,12 @@ namespace HajimaoDesktopShop.Domain.Tests.Demand;
 public sealed class DemandModelTests
 {
     [Fact]
-    public void Arrival_NeutralStoreAtMorningRush_ExplainsTimeBonus()
+    public void Arrival_NeutralStore_HasNoClockAdjustment()
     {
-        var result = DemandModel.CalculateArrival(CreateContext(minuteOfDay: 9 * 60));
+        var result = DemandModel.CalculateArrival(CreateContext());
 
-        Assert.Equal(3_800, result.FinalBasisPoints);
-        Assert.Equal(800, result.TimeAdjustmentBasisPoints);
+        Assert.Equal(3_000, result.FinalBasisPoints);
+        Assert.Equal(0, result.TimeAdjustmentBasisPoints);
         Assert.Equal(0, result.PriceAdjustmentBasisPoints);
         Assert.Equal(0, result.ServiceAdjustmentBasisPoints);
         Assert.Equal(0, result.QueueAdjustmentBasisPoints);
@@ -40,26 +40,12 @@ public sealed class DemandModelTests
             1_000,
             0,
             1_000,
-            900,
             attractionBasisPoints: 650,
             promotionBasisPoints: 1_200));
 
         Assert.Equal(650, result.AttractionAdjustmentBasisPoints);
         Assert.Equal(1_200, result.PromotionAdjustmentBasisPoints);
         Assert.Equal(4_850, result.FinalBasisPoints);
-    }
-
-    [Theory]
-    [InlineData(120, -1_500)]
-    [InlineData(480, 800)]
-    [InlineData(720, 700)]
-    [InlineData(1_080, 1_000)]
-    [InlineData(900, 0)]
-    public void Arrival_TimeOfDayUsesStableWindows(int minuteOfDay, int expectedAdjustment)
-    {
-        var result = DemandModel.CalculateArrival(CreateContext(minuteOfDay: minuteOfDay));
-
-        Assert.Equal(expectedAdjustment, result.TimeAdjustmentBasisPoints);
     }
 
     [Fact]
@@ -84,14 +70,12 @@ public sealed class DemandModelTests
             priceIndexBasisPoints: 30_000,
             servicePermille: 0,
             queueLength: int.MaxValue,
-            cleanlinessPermille: 0,
-            minuteOfDay: 60));
+            cleanlinessPermille: 0));
         var maximum = DemandModel.CalculateArrival(CreateContext(
             baseBasisPoints: 10_000,
             priceIndexBasisPoints: 1,
             servicePermille: 2_000,
-            cleanlinessPermille: 2_000,
-            minuteOfDay: 1_080));
+            cleanlinessPermille: 2_000));
 
         Assert.Equal(0, minimum.FinalBasisPoints);
         Assert.Equal(10_000, maximum.FinalBasisPoints);
@@ -107,7 +91,6 @@ public sealed class DemandModelTests
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateContext(servicePermille: -1));
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateContext(cleanlinessPermille: 2_001));
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateContext(queueLength: -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreateContext(minuteOfDay: 1_440));
     }
 
     [Fact]
@@ -120,14 +103,12 @@ public sealed class DemandModelTests
             1_000,
             0,
             1_000,
-            900,
             sensitivity: new DemandSensitivity(
                 BaseDemandPermille: 1_220,
                 PricePermille: 1_450,
                 ServicePermille: 800,
                 QueuePermille: 1_250,
-                CleanlinessPermille: 800),
-            timeCurve: DemandTimeCurve.AllDayVolume));
+                CleanlinessPermille: 800)));
 
         Assert.Equal(3_660, discount.BaseBasisPoints);
         Assert.True(discount.PriceAdjustmentBasisPoints < neutral.PriceAdjustmentBasisPoints);
@@ -145,34 +126,15 @@ public sealed class DemandModelTests
             800,
             0,
             800,
-            900,
             sensitivity: new DemandSensitivity(
                 BaseDemandPermille: 780,
                 PricePermille: 600,
                 ServicePermille: 1_500,
                 QueuePermille: 900,
-                CleanlinessPermille: 1_500),
-            timeCurve: DemandTimeCurve.AfternoonSelect));
+                CleanlinessPermille: 1_500)));
 
         Assert.True(premium.ServiceAdjustmentBasisPoints < neutral.ServiceAdjustmentBasisPoints);
         Assert.True(premium.CleanlinessAdjustmentBasisPoints < neutral.CleanlinessAdjustmentBasisPoints);
-    }
-
-    [Fact]
-    public void Arrival_CommuterCurveConcentratesDemandAtMorningAndEveningPeaks()
-    {
-        var morning = DemandModel.CalculateArrival(new DemandContext(
-            3_000, 10_000, 1_000, 0, 1_000, 480,
-            timeCurve: DemandTimeCurve.CommuterPeaks));
-        var midday = DemandModel.CalculateArrival(new DemandContext(
-            3_000, 10_000, 1_000, 0, 1_000, 780,
-            timeCurve: DemandTimeCurve.CommuterPeaks));
-        var evening = DemandModel.CalculateArrival(new DemandContext(
-            3_000, 10_000, 1_000, 0, 1_000, 1_080,
-            timeCurve: DemandTimeCurve.CommuterPeaks));
-
-        Assert.True(morning.TimeAdjustmentBasisPoints > midday.TimeAdjustmentBasisPoints);
-        Assert.True(evening.TimeAdjustmentBasisPoints > midday.TimeAdjustmentBasisPoints);
     }
 
     private static DemandContext CreateContext(
@@ -180,13 +142,11 @@ public sealed class DemandModelTests
         int priceIndexBasisPoints = 10_000,
         int servicePermille = 1_000,
         int queueLength = 0,
-        int cleanlinessPermille = 1_000,
-        int minuteOfDay = 900) =>
+        int cleanlinessPermille = 1_000) =>
         new(
             baseBasisPoints,
             priceIndexBasisPoints,
             servicePermille,
             queueLength,
-            cleanlinessPermille,
-            minuteOfDay);
+            cleanlinessPermille);
 }

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "skins": [
+    {
+      "id": "maomao-default",
+      "rigId": "humanoid-v1",
+      "assetPath": "Assets/Content/characters/maomao/parts.png",
+      "parts": {
+        "pelvis": { "sourceX": 76, "sourceY": 10, "width": 9, "height": 16, "pivotX": 4.5, "pivotY": 2 },
+        "torso": { "sourceX": 44, "sourceY": 9, "width": 12, "height": 17, "pivotX": 6, "pivotY": 15 },
+        "head": { "sourceX": 14, "sourceY": 9, "width": 13, "height": 14, "pivotX": 6.5, "pivotY": 12 },
+        "upper-arm-left": { "sourceX": 18, "sourceY": 35, "width": 5, "height": 15, "pivotX": 2.5, "pivotY": 2 },
+        "lower-arm-left": { "sourceX": 48, "sourceY": 36, "width": 5, "height": 12, "pivotX": 2.5, "pivotY": 2 },
+        "hand-left": { "sourceX": 78, "sourceY": 40, "width": 5, "height": 6, "pivotX": 2.5, "pivotY": 3 },
+        "upper-arm-right": { "sourceX": 18, "sourceY": 60, "width": 5, "height": 14, "pivotX": 2.5, "pivotY": 2 },
+        "lower-arm-right": { "sourceX": 47, "sourceY": 60, "width": 6, "height": 13, "pivotX": 3, "pivotY": 2 },
+        "hand-right": { "sourceX": 77, "sourceY": 64, "width": 5, "height": 6, "pivotX": 2.5, "pivotY": 3 },
+        "upper-leg-left": { "sourceX": 18, "sourceY": 84, "width": 5, "height": 14, "pivotX": 2.5, "pivotY": 2 },
+        "lower-leg-left": { "sourceX": 47, "sourceY": 84, "width": 5, "height": 14, "pivotX": 2.5, "pivotY": 2 },
+        "foot-left": { "sourceX": 75, "sourceY": 90, "width": 7, "height": 5, "pivotX": 3.5, "pivotY": 1 },
+        "upper-leg-right": { "sourceX": 105, "sourceY": 84, "width": 5, "height": 14, "pivotX": 2.5, "pivotY": 2 },
+        "lower-leg-right": { "sourceX": 46, "sourceY": 107, "width": 5, "height": 14, "pivotX": 2.5, "pivotY": 2 },
+        "foot-right": { "sourceX": 75, "sourceY": 114, "width": 7, "height": 4, "pivotX": 3.5, "pivotY": 1 }
+      }
+    }
+  ]
+}

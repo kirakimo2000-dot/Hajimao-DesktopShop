@@ -129,6 +129,33 @@ public sealed class BusinessProcurementServiceTests
         Assert.Equal(0, order.RemainingMinutes);
     }
 
+    [Fact]
+    public void Restore_DiscardsStaleAutoRestockPolicyForProductMissingFromStore()
+    {
+        var service = CreateService();
+        var save = service.CaptureSaveData();
+        var stalePolicy = new AutoRestockPolicySaveData(
+            "corner-store",
+            "bread",
+            IsEnabled: true,
+            ReorderPoint: 6,
+            TargetQuantity: 15,
+            PreferredChannelId: "regional-distributor",
+            UseEmergencySupplierWhenOutOfStock: true);
+        var incompatibleSave = save with
+        {
+            Procurement = save.Procurement! with
+            {
+                AutoRestockPolicies = [.. save.Procurement!.AutoRestockPolicies, stalePolicy]
+            }
+        };
+
+        var restored = CreateService(incompatibleSave);
+
+        var policy = Assert.Single(restored.GetProcurementSnapshot().AutoRestockPolicies);
+        Assert.Equal("water", policy.ProductId);
+    }
+
     private static int GetWaterQuantity(BusinessGameService service) =>
         Assert.Single(service.GetSnapshot().Stores).Products.Single(product => product.Id == "water").Quantity;
 

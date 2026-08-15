@@ -12,7 +12,6 @@
       "queueSensitivityPermille": 1000,
       "cleanlinessSensitivityPermille": 1000,
       "inventoryCapacityPermille": 1000,
-      "timeProfile": "steady",
       "productShelfWeights": { "ambient": 1000, "chilled": 1000, "frozen": 1000 },
       "recommendedPricing": "Balanced",
       "recommendedStocking": "Balanced"
@@ -28,7 +27,6 @@
       "queueSensitivityPermille": 1250,
       "cleanlinessSensitivityPermille": 800,
       "inventoryCapacityPermille": 1300,
-      "timeProfile": "all-day-volume",
       "productShelfWeights": { "ambient": 1250, "chilled": 1000, "frozen": 850 },
       "recommendedPricing": "HighTurnover",
       "recommendedStocking": "FullShelves"
@@ -44,7 +42,6 @@
       "queueSensitivityPermille": 900,
       "cleanlinessSensitivityPermille": 1500,
       "inventoryCapacityPermille": 800,
-      "timeProfile": "afternoon-select",
       "productShelfWeights": { "ambient": 750, "chilled": 1250, "frozen": 1400 },
       "recommendedPricing": "HighMargin",
       "recommendedStocking": "Lean"
@@ -60,7 +57,6 @@
       "queueSensitivityPermille": 1800,
       "cleanlinessSensitivityPermille": 900,
       "inventoryCapacityPermille": 900,
-      "timeProfile": "commuter-peaks",
       "productShelfWeights": { "ambient": 1050, "chilled": 1350, "frozen": 500 },
       "recommendedPricing": "Balanced",
       "recommendedStocking": "Balanced"
@@ -76,7 +72,6 @@
       "queueSensitivityPermille": 850,
       "cleanlinessSensitivityPermille": 1450,
       "inventoryCapacityPermille": 850,
-      "timeProfile": "afternoon-select",
       "productShelfWeights": { "ambient": 1150, "chilled": 800, "frozen": 450 },
       "recommendedPricing": "HighMargin",
       "recommendedStocking": "Lean"
@@ -92,7 +87,6 @@
       "queueSensitivityPermille": 1000,
       "cleanlinessSensitivityPermille": 700,
       "inventoryCapacityPermille": 1600,
-      "timeProfile": "all-day-volume",
       "productShelfWeights": { "ambient": 1350, "chilled": 900, "frozen": 1050 },
       "recommendedPricing": "HighTurnover",
       "recommendedStocking": "FullShelves"
@@ -108,7 +102,6 @@
       "queueSensitivityPermille": 800,
       "cleanlinessSensitivityPermille": 1400,
       "inventoryCapacityPermille": 780,
-      "timeProfile": "afternoon-select",
       "productShelfWeights": { "ambient": 1300, "chilled": 600, "frozen": 350 },
       "recommendedPricing": "HighMargin",
       "recommendedStocking": "Lean"
@@ -124,7 +117,6 @@
       "queueSensitivityPermille": 1050,
       "cleanlinessSensitivityPermille": 900,
       "inventoryCapacityPermille": 1200,
-      "timeProfile": "steady",
       "productShelfWeights": { "ambient": 1400, "chilled": 750, "frozen": 650 },
       "recommendedPricing": "Balanced",
       "recommendedStocking": "FullShelves"

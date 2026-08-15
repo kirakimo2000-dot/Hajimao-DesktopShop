@@ -1,157 +1,57 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
-using HajimaoDesktopShop.Application.Business.Investments;
-using HajimaoDesktopShop.Domain.Employees;
+using HajimaoDesktopShop.Application.Business.Combat;
+using HajimaoDesktopShop.Application.Business.StorePortfolio;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
 public sealed class InvestmentCandidateCardViewModel
 {
     internal InvestmentCandidateCardViewModel(
-        CapitalAllocationOption option,
+        StoreOpeningProposal proposal,
         Action<InvestmentCandidateCardViewModel> invest)
     {
-        ArgumentNullException.ThrowIfNull(option);
+        Proposal = proposal ?? throw new ArgumentNullException(nameof(proposal));
         ArgumentNullException.ThrowIfNull(invest);
-        Option = option;
-        InvestCommand = new RelayCommand(() => invest(this), () => Candidate.IsExecutable);
+        InvestCommand = new RelayCommand(
+            () => invest(this),
+            () => Proposal.CashAfterOpeningCents >= 0);
     }
 
-    internal CapitalAllocationOption Option { get; }
+    internal StoreOpeningProposal Proposal { get; }
 
-    internal InvestmentCandidate Candidate => Option.Candidate;
-
-    public string Id => Candidate.Id;
-
-    public string ExecutionStoreId => Option.ExecutionStoreId;
-
-    public string ThesisText => Option.Thesis switch
-    {
-        CapitalAllocationThesis.StabilizeWeakestStore => "稳住弱店",
-        CapitalAllocationThesis.ImproveReturn => "提高回报",
-        CapitalAllocationThesis.ExpandStreet => "扩张街区",
-        _ => Option.Thesis.ToString()
-    };
-
-    public string StoreContextText => Option.StoreName;
-
-    public string TitleText => Candidate.Kind switch
-    {
-        InvestmentKind.Expansion => "扩建店面",
-        InvestmentKind.Shelf => "升级货架",
-        InvestmentKind.Decoration => "店铺装修",
-        InvestmentKind.Employee => $"{Candidate.TargetName} · {RoleText(Candidate.Effect.AddedRole)}",
-        InvestmentKind.OpenStore => $"开设 {Candidate.TargetName}",
-        _ => Candidate.Kind.ToString()
-    };
-
-    public string CostText => $"投入 {FormatMoney(Candidate.Return.CostCents)}";
-
-    public string ExpectedBenefitText => Candidate.Kind == InvestmentKind.OpenStore
-        ? "新店尚无完整经营数据"
-        : Candidate.Return.ExpectedDailyNetBenefitCents switch
-        {
-            > 0 => $"保守估计 +{FormatMoney(Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
-            < 0 => $"保守估计 -{FormatMoney(-Candidate.Return.ExpectedDailyNetBenefitCents)}/经营日",
-            _ => "暂无足够数据"
-        };
-
-    public string PaybackText => Candidate.Kind == InvestmentKind.OpenStore
-        ? "新店日结后评估回本"
-        : Candidate.Return.PaybackDaysTenths is { } payback
-        ? string.Format(CultureInfo.InvariantCulture, "预计 {0:0.0} 天回本", payback / 10m)
-        : "等待经营证据";
-
-    public string CashAfterText => $"投资后现金 {FormatMoney(Candidate.Return.CashAfterInvestmentCents)}";
-
-    public string CashPressureText => Candidate.Return.CashPressure switch
-    {
-        InvestmentCashPressure.Healthy => "现金储备健康",
-        InvestmentCashPressure.Tight => "现金偏紧：不足两个经营周期",
-        InvestmentCashPressure.Critical => "高风险：不足一个经营周期",
-        InvestmentCashPressure.CannotAfford => "无法支付",
-        _ => "缺少完整支出基准"
-    };
-
-    public string EffectText
+    public string Id => $"store:open:{Proposal.ProspectiveStoreId}:{Proposal.BrandId}";
+    public string BrandId => Proposal.BrandId;
+    public string ThesisText => "扩张街区";
+    public string StoreContextText => FormatName(Proposal.FormatId);
+    public string TitleText => $"开设 {Proposal.BrandName}";
+    public string CostText => $"投入 {FormatMoney(Proposal.OpeningCostCents)}";
+    public string ExpectedBenefitText
     {
         get
         {
-            var effects = new List<string>();
-            if (Candidate.Effect.ShelfSlotChange != 0)
-            {
-                effects.Add($"货架位 +{Candidate.Effect.ShelfSlotChange}");
-            }
-
-            if (Candidate.Effect.QueueComfortChange != 0)
-            {
-                effects.Add($"舒适排队 +{Candidate.Effect.QueueComfortChange}");
-            }
-
-            if (Candidate.Effect.InventoryCapacityChangePermille != 0)
-            {
-                effects.Add(string.Format(
-                    CultureInfo.InvariantCulture,
-                    "库存容量 +{0:0}%",
-                    Candidate.Effect.InventoryCapacityChangePermille / 10m));
-            }
-
-            if (Candidate.Effect.AttractionChangeBasisPoints != 0)
-            {
-                effects.Add(string.Format(
-                    CultureInfo.InvariantCulture,
-                    "吸引力 +{0:0.0}%",
-                    Candidate.Effect.AttractionChangeBasisPoints / 100m));
-            }
-
-            if (Candidate.Effect.AddedRole is { } role)
-            {
-                effects.Add(string.Format(
-                    CultureInfo.InvariantCulture,
-                    "新增{0} · 效率 {1:0}%",
-                    RoleText(role),
-                    Candidate.Effect.AddedEfficiencyPermille / 10m));
-            }
-
-            if (Candidate.Effect.StoreCountChange != 0)
-            {
-                effects.Add($"新增店铺 +{Candidate.Effect.StoreCountChange}");
-            }
-
-            return string.Join(" · ", effects);
+            var profile = StoreCombatProfilePolicy.Resolve(Proposal.FormatId);
+            return $"{profile.ProfitStyleText} · {profile.RiskText}";
         }
     }
-
-    public string EstimateConditionText => Candidate.EstimateCondition switch
-    {
-        InvestmentEstimateCondition.QueueLossesRepeat => "前提：排队流失在后续经营日重复出现",
-        InvestmentEstimateCondition.StockLossesRepeat => "前提：缺货流失在后续经营日重复出现",
-        InvestmentEstimateCondition.TrafficConversionStaysStable => "前提：当前进店转化率保持稳定",
-        InvestmentEstimateCondition.RoleBottleneckPersists => "前提：当前岗位瓶颈持续存在",
-        InvestmentEstimateCondition.NewStoreNeedsCompletedDay =>
-            "新店需完成一个经营日后再评估回报",
-        _ => "当前数据不足，暂不估算收益"
-    };
-
-    public string AvailabilityText => Candidate.Availability switch
-    {
-        InvestmentAvailability.InsufficientFunds => "资金不足",
-        InvestmentAvailability.PrerequisiteNotMet => "需先扩建",
-        InvestmentAvailability.LevelLocked => $"需要 Lv.{Candidate.RequiredPlayerLevel}",
-        _ => "可投资"
-    };
-
+    public string PaybackText => "实际回报由挂机招待效率和商品组合决定";
+    public string CashAfterText => $"开店后现金 {FormatMoney(Proposal.CashAfterOpeningCents)}";
+    public string CashPressureText => Proposal.CashAfterOpeningCents < 0
+        ? "现金不足，暂时无法开店"
+        : Proposal.HasRecommendedReserve
+            ? "现金储备健康"
+            : "现金偏紧：建议先继续挂机";
+    public string EffectText => "新增独立战斗店铺 · 共享商品图鉴";
+    public string EstimateConditionText => "新店拥有独立装备组合、客流与累计收益";
+    public string AvailabilityText => Proposal.CashAfterOpeningCents >= 0 ? "可开店" : "资金不足";
     public IRelayCommand InvestCommand { get; }
 
-    private static string RoleText(EmployeeRole? role) => role switch
+    private static string FormatName(string formatId) => formatId switch
     {
-        EmployeeRole.Cashier => "收银员",
-        EmployeeRole.Restocker => "补货员",
-        EmployeeRole.SalesAssistant => "导购员",
-        EmployeeRole.Cleaner => "清洁员",
-        EmployeeRole.Manager => "店长",
-        EmployeeRole.Buyer => "采购员",
-        _ => "员工"
+        "discount" => "折扣店 · 高客流",
+        "premium" => "精品店 · 高收益",
+        "convenience" => "便利店 · 均衡",
+        _ => "新店选择"
     };
 
     private static string FormatMoney(long cents) =>

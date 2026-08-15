@@ -1,5 +1,3 @@
-using HajimaoDesktopShop.Application.Simulation;
-
 namespace HajimaoDesktopShop.Desktop.Services;
 
 public sealed class SimulationLoop : IAsyncDisposable
@@ -10,17 +8,6 @@ public sealed class SimulationLoop : IAsyncDisposable
     private readonly Action<Exception>? _reportFailure;
     private CancellationTokenSource? _cancellation;
     private Task? _loopTask;
-
-    public SimulationLoop(
-        ShopSimulation simulation,
-        TimeSpan? interval = null,
-        Action<Exception>? reportFailure = null)
-        : this(
-            (simulation ?? throw new ArgumentNullException(nameof(simulation))).AdvanceRealSecond,
-            interval,
-            reportFailure)
-    {
-    }
 
     public SimulationLoop(
         Action advanceRealSecond,
