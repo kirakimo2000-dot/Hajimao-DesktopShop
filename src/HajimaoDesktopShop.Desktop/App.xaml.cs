@@ -142,6 +142,7 @@ public partial class App : System.Windows.Application
                 saveStore,
                 () => _session.CaptureSaveData(),
                 CaptureDesktopWindowPlacement);
+            await _autosaveCoordinator.FlushAsync();
             _autosaveTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromSeconds(5)

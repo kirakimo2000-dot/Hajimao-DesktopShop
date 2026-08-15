@@ -77,6 +77,39 @@ public sealed class ProductIdentityTests
     }
 
     [Fact]
+    public void Startup_FlushesInitialSaveBeforeStartingAutosaveTimer()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+        var coordinatorIndex = startupSource.IndexOf(
+            "_autosaveCoordinator = new AutosaveCoordinator",
+            StringComparison.Ordinal);
+        var initialFlushIndex = startupSource.IndexOf(
+            "await _autosaveCoordinator.FlushAsync()",
+            coordinatorIndex,
+            StringComparison.Ordinal);
+        var timerIndex = startupSource.IndexOf(
+            "_autosaveTimer = new DispatcherTimer",
+            coordinatorIndex,
+            StringComparison.Ordinal);
+
+        Assert.True(coordinatorIndex >= 0);
+        Assert.True(initialFlushIndex > coordinatorIndex);
+        Assert.True(timerIndex > initialFlushIndex);
+    }
+
+    [Fact]
     public void StartupFailure_MessageDoesNotMisdiagnoseEveryFailureAsProductCatalogDamage()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
