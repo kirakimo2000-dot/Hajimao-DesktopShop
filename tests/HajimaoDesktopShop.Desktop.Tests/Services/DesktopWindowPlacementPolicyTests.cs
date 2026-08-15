@@ -280,4 +280,45 @@ public sealed class DesktopWindowPlacementPolicyTests
             Assert.Equal(new DesktopPoint(240, expectedTop), point);
         }
     }
+
+    [Theory]
+    [InlineData(-100, -100, 12, 12)]
+    [InlineData(900, -100, 568, 12)]
+    [InlineData(-100, 700, 12, 508)]
+    [InlineData(900, 700, 568, 508)]
+    public void ConstrainToWorkArea_KeepsTheWholeStoreSurfaceVisible(
+        double left,
+        double top,
+        double expectedLeft,
+        double expectedTop)
+    {
+        var constrained = DesktopWindowPlacementPolicy.ConstrainToWorkArea(
+            new DesktopRect(left, top, 420, 280),
+            new DesktopRect(0, 0, 1000, 800),
+            margin: 12);
+
+        Assert.Equal(new DesktopPoint(expectedLeft, expectedTop), constrained);
+    }
+
+    [Fact]
+    public void ConstrainToWorkArea_PreservesNegativeMonitorCoordinates()
+    {
+        var constrained = DesktopWindowPlacementPolicy.ConstrainToWorkArea(
+            new DesktopRect(-2000, 900, 420, 280),
+            new DesktopRect(-1920, 0, 1920, 1040),
+            margin: 12);
+
+        Assert.Equal(new DesktopPoint(-1908, 748), constrained);
+    }
+
+    [Fact]
+    public void ConstrainToWorkArea_CentersAnOversizedSurface()
+    {
+        var constrained = DesktopWindowPlacementPolicy.ConstrainToWorkArea(
+            new DesktopRect(20, 30, 1200, 900),
+            new DesktopRect(0, 0, 1000, 800),
+            margin: 12);
+
+        Assert.Equal(new DesktopPoint(-100, -50), constrained);
+    }
 }

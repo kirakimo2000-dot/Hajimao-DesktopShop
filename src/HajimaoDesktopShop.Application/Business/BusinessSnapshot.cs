@@ -29,13 +29,11 @@ public sealed record BusinessStoreSnapshot(
 
 public sealed record StoreFormatEconomicsSnapshot(
     DemandSensitivity DemandSensitivity,
-    DemandTimeCurve TimeCurve,
     int InventoryCapacityPermille,
     IReadOnlyDictionary<string, int> ProductShelfWeights)
 {
     public static StoreFormatEconomicsSnapshot Neutral { get; } = new(
         DemandSensitivity.Neutral,
-        DemandTimeCurve.Steady,
         1_000,
         new Dictionary<string, int>(StringComparer.Ordinal)
         {

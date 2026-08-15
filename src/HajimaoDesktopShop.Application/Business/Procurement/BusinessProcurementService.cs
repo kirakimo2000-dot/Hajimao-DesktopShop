@@ -55,6 +55,18 @@ internal sealed class BusinessProcurementService
         foreach (var saved in policies)
         {
             ArgumentNullException.ThrowIfNull(saved);
+            if (!string.IsNullOrWhiteSpace(saved.StoreId)
+                && !string.IsNullOrWhiteSpace(saved.ProductId))
+            {
+                var storeId = saved.StoreId.Trim();
+                var productId = saved.ProductId.Trim();
+                if (_stock.ContainsOpenStore(storeId)
+                    && _stock.FindProduct(storeId, productId) is null)
+                {
+                    continue;
+                }
+            }
+
             ConfigureAutoRestock(new AutoRestockPolicy(
                 saved.StoreId,
                 saved.ProductId,

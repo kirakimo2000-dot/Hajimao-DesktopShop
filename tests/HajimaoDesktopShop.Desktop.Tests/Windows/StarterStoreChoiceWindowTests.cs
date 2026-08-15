@@ -13,6 +13,17 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class StarterStoreChoiceWindowTests
 {
     [Fact]
+    public void StarterCards_ShowAVisualStorefrontAndReturnProfileBeforeCopy()
+    {
+        var xaml = File.ReadAllText(FindWindowPath());
+
+        Assert.Contains("x:Name=\"StorefrontPreview\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding ReturnProfileText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding DecisionPromptText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding BrandName}\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Window_RendersThreeAccessibleChoicesWithoutTaskbarEntry()
     {
         RunOnSta(() =>
@@ -46,7 +57,7 @@ public sealed class StarterStoreChoiceWindowTests
                 Assert.Contains("Style=\"{DynamicResource PageTitleText}\"", xaml, StringComparison.Ordinal);
                 Assert.Contains("Style=\"{DynamicResource ChoiceCard}\"", xaml, StringComparison.Ordinal);
                 Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
-                Assert.Contains("Text=\"赚钱方式\"", xaml, StringComparison.Ordinal);
+                Assert.Contains("Text=\"{Binding DecisionPromptText}\"", xaml, StringComparison.Ordinal);
                 Assert.Contains("Text=\"主要风险\"", xaml, StringComparison.Ordinal);
                 Assert.Contains("Text=\"适合你\"", xaml, StringComparison.Ordinal);
                 Assert.Contains("Tag=\"starter-store-choice\"", xaml, StringComparison.Ordinal);

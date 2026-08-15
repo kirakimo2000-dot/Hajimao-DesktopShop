@@ -126,7 +126,7 @@ public sealed class BusinessSessionTests
             new BusinessSimulationOptions(),
             storeContent: content);
 
-        Assert.Equal(7, save.SchemaVersion);
+        Assert.Equal(GameSaveSchema.CurrentVersion, save.SchemaVersion);
         Assert.Equal("aldi", savedStore.StoreBrandId);
         Assert.Equal("discount", savedStore.StoreFormatId);
         Assert.Equal(2, savedStore.StreetOrdinal);
@@ -192,7 +192,6 @@ public sealed class BusinessSessionTests
             900,
             800,
             1_300,
-            "all-day-volume",
             new Dictionary<string, int>
             {
                 ["ambient"] = 1_200,

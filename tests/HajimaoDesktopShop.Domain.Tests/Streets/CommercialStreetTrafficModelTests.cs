@@ -68,9 +68,9 @@ public sealed class CommercialStreetTrafficModelTests
     [InlineData(720, StreetWeather.Rain)]
     [InlineData(1_080, StreetWeather.Wind)]
     [InlineData(1_440, StreetWeather.Clear)]
-    public void GetWeather_UsesDeterministicSixHourPeriods(long gameMinute, StreetWeather expected)
+    public void GetWeather_UsesDeterministicRuntimePeriods(long activeRuntimeTick, StreetWeather expected)
     {
-        Assert.Equal(expected, CommercialStreetTrafficModel.GetWeather(gameMinute));
+        Assert.Equal(expected, CommercialStreetTrafficModel.GetWeather(activeRuntimeTick));
     }
 
     [Fact]
@@ -116,18 +116,18 @@ public sealed class CommercialStreetTrafficModelTests
     }
 
     [Theory]
-    [InlineData(480, StreetWeather.Clear, 2)]
-    [InlineData(720, StreetWeather.Clear, 1)]
-    [InlineData(120, StreetWeather.Clear, 0)]
-    [InlineData(1_020, StreetWeather.Wind, 1)]
-    public void GetVisibleVehicleCount_ReflectsRoadPeriodAndWind(
-        int minuteOfDay,
+    [InlineData(0, StreetWeather.Clear, 0)]
+    [InlineData(5_000, StreetWeather.Clear, 2)]
+    [InlineData(10_000, StreetWeather.Clear, 3)]
+    [InlineData(5_000, StreetWeather.Wind, 1)]
+    public void GetVisibleVehicleCount_ReflectsTrafficAndWeather(
+        int trafficBasisPoints,
         StreetWeather weather,
         int expected)
     {
         Assert.Equal(
             expected,
-            CommercialStreetTrafficModel.GetVisibleVehicleCount(minuteOfDay, weather));
+            CommercialStreetTrafficModel.GetVisibleVehicleCount(trafficBasisPoints, weather));
     }
 
     [Fact]
@@ -142,6 +142,6 @@ public sealed class CommercialStreetTrafficModelTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             CommercialStreetTrafficModel.GetVisiblePedestrianCount(10_001));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            CommercialStreetTrafficModel.GetVisibleVehicleCount(1_440, StreetWeather.Clear));
+            CommercialStreetTrafficModel.GetVisibleVehicleCount(10_001, StreetWeather.Clear));
     }
 }

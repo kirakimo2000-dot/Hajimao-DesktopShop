@@ -7,6 +7,7 @@ obj/
 TestResults/
 coverage/
 artifacts/
+/Hajimao DesktopShop.exe
 logs/
 *.db
 *.db-shm

@@ -65,9 +65,14 @@ public partial class App : System.Windows.Application
             var storeContent = await new JsonStoreContentCatalog(
                 storeFormatsPath,
                 storeBrandsPath).LoadAsync();
-            var peopleMarketContent = await new JsonPeopleMarketCatalog(
-                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "employees", "employee-profiles.json"),
-                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "events", "market-events.json"))
+            var combatContent = await new JsonCombatContentCatalog(
+                catalogPath,
+                storeBrandsPath,
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Config", "product-combat.json"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "customers", "customer-archetypes.json"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "customers", "customer-spawn-pools.json"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "characters", "characters.json"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "interiors", "interiors.json"))
                 .LoadAsync();
             var savePath = ApplicationDataPathPolicy.ResolveSavePath(dataDirectoryOverride);
             var saveStore = new SqliteGameSaveStore(savePath);
@@ -90,24 +95,12 @@ public partial class App : System.Windows.Application
                 savedGame,
                 Environment.TickCount,
                 startupUtc,
-                storeContent,
-                peopleMarketContent,
-                starterStore.Proposal);
+                storeContent: storeContent,
+                peopleMarketContent: null,
+                starterStoreProposal: starterStore.Proposal,
+                combatContent: combatContent);
             _session = sessionStart.Session;
             ReportSessionStart(sessionStart);
-            if (savedGame is null)
-            {
-                var openedStarterStore = _session.Game.GetSnapshot().Stores.Single();
-                foreach (var starter in openedStarterStore.Products.Take(3))
-                {
-                    _session.Game.PlaceProcurementOrder(
-                        openedStarterStore.Id,
-                        starter.Id,
-                        "local-wholesale",
-                        Math.Min(5, starter.Capacity));
-                }
-            }
-
             _viewModel = new MarketViewModel(
                 _session,
                 reduceMotion: () => !SystemParameters.ClientAreaAnimation);
@@ -135,7 +128,7 @@ public partial class App : System.Windows.Application
             _trayIconService.ExitRequested += OnTrayExitRequested;
 
             _simulationLoop = new SimulationLoop(
-                _session.Simulation.AdvanceRealSecond,
+                () => _session.AdvanceCombatRealSecond(DateTimeOffset.Now.Hour),
                 reportFailure: ReportSimulationFailure);
             _simulationLoop.Start();
             _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -165,7 +158,7 @@ public partial class App : System.Windows.Application
                 "Application startup failed.",
                 exception: exception);
             MessageBox.Show(
-                $"{ProductIdentity.DisplayName} 启动失败。\n\n{exception.Message}\n\n请确认 Assets/Config/products.json 完整可读。",
+                $"{ProductIdentity.DisplayName} 启动失败。\n\n{exception.Message}\n\n请保留此错误截图；诊断日志位于本机应用数据目录的 logs 文件夹。",
                 ProductIdentity.StartupErrorTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

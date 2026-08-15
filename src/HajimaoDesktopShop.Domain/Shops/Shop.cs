@@ -252,6 +252,19 @@ public sealed class Shop
         return new SaleResult(SaleStatus.Success, revenue, grossProfit);
     }
 
+    internal void RecordCustomerServiceRevenue(Money revenue)
+    {
+        if (!revenue.IsPositive)
+        {
+            throw new ArgumentOutOfRangeException(nameof(revenue));
+        }
+
+        _wallet.Credit(revenue);
+        TotalRevenue += revenue;
+        TotalGrossProfit += revenue;
+        AddLedger(LedgerEntryType.CustomerService, null, 1, revenue);
+    }
+
     internal void RecordWagePayment(Money amount)
     {
         if (amount.Cents < 0)

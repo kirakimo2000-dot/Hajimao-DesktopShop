@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "pools": [
+    { "id": "morning", "startHourInclusive": 5, "endHourExclusive": 9, "entries": [
+      { "customerId": "early-commuter", "weight": 70 }, { "customerId": "office-worker", "weight": 30 },
+      { "customerId": "senior-neighbor", "weight": 18 }, { "customerId": "delivery-rider", "weight": 12 }
+    ] },
+    { "id": "day", "startHourInclusive": 9, "endHourExclusive": 17, "entries": [
+      { "customerId": "student", "weight": 38 }, { "customerId": "office-worker", "weight": 36 },
+      { "customerId": "tourist", "weight": 24 }, { "customerId": "senior-neighbor", "weight": 28 },
+      { "customerId": "family-shopper", "weight": 10 }
+    ] },
+    { "id": "evening", "startHourInclusive": 17, "endHourExclusive": 22, "entries": [
+      { "customerId": "delivery-rider", "weight": 30 }, { "customerId": "family-shopper", "weight": 34 },
+      { "customerId": "foodie", "weight": 22 }, { "customerId": "bargain-hunter", "weight": 28 },
+      { "customerId": "office-worker", "weight": 18 }
+    ] },
+    { "id": "night", "startHourInclusive": 22, "endHourExclusive": 5, "entries": [
+      { "customerId": "night-owl", "weight": 54 }, { "customerId": "late-shift-worker", "weight": 34 },
+      { "customerId": "delivery-rider", "weight": 18 }, { "customerId": "collector", "weight": 4 }
+    ] }
+  ],
+  "eventModifiers": [
+    { "eventTag": "morning-commute", "customerTag": "commuter", "weightModifierPermille": 1700, "addedWeight": 0 },
+    { "eventTag": "rainy-evening", "customerTag": "delivery", "weightModifierPermille": 400, "addedWeight": 0 },
+    { "eventTag": "rainy-evening", "customerTag": "community", "weightModifierPermille": 700, "addedWeight": 0 },
+    { "eventTag": "school-holiday", "customerTag": "student", "weightModifierPermille": 1900, "addedWeight": 20 },
+    { "eventTag": "office-payday", "customerTag": "office", "weightModifierPermille": 1500, "addedWeight": 12 },
+    { "eventTag": "budget-week", "customerTag": "budget", "weightModifierPermille": 2100, "addedWeight": 20 },
+    { "eventTag": "local-festival", "customerTag": "tourist", "weightModifierPermille": 1800, "addedWeight": 18 },
+    { "eventTag": "night-owls", "customerTag": "night", "weightModifierPermille": 1800, "addedWeight": 12 },
+    { "eventTag": "senior-club-visit", "customerTag": "senior", "weightModifierPermille": 1600, "addedWeight": 16 },
+    { "eventTag": "lost-tour-group", "customerTag": "tourist", "weightModifierPermille": 2400, "addedWeight": 30 },
+    { "eventTag": "quiet-weekday", "customerTag": "elite", "weightModifierPermille": 0, "addedWeight": 0 }
+  ]
+}

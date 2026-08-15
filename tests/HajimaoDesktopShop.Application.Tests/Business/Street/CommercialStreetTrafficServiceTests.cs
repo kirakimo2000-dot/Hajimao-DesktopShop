@@ -12,7 +12,7 @@ public sealed class CommercialStreetTrafficServiceTests
         var service = new CommercialStreetTrafficService(new FixedRandomSource());
 
         var snapshot = service.CreateSnapshot(
-            gameMinute: 720,
+            activeRuntimeTick: 720,
             playerLevel: 5,
             [
                 new StreetStoreDemand("zeta", "街角店", 8_000),
@@ -23,7 +23,7 @@ public sealed class CommercialStreetTrafficServiceTests
         Assert.Equal(StreetWeather.Rain, snapshot.Weather);
         Assert.Equal(6_440, snapshot.SharedTrafficBasisPoints);
         Assert.Equal(4, snapshot.VisiblePedestrians);
-        Assert.Equal(1, snapshot.VisibleVehicles);
+        Assert.Equal(2, snapshot.VisibleVehicles);
         Assert.Equal(2, snapshot.VisitorOpportunities);
         Assert.Collection(
             snapshot.Stores,
@@ -47,7 +47,7 @@ public sealed class CommercialStreetTrafficServiceTests
             .Select(index => new StreetStoreDemand($"store-{index:D4}", $"店铺 {index}", 5_000))
             .ToArray();
 
-        var snapshot = service.CreateSnapshot(gameMinute: 0, playerLevel: 1, stores);
+        var snapshot = service.CreateSnapshot(activeRuntimeTick: 0, playerLevel: 1, stores);
 
         Assert.Equal(CommercialStreetTier.Block, snapshot.Tier);
         Assert.Equal(6, snapshot.Stores.Count);
@@ -93,7 +93,7 @@ public sealed class CommercialStreetTrafficServiceTests
         var service = new CommercialStreetTrafficService(new FixedRandomSource());
 
         var snapshot = service.CreateSnapshot(
-            gameMinute: 0,
+            activeRuntimeTick: 0,
             playerLevel: 1,
             [
                 new StreetStoreDemand("corner", "街角店", 8_000),

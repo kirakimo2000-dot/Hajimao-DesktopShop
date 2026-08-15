@@ -14,24 +14,14 @@ public sealed class PixelSpriteAtlasTests
         Assert.Equal(256, atlas.Bitmap.Width);
         Assert.Equal(256, atlas.Bitmap.Height);
         Assert.InRange(atlas.EncodedByteCount, 1, PixelArtBudget.MaximumAtlasBytes);
-        Assert.Equal(8, atlas.GetFrames(PixelSpriteId.Cashier).Count);
-        Assert.Equal(8, atlas.GetFrames(PixelSpriteId.Restocker).Count);
         Assert.Equal(8, atlas.GetFrames(PixelSpriteId.Customer).Count);
-        Assert.Single(atlas.GetFrames(PixelSpriteId.ShelfAmbient));
-        Assert.Single(atlas.GetFrames(PixelSpriteId.ShelfChilled));
-        Assert.Single(atlas.GetFrames(PixelSpriteId.ShelfFrozen));
         Assert.Equal(10, atlas.ProductFrames.Count);
         Assert.All(
             Enum.GetValues<PixelSpriteId>().SelectMany(atlas.GetFrames),
             frame => Assert.True(atlas.ContainsVisiblePixels(frame)));
         Assert.All(atlas.ProductFrames, frame => Assert.True(atlas.ContainsVisiblePixels(frame)));
         Assert.All(
-            new[]
-            {
-                PixelSpriteId.Cashier,
-                PixelSpriteId.Restocker,
-                PixelSpriteId.Customer
-            }.SelectMany(atlas.GetFrames),
+            new[] { PixelSpriteId.Customer }.SelectMany(atlas.GetFrames),
             frame => Assert.True(CharacterSpriteAudit.Analyze(atlas.Bitmap, frame).IsValid));
     }
 
@@ -44,12 +34,14 @@ public sealed class PixelSpriteAtlasTests
         var frame1 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 1, reduceMotion: false);
         var frame2 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 2, reduceMotion: false);
         var frame3 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 3, reduceMotion: false);
+        var frame8 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 8, reduceMotion: false);
         var frame24 = atlas.GetCharacterFrame(PixelSpriteId.Customer, 24, reduceMotion: false);
         var reduced = atlas.GetCharacterFrame(PixelSpriteId.Customer, 23, reduceMotion: true);
 
-        Assert.Equal(frame0, frame1);
-        Assert.Equal(frame0, frame2);
+        Assert.NotEqual(frame0, frame1);
+        Assert.NotEqual(frame1, frame2);
         Assert.NotEqual(frame0, frame3);
+        Assert.Equal(frame0, frame8);
         Assert.Equal(frame0, frame24);
         Assert.Equal(frame0, reduced);
     }
@@ -92,14 +84,14 @@ public sealed class PixelSpriteAtlasTests
                 canvas.DrawRect(index * 32 + 12, rowY + 10, 8, 20, paint);
             }
         }
-        bitmap.SetPixel(4, 20, SKColors.White);
+        bitmap.SetPixel(4, 100, SKColors.White);
         using var image = SKImage.FromBitmap(bitmap);
         using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = new MemoryStream(encoded.ToArray());
 
         var exception = Assert.Throws<InvalidDataException>(() => PixelSpriteAtlas.Load(stream));
 
-        Assert.Contains("Cashier", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Customer", exception.Message, StringComparison.Ordinal);
         Assert.Contains("cel 0", exception.Message, StringComparison.Ordinal);
     }
 }

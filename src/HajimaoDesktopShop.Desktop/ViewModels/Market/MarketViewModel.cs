@@ -1,17 +1,13 @@
+using System.IO;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HajimaoDesktopShop.Application.Business;
-using HajimaoDesktopShop.Application.Business.Analysis;
-using HajimaoDesktopShop.Application.Business.Investments;
-using HajimaoDesktopShop.Application.Business.Onboarding;
-using HajimaoDesktopShop.Application.Business.Progression;
-using HajimaoDesktopShop.Application.Business.Simulation;
+using HajimaoDesktopShop.Application.Business.Combat;
 using HajimaoDesktopShop.Desktop.ViewModels;
-using HajimaoDesktopShop.Domain.Employees;
-using HajimaoDesktopShop.Rendering;
-using HajimaoDesktopShop.Rendering.Interactions;
+using HajimaoDesktopShop.Domain.Combat;
+using HajimaoDesktopShop.Rendering.Combat;
 
 namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
@@ -24,16 +20,14 @@ public sealed class MarketViewModel : ObservableObject
     private string _selectedStoreName = string.Empty;
     private string _cashText = "¥0.00";
     private string _playerLevelText = "Lv.1";
-    private string _gameTimeText = "第 1 天 00:00";
-    private string _stockWarningText = "缺货/低库存 0";
-    private string _customerCountText = "顾客/队列 0";
+    private string _stockWarningText = "累计收益 ¥0.00";
+    private string _customerCountText = "顾客 0";
     private bool _isLocked;
     private bool _isClickThrough;
     private int _animationFrame;
-    private BusinessShopSceneFrame? _sceneFrame;
-    private BusinessShopFrame? _desktopFrame;
-    private BusinessShopInteractionTarget? _selectedShopTarget;
-    private ShopObjectDetailViewModel? _selectedShopObject;
+    private CombatDesktopShopFrame? _combatDesktopFrame;
+    private string? _combatAnimationCue;
+    private long _combatActionFrame;
 
     public MarketViewModel(
         BusinessSession session,
@@ -42,18 +36,19 @@ public sealed class MarketViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
         _reduceMotion = reduceMotion ?? (() => false);
+        IdleFeedback = new IdleSessionFeedbackViewModel(
+            session.Combat?.GetSnapshot()
+            ?? throw new InvalidOperationException("Combat content is required by the 0.2 desktop experience."));
         NavigateCommand = new RelayCommand<ManagementSection>(Navigate);
         GoToNextActionCommand = new RelayCommand(GoToNextAction);
         SelectStoreCommand = new RelayCommand<StoreNavigationItemViewModel>(SelectStore);
-        SelectShopObjectCommand = new RelayCommand<BusinessShopInteractionTarget>(SelectShopObject);
         ToggleLockCommand = new RelayCommand(ToggleLock);
         ToggleClickThroughCommand = new RelayCommand(ToggleClickThrough);
         DesktopNavigation = new DesktopNavigationViewModel(SelectStoreById);
-        Onboarding = new OnboardingViewModel();
         Economy = new StoreEconomyViewModel();
-        Progression = new LongTermProgressionViewModel();
         NextAction = new NextActionViewModel();
-        Strategy = new StoreStrategyViewModel(session, () => SelectedStoreId);
+        Loadout = new StoreLoadoutViewModel(session, () => SelectedStoreId);
+        Collection = new ProductCollectionViewModel(session, () => SelectedStoreId, Loadout.Equip);
         Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
         CommercialStreet = new CommercialStreetViewModel();
         EventTicker = new MarketEventTickerViewModel();
@@ -64,19 +59,19 @@ public sealed class MarketViewModel : ObservableObject
 
     public StoreEconomyViewModel Economy { get; }
 
-    public LongTermProgressionViewModel Progression { get; }
+    public IdleSessionFeedbackViewModel IdleFeedback { get; }
 
     public NextActionViewModel NextAction { get; }
 
-    public StoreStrategyViewModel Strategy { get; }
+    public StoreLoadoutViewModel Loadout { get; }
+
+    public ProductCollectionViewModel Collection { get; }
 
     public InvestmentPortfolioViewModel Investment { get; }
 
     public CommercialStreetViewModel CommercialStreet { get; }
 
     public MarketEventTickerViewModel EventTicker { get; }
-
-    public OnboardingViewModel Onboarding { get; }
 
     public DesktopNavigationViewModel DesktopNavigation { get; }
 
@@ -85,8 +80,6 @@ public sealed class MarketViewModel : ObservableObject
     public IRelayCommand GoToNextActionCommand { get; }
 
     public IRelayCommand<StoreNavigationItemViewModel> SelectStoreCommand { get; }
-
-    public IRelayCommand<BusinessShopInteractionTarget> SelectShopObjectCommand { get; }
 
     public IRelayCommand ToggleLockCommand { get; }
 
@@ -136,12 +129,6 @@ public sealed class MarketViewModel : ObservableObject
         private set => SetProperty(ref _playerLevelText, value);
     }
 
-    public string GameTimeText
-    {
-        get => _gameTimeText;
-        private set => SetProperty(ref _gameTimeText, value);
-    }
-
     public string StockWarningText
     {
         get => _stockWarningText;
@@ -166,40 +153,15 @@ public sealed class MarketViewModel : ObservableObject
         private set => SetProperty(ref _isClickThrough, value);
     }
 
-    public BusinessShopSceneFrame? SceneFrame
+    public CombatDesktopShopFrame? CombatDesktopFrame
     {
-        get => _sceneFrame;
-        private set => SetProperty(ref _sceneFrame, value);
+        get => _combatDesktopFrame;
+        private set => SetProperty(ref _combatDesktopFrame, value);
     }
-
-    public BusinessShopFrame? DesktopFrame
-    {
-        get => _desktopFrame;
-        private set => SetProperty(ref _desktopFrame, value);
-    }
-
-    public ShopObjectDetailViewModel? SelectedShopObject
-    {
-        get => _selectedShopObject;
-        private set
-        {
-            if (SetProperty(ref _selectedShopObject, value))
-            {
-                OnPropertyChanged(nameof(HasSelectedShopObject));
-            }
-        }
-    }
-
-    public bool HasSelectedShopObject => SelectedShopObject is not null;
 
     public void Refresh()
     {
-        var snapshot = _session.Simulation.GetSnapshot();
-        Onboarding.Refresh(OnboardingProgressService.CreateSnapshot(
-            snapshot,
-            _session.Game.GetProcurementSnapshot(),
-            _session.Investments.HasAnyInvestment,
-            HasComparableInvestmentReturn()));
+        var business = _session.Game.GetSnapshot();
         var storeCatalog = _session.Game.GetStoreCatalogSnapshot();
         SynchronizeStores(storeCatalog);
 
@@ -215,58 +177,67 @@ public sealed class MarketViewModel : ObservableObject
         }
 
         DesktopNavigation.Synchronize(Stores, SelectedStoreId);
+        var combatService = _session.Combat
+            ?? throw new InvalidOperationException("Combat content is required by the 0.2 desktop experience.");
+        var combat = combatService.GetSnapshot();
 
-        CashText = FormatMoney(snapshot.Business.CashCents);
-        PlayerLevelText = $"Lv.{snapshot.Business.PlayerLevel}";
-        GameTimeText = FormatGameTime(snapshot.GameMinute);
+        CashText = FormatMoney(combat.CashCents);
+        PlayerLevelText = $"Lv.{business.PlayerLevel}";
 
-        var store = snapshot.Business.Stores.SingleOrDefault(item => item.Id == SelectedStoreId);
-        var operations = snapshot.Stores.SingleOrDefault(item => item.StoreId == SelectedStoreId);
-        var warningCount = store?.Products.Count(product =>
-            product.Quantity == 0 || product.Quantity * 4 < product.Capacity) ?? 0;
-        StockWarningText = $"缺货/低库存 {warningCount}";
-        CustomerCountText = $"顾客/队列 {operations?.CheckoutQueueLength ?? 0}";
+        StockWarningText = "尚未开店";
+        CustomerCountText = "顾客 —";
         var reduceMotion = _reduceMotion();
-        SceneFrame = new BusinessShopSceneFrame(
-            snapshot,
-            SelectedStoreId,
+        CommercialStreet.Refresh(
+            CombatStreetSnapshotFactory.Create(business, combat),
             reduceMotion ? 0 : _animationFrame,
             reduceMotion);
-        CommercialStreet.Refresh(snapshot.Street, SceneFrame.AnimationFrame, reduceMotion);
-        EventTicker.Update(snapshot.MarketEvents);
         if (!reduceMotion)
         {
             _animationFrame = _animationFrame == int.MaxValue ? 0 : _animationFrame + 1;
         }
-        DesktopFrame = new BusinessShopFrame(
-            SceneFrame,
-            CashText,
-            PlayerLevelText,
-            GameTimeText,
-            StockWarningText,
-            CustomerCountText,
-            IsLocked,
-            IsClickThrough);
-        RefreshSelectedShopObject(snapshot);
-        var analysis = StoreEconomyAnalysisService.Calculate(snapshot, SelectedStoreId);
-        if (analysis is not null)
+        var combatStore = combat.Stores.SingleOrDefault(item => item.StoreId == SelectedStoreId);
+        if (combatStore is null)
         {
-            Economy.Update(analysis);
+            CombatDesktopFrame = null;
+        }
+        else
+        {
+            StockWarningText = $"累计收益 {FormatMoney(combatStore.RevenueCents)}";
+            CustomerCountText = $"顾客 {combatStore.State.Customers.Count}";
+            var relativeBackground = combatService.GetInteriorBackgroundAssetPath(SelectedStoreId)
+                .Replace('/', Path.DirectorySeparatorChar);
+            var backgroundPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativeBackground));
+            var combatScene = new CombatShopSceneFrame(
+                combatStore,
+                backgroundPath,
+                combatService.GetProductIconKeys(SelectedStoreId),
+                ResolveCombatAnimationFrame(combatStore, reduceMotion),
+                reduceMotion);
+            CombatDesktopFrame = new CombatDesktopShopFrame(
+                combatScene,
+                CashText,
+                PlayerLevelText,
+                StockWarningText,
+                CustomerCountText,
+                IsLocked,
+                IsClickThrough);
+        }
+        var loadout = combat.Loadouts.SingleOrDefault(item => item.StoreId == SelectedStoreId);
+        if (combatStore is not null && loadout is not null)
+        {
+            Economy.Update(combatStore, loadout, combat.Collection.Count);
         }
 
-        Progression.Update(
-            LongTermProgressionService.Create(
-                snapshot,
-                storeCatalog,
-                snapshot.Business.Stores
-                    .Select(store => _session.Game.GetStoreGrowthSnapshot(store.Id))
-                    .ToArray(),
-                _session.Investments.HasAnyInvestment),
-            storeCatalog);
-        NextAction.Update(Onboarding, Progression);
+        IdleFeedback.Update(combat);
 
-        Strategy.Refresh();
+        Loadout.Refresh();
+        Collection.Refresh();
         Investment.Refresh();
+        EventTicker.Update(combat.ActiveEventTags ?? []);
+        NextAction.Update(
+            combat,
+            SelectedStoreId,
+            Investment.Candidates.Any(candidate => candidate.InvestCommand.CanExecute(null)));
     }
 
     public void RestoreDesktopState(bool isLocked)
@@ -301,136 +272,48 @@ public sealed class MarketViewModel : ObservableObject
 
         SelectedStoreId = store.Id;
         SelectedStoreName = store.Name;
-        _selectedShopTarget = null;
-        SelectedShopObject = null;
         Refresh();
-    }
-
-    private void SelectShopObject(BusinessShopInteractionTarget? target)
-    {
-        if (target is null || SceneFrame is null)
-        {
-            return;
-        }
-
-        _selectedShopTarget = target;
-        SelectedSection = ManagementSection.Overview;
-        RefreshSelectedShopObject(SceneFrame.Snapshot);
-    }
-
-    private void RefreshSelectedShopObject(BusinessSimulationSnapshot snapshot)
-    {
-        if (_selectedShopTarget is null)
-        {
-            SelectedShopObject = null;
-            return;
-        }
-
-        SelectedShopObject = _selectedShopTarget.Kind switch
-        {
-            BusinessShopInteractionKind.Shelf => CreateShelfDetail(snapshot, _selectedShopTarget.Key),
-            BusinessShopInteractionKind.Employee => CreateEmployeeDetail(snapshot, _selectedShopTarget.Key),
-            _ => null
-        };
-        if (SelectedShopObject is null)
-        {
-            _selectedShopTarget = null;
-        }
-    }
-
-    private ShopObjectDetailViewModel? CreateShelfDetail(
-        BusinessSimulationSnapshot snapshot,
-        string shelfKind)
-    {
-        var store = snapshot.Business.Stores.SingleOrDefault(item => item.Id == SelectedStoreId);
-        if (store is null)
-        {
-            return null;
-        }
-
-        var products = store.Products
-            .Where(product => string.Equals(
-                product.ShelfKind,
-                shelfKind,
-                StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        var title = shelfKind.ToLowerInvariant() switch
-        {
-            "chilled" => "冷藏货架",
-            "frozen" => "冷冻货架",
-            _ => "常温货架"
-        };
-        var quantity = products.Sum(product => product.Quantity);
-        var capacity = products.Sum(product => product.Capacity);
-        var outOfStock = products.Count(product => product.Quantity == 0);
-        var lowStock = products.Count(product =>
-            product.Quantity > 0 && product.Quantity * 4 < product.Capacity);
-        var averageMargin = products.Length == 0
-            ? 0
-            : (long)Math.Round(products.Average(product => product.UnitGrossProfitCents));
-        var actionTarget = ShelfActionTargetSelector.Select(products, shelfKind);
-        var isAutoRestockEnabled = actionTarget is not null
-            && _session.Game.GetProcurementSnapshot().AutoRestockPolicies.Any(policy =>
-                policy.StoreId == SelectedStoreId
-                && policy.ProductId == actionTarget.Id
-                && policy.IsEnabled);
-        return new ShopObjectDetailViewModel(
-            BusinessShopInteractionKind.Shelf,
-            shelfKind,
-            title,
-            "商品与库存",
-            $"SKU {products.Length} · 库存 {quantity}/{capacity}",
-            $"缺货 {outOfStock} · 低库存 {lowStock} · 平均毛利 {FormatMoney(averageMargin)}",
-            actionTarget?.Id ?? string.Empty,
-            actionTarget is null
-                ? "当前货架没有可经营商品"
-                : $"系统按整店策略管理 {actionTarget.Name} · 当前 {actionTarget.Quantity}/{actionTarget.Capacity}",
-            isAutoRestockEnabled);
-    }
-
-    private ShopObjectDetailViewModel? CreateEmployeeDetail(
-        BusinessSimulationSnapshot snapshot,
-        string employeeId)
-    {
-        var employee = snapshot.Employees.Employees.SingleOrDefault(item =>
-            item.EmployeeId == employeeId && item.StoreId == SelectedStoreId);
-        if (employee is null)
-        {
-            return null;
-        }
-
-        var role = employee.Role switch
-        {
-            EmployeeRole.Cashier => "收银员",
-            EmployeeRole.Restocker => "补货员",
-            EmployeeRole.SalesAssistant => "导购员",
-            EmployeeRole.Cleaner => "清洁员",
-            EmployeeRole.Manager => "店长",
-            EmployeeRole.Buyer => "采购员",
-            _ => employee.Role.ToString()
-        };
-        var shift = employee.IsAlwaysOn
-            ? "全天（兼容）"
-            : $"{FormatMinute(employee.ShiftStartMinute)}–{FormatMinute(employee.ShiftEndMinute)}";
-        return new ShopObjectDetailViewModel(
-            BusinessShopInteractionKind.Employee,
-            employee.EmployeeId,
-            employee.Name,
-            role,
-            $"效率 {FormatPermille(employee.EffectiveEfficiencyPermille)} · 工资 {FormatMoney(employee.HourlyWageCents)}/小时",
-            $"体力 {FormatPermille(employee.EnergyPermille)} · 满意度 {FormatPermille(employee.SatisfactionPermille)} · 班次 {shift} · 任务 {EmployeeTaskTextFormatter.FormatTask(employee.CurrentTask)}",
-            employee.EmployeeId,
-            $"系统自动排班与分配任务 · {EmployeeTaskTextFormatter.FormatPriorities(employee.TaskPriorities)}",
-            IsAutoRestockEnabled: false);
     }
 
     private void SelectStoreById(string storeId) =>
         SelectStore(Stores.Single(store => store.Id == storeId));
 
-    private bool HasComparableInvestmentReturn() =>
-        _session.Investments.CaptureTrackingSaveData().LatestInvestments.Any(investment =>
-            _session.Investments.GetLatestComparison(investment.StoreId)?.Status
-                == InvestmentComparisonStatus.Compared);
+    private long ResolveCombatAnimationFrame(
+        StoreCombatSnapshot store,
+        bool reduceMotion)
+    {
+        if (reduceMotion)
+        {
+            return 0;
+        }
+
+        var cue = store.Events.LastOrDefault() switch
+        {
+            ProductThrownEvent thrown => $"throw:{thrown.ProjectileEntityId}",
+            ProductHitEvent hit => $"hit:{hit.ProjectileEntityId}:{hit.CustomerEntityId}",
+            CustomerServedEvent served => $"served:{served.CustomerEntityId}",
+            CustomerSpawnedEvent spawned => $"spawn:{spawned.CustomerEntityId}",
+            _ => null
+        };
+        if (cue is null)
+        {
+            _combatAnimationCue = null;
+            _combatActionFrame = 0;
+            return _animationFrame;
+        }
+
+        if (!string.Equals(cue, _combatAnimationCue, StringComparison.Ordinal))
+        {
+            _combatAnimationCue = cue;
+            _combatActionFrame = 0;
+        }
+        else
+        {
+            _combatActionFrame = Math.Min(23, _combatActionFrame + 1);
+        }
+
+        return _combatActionFrame;
+    }
 
     private void SynchronizeStores(IReadOnlyList<StoreCatalogItemSnapshot> snapshots)
     {
@@ -451,15 +334,4 @@ public sealed class MarketViewModel : ObservableObject
     private static string FormatMoney(long cents) =>
         string.Format(CultureInfo.InvariantCulture, "¥{0:N2}", cents / 100m);
 
-    private static string FormatPermille(int value) =>
-        string.Format(CultureInfo.InvariantCulture, "{0:0}%", value / 10m);
-
-    private static string FormatMinute(int minute) => $"{minute / 60:00}:{minute % 60:00}";
-
-    private static string FormatGameTime(long gameMinute)
-    {
-        var day = (gameMinute / 1_440) + 1;
-        var minuteOfDay = gameMinute % 1_440;
-        return $"第 {day} 天 {minuteOfDay / 60:00}:{minuteOfDay % 60:00}";
-    }
 }

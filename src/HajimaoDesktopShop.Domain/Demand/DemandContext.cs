@@ -8,11 +8,9 @@ public sealed record DemandContext
         int servicePermille,
         int queueLength,
         int cleanlinessPermille,
-        int minuteOfDay,
         int attractionBasisPoints = 0,
         int promotionBasisPoints = 0,
-        DemandSensitivity? sensitivity = null,
-        DemandTimeCurve timeCurve = DemandTimeCurve.Steady)
+        DemandSensitivity? sensitivity = null)
     {
         if (baseBasisPoints is < 0 or > 10_000)
         {
@@ -39,11 +37,6 @@ public sealed record DemandContext
             throw new ArgumentOutOfRangeException(nameof(cleanlinessPermille));
         }
 
-        if (minuteOfDay is < 0 or >= 1_440)
-        {
-            throw new ArgumentOutOfRangeException(nameof(minuteOfDay));
-        }
-
         if (attractionBasisPoints is < 0 or > 10_000)
         {
             throw new ArgumentOutOfRangeException(nameof(attractionBasisPoints));
@@ -59,11 +52,9 @@ public sealed record DemandContext
         ServicePermille = servicePermille;
         QueueLength = queueLength;
         CleanlinessPermille = cleanlinessPermille;
-        MinuteOfDay = minuteOfDay;
         AttractionBasisPoints = attractionBasisPoints;
         PromotionBasisPoints = promotionBasisPoints;
         Sensitivity = sensitivity ?? DemandSensitivity.Neutral;
-        TimeCurve = timeCurve;
     }
 
     public int BaseBasisPoints { get; }
@@ -76,13 +67,10 @@ public sealed record DemandContext
 
     public int CleanlinessPermille { get; }
 
-    public int MinuteOfDay { get; }
-
     public int AttractionBasisPoints { get; }
 
     public int PromotionBasisPoints { get; }
 
     public DemandSensitivity Sensitivity { get; }
 
-    public DemandTimeCurve TimeCurve { get; }
 }

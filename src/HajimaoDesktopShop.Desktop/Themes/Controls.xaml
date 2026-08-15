@@ -161,6 +161,8 @@
                 <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
                 <Setter Property="Foreground" Value="{DynamicResource Brush.OnPrimary}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.Focus}" />
+                <Setter Property="BorderThickness" Value="3" />
+                <Setter Property="FontWeight" Value="Bold" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -230,5 +232,44 @@
         <Setter Property="FontFamily" Value="Consolas" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+    </Style>
+
+    <Style x:Key="FeedbackMetricText" TargetType="TextBlock" BasedOn="{StaticResource MetricText}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+        <Style.Triggers>
+            <Trigger Property="Tag" Value="Positive">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+            </Trigger>
+            <Trigger Property="Tag" Value="Negative">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="IdleProgressBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="12" />
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="100" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" />
+                        <Grid Margin="2">
+                            <Rectangle x:Name="PART_Track" Fill="Transparent" />
+                            <Rectangle x:Name="PART_Indicator"
+                                       Fill="{TemplateBinding Foreground}"
+                                       HorizontalAlignment="Left" />
+                        </Grid>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 </ResourceDictionary>

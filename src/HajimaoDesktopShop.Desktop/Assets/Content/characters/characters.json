@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "characters": [
+    { "id": "maomao-default", "rigId": "humanoid-v1", "skinId": "maomao-default", "baseAttackIntervalTicks": 6, "projectileTravelTicks": 6 }
+  ]
+}

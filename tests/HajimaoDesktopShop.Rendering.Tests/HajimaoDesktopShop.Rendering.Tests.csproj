@@ -18,6 +18,25 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\HajimaoDesktopShop.Rendering\HajimaoDesktopShop.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\HajimaoDesktopShop.Infrastructure\HajimaoDesktopShop.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\rigs\humanoid.json"
+          Link="TestData\characters\humanoid.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\animations\humanoid-clips.json"
+          Link="TestData\characters\humanoid-clips.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\skins.json"
+          Link="TestData\characters\skins.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\characters\maomao\parts.png"
+          Link="TestData\characters\maomao-parts.png"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\interiors\placeholders\default-shop.png"
+          Link="TestData\interiors\default-shop.png"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

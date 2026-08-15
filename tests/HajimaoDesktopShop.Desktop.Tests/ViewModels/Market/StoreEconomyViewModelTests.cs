@@ -1,79 +1,61 @@
-using HajimaoDesktopShop.Application.Business.Analysis;
+using HajimaoDesktopShop.Application.Business.Combat;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
+using HajimaoDesktopShop.Domain.Collections;
+using HajimaoDesktopShop.Domain.Combat;
 
 namespace HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 
 public sealed class StoreEconomyViewModelTests
 {
     [Fact]
-    public void Update_FormatsOnlyCalculatedEconomyAnalysis()
+    public void Update_ExplainsActualCombatResultsAndCurrentLoadout()
     {
-        var analysis = new StoreEconomyAnalysis(
+        var store = new StoreCombatSnapshot(
             "corner-store",
-            "CompletedDay",
-            RevenueCents: 100_000,
-            GrossProfitCents: 40_000,
-            WageCostCents: 15_000,
-            OperatingCostCents: 5_000,
-            NetProfitCents: 20_000,
-            NecessaryOutflowCents: 80_000,
-            GrossMarginBasisPoints: 4_000,
-            NetMarginBasisPoints: 2_000,
-            CashRunwayTenthsOfDay: 15,
-            Visitors: 100,
-            CompletedSales: 80,
-            LostSales: 4,
-            StoreBottleneck.Stock);
+            StoreCombatState.Empty,
+            [],
+            [],
+            12_500,
+            18,
+            2,
+            4);
+        var loadout = new StoreProductLoadout("corner-store", 3, ["water", "chips"]);
         var viewModel = new StoreEconomyViewModel();
 
-        viewModel.Update(analysis);
+        viewModel.Update(store, loadout, unlockedProducts: 7);
 
-        Assert.Equal("昨日经营", viewModel.PeriodText);
-        Assert.Equal("¥1,000.00", viewModel.RevenueText);
-        Assert.Equal("¥400.00 · 40.0%", viewModel.GrossProfitText);
-        Assert.Equal("¥150.00", viewModel.WageCostText);
-        Assert.Equal("¥50.00", viewModel.OperatingCostText);
-        Assert.Equal("¥200.00 · 20.0%", viewModel.NetProfitText);
-        Assert.Equal("1.5 天", viewModel.CashRunwayText);
-        Assert.Equal("顾客 100 · 成交 80 · 流失 4", viewModel.CustomerFlowText);
-        Assert.Equal("库存不足正在损失订单", viewModel.BottleneckText);
-        Assert.Equal("昨日净赚 ¥200.00", viewModel.PerformanceHeadlineText);
-        Assert.Equal(
-            "收入 ¥1,000.00 · 毛利 ¥400.00 · 40.0% · 顾客 100 · 成交 80 · 流失 4",
-            viewModel.PerformanceDetailText);
-        Assert.Equal("主要原因：库存不足正在损失订单", viewModel.ReasonHeadlineText);
-        Assert.Equal(
-            "工资 ¥150.00 · 运营成本 ¥50.00 · 现金续航 1.5 天",
-            viewModel.ReasonDetailText);
+        Assert.Equal("开店以来", viewModel.PeriodText);
+        Assert.Equal("累计招待 18 位 · 收入 ¥125.00", viewModel.PerformanceHeadlineText);
+        Assert.Contains("掉落 4 件", viewModel.PerformanceDetailText, StringComparison.Ordinal);
+        Assert.Contains("装备 2/3", viewModel.ReasonDetailText, StringComparison.Ordinal);
+        Assert.Contains("已发现商品 7", viewModel.ReasonDetailText, StringComparison.Ordinal);
+        Assert.DoesNotContain("库存", viewModel.PerformanceDetailText, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(-20_000, "昨日亏损 ¥200.00")]
-    [InlineData(0, "昨日盈亏平衡")]
-    public void Update_ExplainsLossOrBreakEvenWithoutExposingMoreControls(
-        long netProfitCents,
-        string expectedHeadline)
+    [Fact]
+    public void Update_ShowsOnePlainLanguageTraitForCurrentCustomer()
     {
-        var analysis = new StoreEconomyAnalysis(
+        var customer = new ActiveCustomerState(
+            1,
+            "delivery-rider",
+            80,
+            4_000,
+            96,
+            ["delivery", "commuter", "evening"],
+            new Dictionary<string, int> { ["liquid"] = 160 },
+            0,
+            0,
+            155);
+        var store = new StoreCombatSnapshot(
             "corner-store",
-            "CompletedDay",
-            RevenueCents: 100_000,
-            GrossProfitCents: 20_000,
-            WageCostCents: 15_000,
-            OperatingCostCents: 5_000,
-            NetProfitCents: netProfitCents,
-            NecessaryOutflowCents: 80_000,
-            GrossMarginBasisPoints: 2_000,
-            NetMarginBasisPoints: 0,
-            CashRunwayTenthsOfDay: 15,
-            Visitors: 100,
-            CompletedSales: 80,
-            LostSales: 4,
-            StoreBottleneck.Cost);
+            new StoreCombatState(2, 0, 0, [customer], []),
+            [], [], 0, 0, 0, 0);
         var viewModel = new StoreEconomyViewModel();
 
-        viewModel.Update(analysis);
+        viewModel.Update(store, new StoreProductLoadout("corner-store", 3, ["water"]), 3);
 
-        Assert.Equal(expectedHeadline, viewModel.PerformanceHeadlineText);
+        Assert.Contains("外卖骑手", viewModel.ReasonHeadlineText, StringComparison.Ordinal);
+        Assert.Contains("移动较快", viewModel.ReasonDetailText, StringComparison.Ordinal);
+        Assert.Contains("液体类效果较弱", viewModel.ReasonDetailText, StringComparison.Ordinal);
     }
 }

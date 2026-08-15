@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "customers": [
+    { "id": "early-commuter", "demandHp": 110, "movementPermillePerTick": 86, "baseRewardCents": 190, "tags": ["commuter", "morning"], "resistancePermille": { "liquid": 80 }, "productDropWeights": { "water": 90, "green_tea": 45, "rice_crackers": 30 } },
+    { "id": "student", "demandHp": 95, "movementPermillePerTick": 78, "baseRewardCents": 165, "tags": ["student", "day"], "resistancePermille": { "sweet": 120 }, "productDropWeights": { "soda": 70, "chips": 65, "gummy_candy": 50, "chocolate": 18 } },
+    { "id": "office-worker", "demandHp": 165, "movementPermillePerTick": 70, "baseRewardCents": 270, "tags": ["office", "commuter", "day"], "resistancePermille": { "aromatic": 180 }, "productDropWeights": { "coffee_beans": 45, "cold_brew": 55, "energy_bar": 35 } },
+    { "id": "tourist", "demandHp": 205, "movementPermillePerTick": 58, "baseRewardCents": 360, "tags": ["tourist", "day"], "resistancePermille": { "fruit": 140 }, "productDropWeights": { "juice": 50, "coconut_water": 45, "dried_mango": 35 } },
+    { "id": "senior-neighbor", "demandHp": 145, "movementPermillePerTick": 42, "baseRewardCents": 240, "tags": ["senior", "community", "day"], "resistancePermille": { "tea": 220 }, "productDropWeights": { "green_tea": 60, "tea_bottle": 45, "cereal": 25 } },
+    { "id": "delivery-rider", "demandHp": 155, "movementPermillePerTick": 96, "baseRewardCents": 285, "tags": ["delivery", "commuter", "evening"], "resistancePermille": { "liquid": 160 }, "productDropWeights": { "water": 70, "energy_bar": 45, "instant_noodles": 25 } },
+    { "id": "family-shopper", "demandHp": 255, "movementPermillePerTick": 48, "baseRewardCents": 430, "tags": ["family", "community", "evening"], "resistancePermille": { "splash": 200 }, "productDropWeights": { "cookies": 45, "cereal": 35, "pasta": 25 } },
+    { "id": "foodie", "demandHp": 275, "movementPermillePerTick": 54, "baseRewardCents": 510, "tags": ["foodie", "evening"], "resistancePermille": { "meal": 250 }, "productDropWeights": { "coffee_beans": 25, "trail_mix": 30, "pasta": 40, "wasabi_peas": 22 } },
+    { "id": "bargain-hunter", "demandHp": 230, "movementPermillePerTick": 62, "baseRewardCents": 390, "tags": ["budget", "evening"], "resistancePermille": { "basic": 300 }, "productDropWeights": { "sparkling_water": 40, "popcorn": 45, "instant_noodles": 35 } },
+    { "id": "night-owl", "demandHp": 190, "movementPermillePerTick": 68, "baseRewardCents": 340, "tags": ["night", "student"], "resistancePermille": { "cold": 180 }, "productDropWeights": { "soda": 45, "cold_brew": 50, "popcorn": 35 } },
+    { "id": "late-shift-worker", "demandHp": 245, "movementPermillePerTick": 74, "baseRewardCents": 455, "tags": ["night", "office"], "resistancePermille": { "protein": 240 }, "productDropWeights": { "oat_latte": 35, "energy_bar": 40, "instant_noodles": 30 } },
+    { "id": "collector", "demandHp": 390, "movementPermillePerTick": 36, "baseRewardCents": 820, "tags": ["elite", "collector", "night"], "resistancePermille": { "liquid": 120, "sweet": 120, "dry": 120 }, "productDropWeights": { "trail_mix": 30, "rice": 25, "pasta": 35 } }
+  ]
+}

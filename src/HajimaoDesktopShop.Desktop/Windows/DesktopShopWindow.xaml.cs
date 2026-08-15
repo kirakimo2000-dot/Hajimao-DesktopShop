@@ -4,7 +4,6 @@ using System.Windows.Input;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Services;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
-using HajimaoDesktopShop.Rendering.Interactions;
 
 namespace HajimaoDesktopShop.Desktop.Windows;
 
@@ -38,13 +37,6 @@ public partial class DesktopShopWindow : Window
 
     public event EventHandler? OpenManagementRequested;
 
-    public void SelectShopObject(BusinessShopInteractionTarget target)
-    {
-        ArgumentNullException.ThrowIfNull(target);
-        _viewModel.SelectShopObjectCommand.Execute(target);
-        OpenManagementRequested?.Invoke(this, EventArgs.Empty);
-    }
-
     private void OnSurfaceMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var position = e.GetPosition(this);
@@ -66,7 +58,7 @@ public partial class DesktopShopWindow : Window
         }
 
         DragMove();
-        SnapAboveTaskbarIfNear();
+        AdjustAfterDrag();
     }
 
     private void OnOpenManagementClick(object sender, RoutedEventArgs e) =>
@@ -129,11 +121,6 @@ public partial class DesktopShopWindow : Window
         CommercialStreetStorefrontClickedEventArgs e) =>
         _viewModel.DesktopNavigation.OpenStoreCommand.Execute(e.StoreId);
 
-    private void OnShopObjectClicked(
-        object sender,
-        BusinessShopObjectClickedEventArgs e) =>
-        SelectShopObject(e.Target);
-
     private int GetOpenedStoreCount() =>
         _viewModel.CommercialStreet.SceneFrame?.Snapshot.Stores.Count ?? 1;
 
@@ -152,30 +139,37 @@ public partial class DesktopShopWindow : Window
             workArea);
         var currentWidth = ActualWidth > 0d ? ActualWidth : Width;
         var currentHeight = ActualHeight > 0d ? ActualHeight : Height;
-        var wasTaskbarDocked = !reposition
-            && double.IsFinite(Left)
+        var hasCurrentPlacement = double.IsFinite(Left)
             && double.IsFinite(Top)
             && double.IsFinite(currentWidth)
             && currentWidth > 0d
             && double.IsFinite(currentHeight)
-            && currentHeight > 0d
+            && currentHeight > 0d;
+        var wasTaskbarDocked = !reposition
+            && hasCurrentPlacement
             && DesktopWindowPlacementPolicy.TrySnapAboveWorkAreaBottom(
                 new DesktopRect(Left, Top, currentWidth, currentHeight),
                 workArea,
                 TaskbarSnapDistance,
                 DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin,
                 out _);
+        var requestedPosition = reposition || !hasCurrentPlacement
+            ? layout.Position
+            : new DesktopPoint(
+                Left,
+                wasTaskbarDocked ? layout.Position.Y : Top);
+        var constrainedPosition = DesktopWindowPlacementPolicy.ConstrainToWorkArea(
+            new DesktopRect(
+                requestedPosition.X,
+                requestedPosition.Y,
+                layout.Size.Width,
+                layout.Size.Height),
+            workArea,
+            DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin);
         Width = layout.Size.Width;
         Height = layout.Size.Height;
-        if (reposition)
-        {
-            Left = layout.Position.X;
-            Top = layout.Position.Y;
-        }
-        else if (wasTaskbarDocked)
-        {
-            Top = layout.Position.Y;
-        }
+        Left = constrainedPosition.X;
+        Top = constrainedPosition.Y;
     }
 
     private DesktopRect FindNearestWorkArea(IReadOnlyList<DesktopRect> workAreas)
@@ -200,7 +194,7 @@ public partial class DesktopShopWindow : Window
         return (horizontal * horizontal) + (vertical * vertical);
     }
 
-    private void SnapAboveTaskbarIfNear()
+    private void AdjustAfterDrag()
     {
         var workAreas = MonitorWorkAreaProvider.GetLogicalWorkAreas();
         var width = ActualWidth > 0d ? ActualWidth : Width;
@@ -217,6 +211,7 @@ public partial class DesktopShopWindow : Window
         }
 
         var workArea = FindNearestWorkArea(workAreas);
+        var requestedPosition = new DesktopPoint(Left, Top);
         if (DesktopWindowPlacementPolicy.TrySnapAboveWorkAreaBottom(
                 new DesktopRect(Left, Top, width, height),
                 workArea,
@@ -224,9 +219,15 @@ public partial class DesktopShopWindow : Window
                 DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin,
                 out var snapped))
         {
-            Left = snapped.X;
-            Top = snapped.Y;
+            requestedPosition = snapped;
         }
+
+        var constrained = DesktopWindowPlacementPolicy.ConstrainToWorkArea(
+            new DesktopRect(requestedPosition.X, requestedPosition.Y, width, height),
+            workArea,
+            DesktopSurfaceWindowLayoutPolicy.WorkAreaMargin);
+        Left = constrained.X;
+        Top = constrained.Y;
     }
 
     private void OnClosed(object? sender, EventArgs e)
