@@ -103,9 +103,14 @@ public sealed class ProductIdentityTests
             "_autosaveTimer = new DispatcherTimer",
             coordinatorIndex,
             StringComparison.Ordinal);
+        var simulationStartIndex = startupSource.IndexOf(
+            "_simulationLoop.Start()",
+            coordinatorIndex,
+            StringComparison.Ordinal);
 
         Assert.True(coordinatorIndex >= 0);
         Assert.True(initialFlushIndex > coordinatorIndex);
+        Assert.True(simulationStartIndex > initialFlushIndex);
         Assert.True(timerIndex > initialFlushIndex);
     }
 

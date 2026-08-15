@@ -1,11 +1,68 @@
+using System.IO;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.StorePortfolio;
 using HajimaoDesktopShop.Desktop.Services;
+using HajimaoDesktopShop.Infrastructure.Configuration;
+using HajimaoDesktopShop.Infrastructure.Persistence;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Services;
 
 public sealed class DesktopBusinessSessionFactoryTests
 {
+    [Fact]
+    public async Task ShippedCombatSession_CanWriteInitialSqliteSaveBeforeTimerStarts()
+    {
+        var root = LocateRepositoryRoot();
+        var assets = Path.Combine(root, "src", "HajimaoDesktopShop.Desktop", "Assets");
+        var productsPath = Path.Combine(assets, "Config", "products.json");
+        var brandsPath = Path.Combine(assets, "Config", "store-brands.json");
+        var storeContent = await new JsonStoreContentCatalog(
+            Path.Combine(assets, "Config", "store-formats.json"),
+            brandsPath).LoadAsync();
+        var products = await new JsonProductCatalog(productsPath).LoadAsync();
+        var combat = await new JsonCombatContentCatalog(
+            productsPath,
+            brandsPath,
+            Path.Combine(assets, "Config", "product-combat.json"),
+            Path.Combine(assets, "Content", "customers", "customer-archetypes.json"),
+            Path.Combine(assets, "Content", "customers", "customer-spawn-pools.json"),
+            Path.Combine(assets, "Content", "characters", "characters.json"),
+            Path.Combine(assets, "Content", "interiors", "interiors.json")).LoadAsync();
+        var proposal = new StoreOpeningProposalService(storeContent)
+            .CreateStarterProposals(42, DesktopGameContent.OpeningCashCents)
+            .First();
+        var session = DesktopBusinessSessionFactory.Create(
+            products,
+            null,
+            42,
+            DateTimeOffset.UtcNow,
+            storeContent,
+            starterStoreProposal: proposal,
+            combatContent: combat).Session;
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"hajimao-initial-save-{Guid.NewGuid():N}");
+        try
+        {
+            var savePath = Path.Combine(tempRoot, "hajimao.db");
+            var store = new SqliteGameSaveStore(savePath);
+            var coordinator = new AutosaveCoordinator(
+                store,
+                () => session.CaptureSaveData(),
+                () => new HajimaoDesktopShop.Application.Persistence.DesktopWindowPlacement(10, 20, false));
+
+            await coordinator.FlushAsync();
+
+            Assert.True(File.Exists(savePath));
+            Assert.NotNull(await store.LoadGameAsync());
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public void CreateNew_StartsOneStoreWithoutLegacyEmployeeRoles()
     {
@@ -257,4 +314,16 @@ public sealed class DesktopBusinessSessionFactoryTests
             70_000,
             DesktopGameContent.OpeningCashCents,
             true);
+
+    private static string LocateRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return Assert.IsType<DirectoryInfo>(directory).FullName;
+    }
 }

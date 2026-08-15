@@ -127,6 +127,12 @@ public partial class App : System.Windows.Application
             _trayIconService.ExportFeedbackRequested += OnTrayExportFeedbackRequested;
             _trayIconService.ExitRequested += OnTrayExitRequested;
 
+            _autosaveCoordinator = new AutosaveCoordinator(
+                saveStore,
+                () => _session.CaptureSaveData(),
+                CaptureDesktopWindowPlacement);
+            await _autosaveCoordinator.FlushAsync();
+
             _simulationLoop = new SimulationLoop(
                 () => _session.AdvanceCombatRealSecond(DateTimeOffset.Now.Hour),
                 reportFailure: ReportSimulationFailure);
@@ -138,11 +144,6 @@ public partial class App : System.Windows.Application
             _refreshTimer.Tick += OnRefreshTick;
             _refreshTimer.Start();
 
-            _autosaveCoordinator = new AutosaveCoordinator(
-                saveStore,
-                () => _session.CaptureSaveData(),
-                CaptureDesktopWindowPlacement);
-            await _autosaveCoordinator.FlushAsync();
             _autosaveTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromSeconds(5)

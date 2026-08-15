@@ -340,8 +340,19 @@ function Test-ApplicationRuntime {
         return $null -ne ($logs | Select-String -Pattern 'application.started' -SimpleMatch |
             Select-Object -First 1)
     }
-    Wait-ForCondition -Description "$Label SQLite save" -Condition {
-        Test-Path -LiteralPath (Join-Path $DataDirectory 'hajimao.db') -PathType Leaf
+    try {
+        Wait-ForCondition -Description "$Label SQLite save" -Condition {
+            Test-Path -LiteralPath (Join-Path $DataDirectory 'hajimao.db') -PathType Leaf
+        }
+    }
+    catch {
+        $diagnosticText = Get-ChildItem `
+            -LiteralPath (Join-Path $DataDirectory 'logs') `
+            -File `
+            -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw -ErrorAction SilentlyContinue } |
+            Select-Object -Last 1
+        throw "$($_.Exception.Message) Latest diagnostic: $diagnosticText"
     }
     Wait-ForCondition -Description "$Label diagnostic log" -Condition {
         $logDirectory = Join-Path $DataDirectory 'logs'
