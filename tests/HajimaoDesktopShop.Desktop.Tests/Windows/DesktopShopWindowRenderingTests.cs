@@ -56,6 +56,22 @@ public sealed class DesktopShopWindowRenderingTests
     }
 
     [Fact]
+    public void DesktopSurface_UsesOpaqueWindowCompositionSoPortableCannotBecomeInvisible()
+    {
+        var xaml = File.ReadAllText(FindDesktopShopWindowPath());
+
+        Assert.Contains("AllowsTransparency=\"False\"", xaml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Background=\"{DynamicResource Brush.Background}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "AllowsTransparency=\"True\" Background=\"Transparent\"",
+            xaml,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DesktopSurface_UsesSemanticCompactControlsAndReadableEventCopy()
     {
         var xaml = File.ReadAllText(FindDesktopShopWindowPath());
