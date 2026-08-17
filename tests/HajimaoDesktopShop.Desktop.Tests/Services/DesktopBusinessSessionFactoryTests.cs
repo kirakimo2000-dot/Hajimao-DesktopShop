@@ -1,8 +1,10 @@
 using System.IO;
 using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Application.Business.StorePortfolio;
+using HajimaoDesktopShop.Application.Persistence;
 using HajimaoDesktopShop.Desktop.Services;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
+using HajimaoDesktopShop.Domain.Collections;
 using HajimaoDesktopShop.Infrastructure.Configuration;
 using HajimaoDesktopShop.Infrastructure.Persistence;
 
@@ -10,6 +12,73 @@ namespace HajimaoDesktopShop.Desktop.Tests.Services;
 
 public sealed class DesktopBusinessSessionFactoryTests
 {
+    [Fact]
+    public async Task ShippedRestore_RemovesLegacyProductsWithoutCombatProfilesBeforeCreatingUi()
+    {
+        var root = LocateRepositoryRoot();
+        var assets = Path.Combine(root, "src", "HajimaoDesktopShop.Desktop", "Assets");
+        var productsPath = Path.Combine(assets, "Config", "products.json");
+        var brandsPath = Path.Combine(assets, "Config", "store-brands.json");
+        var storeContent = await new JsonStoreContentCatalog(
+            Path.Combine(assets, "Config", "store-formats.json"),
+            brandsPath).LoadAsync();
+        var products = await new JsonProductCatalog(productsPath).LoadAsync();
+        var combat = await new JsonCombatContentCatalog(
+            productsPath,
+            brandsPath,
+            Path.Combine(assets, "Config", "product-combat.json"),
+            Path.Combine(assets, "Content", "customers", "customer-archetypes.json"),
+            Path.Combine(assets, "Content", "customers", "customer-spawn-pools.json"),
+            Path.Combine(assets, "Content", "characters", "characters.json"),
+            Path.Combine(assets, "Content", "interiors", "interiors.json")).LoadAsync();
+        var proposal = new StoreOpeningProposalService(storeContent)
+            .CreateStarterProposals(42, DesktopGameContent.OpeningCashCents)
+            .First();
+        var original = DesktopBusinessSessionFactory.Create(
+            products,
+            null,
+            42,
+            DateTimeOffset.UtcNow,
+            storeContent,
+            starterStoreProposal: proposal,
+            combatContent: combat).Session;
+        var save = original.CaptureSaveData();
+        var contaminatedCombat = save.Combat! with
+        {
+            Collection = new ProductCollectionSaveData(
+                [.. save.Combat.Collection.Entries, new ProductCollectionEntry("dish_soap", 1, 0)]),
+            Loadouts = save.Combat.Loadouts
+                .Select(loadout => loadout with
+                {
+                    ProductIds = ["dish_soap", .. loadout.ProductIds.Take(2)]
+                })
+                .ToArray()
+        };
+
+        var restored = DesktopBusinessSessionFactory.Create(
+            products,
+            save with { Combat = contaminatedCombat },
+            999,
+            DateTimeOffset.UtcNow,
+            storeContent,
+            combatContent: combat).Session;
+        var market = new MarketViewModel(restored);
+        var snapshot = restored.Combat!.GetSnapshot();
+
+        Assert.Equal("corner-store", market.SelectedStoreId);
+        Assert.DoesNotContain(snapshot.Collection, entry => entry.ProductId == "dish_soap");
+        Assert.All(
+            snapshot.Collection,
+            entry => Assert.Contains(combat.Products, product => product.ProductId == entry.ProductId));
+        Assert.All(
+            snapshot.Loadouts,
+            loadout =>
+            {
+                Assert.NotEmpty(loadout.ProductIds);
+                Assert.DoesNotContain("dish_soap", loadout.ProductIds);
+            });
+    }
+
     [Fact]
     public async Task ShippedCombatSession_CanWriteInitialSqliteSaveBeforeTimerStarts()
     {
