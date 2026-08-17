@@ -29,7 +29,7 @@ public sealed class SimulationLoopTests
     }
 
     [Fact]
-    public async Task UnexpectedSimulationFailure_IsReportedExactlyOnceAndStopsLoop()
+    public async Task TransientSimulationFailure_IsReportedAndTheNextTickStillRuns()
     {
         var expected = new InvalidOperationException("simulation failed");
         var advances = 0;
@@ -37,15 +37,17 @@ public sealed class SimulationLoopTests
         await using var loop = new SimulationLoop(
             () =>
             {
-                Interlocked.Increment(ref advances);
-                throw expected;
+                if (Interlocked.Increment(ref advances) == 1)
+                {
+                    throw expected;
+                }
             },
             TimeSpan.FromMilliseconds(10),
             exception => reported.Add(exception));
 
         loop.Start();
         var timeout = Stopwatch.StartNew();
-        while (reported.Count == 0 && timeout.Elapsed < TimeSpan.FromSeconds(2))
+        while (Volatile.Read(ref advances) < 2 && timeout.Elapsed < TimeSpan.FromSeconds(2))
         {
             await Task.Delay(10);
         }
@@ -53,7 +55,7 @@ public sealed class SimulationLoopTests
         await loop.StopAsync();
         await Task.Delay(40);
 
-        Assert.Equal(1, Volatile.Read(ref advances));
+        Assert.True(Volatile.Read(ref advances) >= 2);
         Assert.Same(expected, Assert.Single(reported));
     }
 

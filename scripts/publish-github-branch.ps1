@@ -93,18 +93,19 @@ function Invoke-GhJson {
 
     $json = $Body | ConvertTo-Json -Depth 20 -Compress
     $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($json)
+    $requestPath = [System.IO.Path]::Combine(
+        [System.IO.Path]::GetTempPath(),
+        "hajimao-gh-request-$([guid]::NewGuid().ToString('N')).json")
+    [System.IO.File]::WriteAllBytes($requestPath, $bytes)
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = 'gh.exe'
-    $startInfo.Arguments = "api --method $Method $Endpoint --input -"
+    $startInfo.Arguments = "api --method $Method $Endpoint --input `"$requestPath`""
     $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
     $process = [System.Diagnostics.Process]::Start($startInfo)
     try {
-        $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
-        $process.StandardInput.BaseStream.Close()
         $output = $process.StandardOutput.ReadToEnd()
         $errorText = $process.StandardError.ReadToEnd()
         $process.WaitForExit()
@@ -116,6 +117,9 @@ function Invoke-GhJson {
     }
     finally {
         $process.Dispose()
+        if (Test-Path -LiteralPath $requestPath) {
+            Remove-Item -LiteralPath $requestPath -Force
+        }
     }
 }
 

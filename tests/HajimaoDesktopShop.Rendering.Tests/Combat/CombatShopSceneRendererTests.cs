@@ -36,32 +36,60 @@ public sealed class CombatShopSceneRendererTests
     }
 
     [Fact]
-    public async Task Choreography_ThrowPlaysAllLogicalFramesAndReducedMotionUsesZero()
+    public async Task Choreography_ThrowUsesWindUpReleaseAndRecoveryWithinOne24FrameAction()
     {
         using var resources = await Resources.LoadAsync();
         var thrown = new ProductThrownEvent(2, "water", 1);
         var snapshot = Snapshot(State(Customer(8_000)), [thrown]);
 
-        var active = BusinessShopCombatChoreography.CreateMaomaoPose(
+        var windUp = BusinessShopCombatChoreography.CreateMaomaoPose(
             resources.Catalog,
             snapshot,
-            presentationFrame: 19,
+            presentationFrame: 0,
             reduceMotion: false);
-        var reduced = BusinessShopCombatChoreography.CreateMaomaoPose(
-            resources.Catalog,
-            snapshot,
-            presentationFrame: 19,
-            reduceMotion: true);
-
-        Assert.Equal("maomao-throw", active.ClipId);
-        Assert.Equal(19, active.Pose.LogicalFrame);
         var release = BusinessShopCombatChoreography.CreateMaomaoPose(
             resources.Catalog,
             snapshot,
             presentationFrame: 8,
             reduceMotion: false);
+        var recovery = BusinessShopCombatChoreography.CreateMaomaoPose(
+            resources.Catalog,
+            snapshot,
+            presentationFrame: 16,
+            reduceMotion: false);
+
+        Assert.Equal("maomao-wind-up", windUp.ClipId);
+        Assert.Equal("maomao-throw", release.ClipId);
         Assert.Contains(release.Pose.Markers, marker => marker.Id == "release_product");
-        Assert.Equal(0, reduced.Pose.LogicalFrame);
+        Assert.Equal("maomao-recovery", recovery.ClipId);
+    }
+
+    [Fact]
+    public async Task Choreography_KeepsServedAndEscapedCustomersVisibleForTheirExitAnimation()
+    {
+        using var resources = await Resources.LoadAsync();
+        var served = Snapshot(State(), [new CustomerServedEvent(7, "regular")]);
+        var escaped = Snapshot(State(), [new CustomerEscapedEvent(8, "impatient")]);
+
+        var servedPoses = BusinessShopCombatChoreography.CreateCustomerPoses(
+            resources.Catalog, served, presentationFrame: 8, reduceMotion: false);
+        var escapedPoses = BusinessShopCombatChoreography.CreateCustomerPoses(
+            resources.Catalog, escaped, presentationFrame: 8, reduceMotion: false);
+
+        Assert.Collection(servedPoses, pose =>
+        {
+            Assert.Equal(7, pose.CustomerEntityId);
+            Assert.Equal("regular", pose.ArchetypeId);
+            Assert.Equal("customer-served", pose.ClipId);
+            Assert.False(pose.ShowDemand);
+        });
+        Assert.Collection(escapedPoses, pose =>
+        {
+            Assert.Equal(8, pose.CustomerEntityId);
+            Assert.Equal("impatient", pose.ArchetypeId);
+            Assert.Equal("customer-leave", pose.ClipId);
+            Assert.False(pose.ShowDemand);
+        });
     }
 
     [Fact]

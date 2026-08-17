@@ -15,6 +15,35 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 public sealed class ManagementWindowTests
 {
     [Fact]
+    public void ManagementWindow_AllowsCompactLogicalWorkAreasWithoutLosingScrollableContent()
+    {
+        RunOnSta(() =>
+        {
+            var window = new ManagementWindow(new MarketViewModel(MarketTestSession.Create()));
+            try
+            {
+                Assert.True(window.MinWidth <= 840);
+                Assert.True(window.MinHeight <= 540);
+
+                window.ApplyTemplate();
+                window.Measure(new Size(840, 540));
+                window.Arrange(new Rect(0, 0, 840, 540));
+                window.UpdateLayout();
+
+                var content = Assert.IsType<Grid>(window.FindName("ManagementContent"));
+                var rightRail = Assert.IsType<ScrollViewer>(window.FindName("RightRailScrollViewer"));
+                Assert.True(content.MinWidth <= 360);
+                Assert.True(rightRail.MinWidth <= 220);
+                Assert.Equal(ScrollBarVisibility.Auto, rightRail.VerticalScrollBarVisibility);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void NavigationHighlight_FollowsSelectedSection()
     {
         var xaml = File.ReadAllText(FindManagementWindowPath());
@@ -352,8 +381,8 @@ public sealed class ManagementWindowTests
             try
             {
                 window.ApplyTemplate();
-                window.Measure(new Size(960, 640));
-                window.Arrange(new Rect(0, 0, 960, 640));
+                window.Measure(new Size(840, 540));
+                window.Arrange(new Rect(0, 0, 840, 540));
                 window.UpdateLayout();
 
                 var navigation = FindLogicalChildren<Button>(window)
@@ -368,10 +397,10 @@ public sealed class ManagementWindowTests
                 Assert.All(primaryActions, button => Assert.True(button.MinHeight >= 44));
 
                 var content = Assert.IsType<Grid>(window.FindName("ManagementContent"));
-                Assert.True(content.MinWidth >= 440);
+                Assert.InRange(content.MinWidth, 320, 360);
 
                 var rightRail = Assert.IsType<ScrollViewer>(window.FindName("RightRailScrollViewer"));
-                Assert.True(rightRail.MinWidth >= 260);
+                Assert.InRange(rightRail.MinWidth, 200, 220);
                 Assert.Equal(ScrollBarVisibility.Auto, rightRail.VerticalScrollBarVisibility);
                 Assert.Equal(ScrollBarVisibility.Disabled, rightRail.HorizontalScrollBarVisibility);
             }

@@ -56,6 +56,24 @@ public sealed class ProductDropServiceTests
     }
 
     [Fact]
+    public void Roll_EquipmentBonusCanAwardAProductAfterTheNormalRollMisses()
+    {
+        var service = new ProductDropService(
+            Products,
+            new ScriptedIntegerRandomSource(199, 89, 99));
+
+        var result = service.Roll(
+            Customer("regular", ["regular"]),
+            bonusDropPermille: 90);
+
+        Assert.Equal(["chips"], result.ProductIds);
+        Assert.Contains(result.Rolls, roll =>
+            roll.Source == "equipment-bonus-chance" && roll.Awarded);
+        Assert.Contains(result.Rolls, roll =>
+            roll.Source == "equipment-bonus-product" && roll.ProductId == "chips");
+    }
+
+    [Fact]
     public void Equip_RequiresAnUnlockedProductAndUsesOneReplacementAction()
     {
         var collection = new ProductCollection();
