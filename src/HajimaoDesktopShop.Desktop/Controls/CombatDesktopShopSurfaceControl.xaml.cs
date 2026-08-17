@@ -18,6 +18,7 @@ public partial class CombatDesktopShopSurfaceControl : WpfUserControl
         new FrameworkPropertyMetadata(null, OnFrameChanged));
 
     private CombatDesktopShopRenderer? _renderer;
+    private CancellationTokenSource? _loadCancellation;
 
     public CombatDesktopShopSurfaceControl() => InitializeComponent();
 
@@ -37,30 +38,60 @@ public partial class CombatDesktopShopSurfaceControl : WpfUserControl
         }
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (_renderer is null)
+        if (_renderer is not null)
+        {
+            Surface.InvalidateVisual();
+            return;
+        }
+
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _loadCancellation = cancellation;
+        var token = cancellation.Token;
+
+        try
         {
             var characterRoot = Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "characters");
-            var content = new JsonCharacterAnimationCatalog(
+            var content = await new JsonCharacterAnimationCatalog(
                     Path.Combine(characterRoot, "rigs", "humanoid.json"),
                     Path.Combine(characterRoot, "animations", "humanoid-clips.json"),
                     Path.Combine(characterRoot, "skins.json"))
-                .LoadAsync()
-                .GetAwaiter()
-                .GetResult();
+                .LoadAsync(token);
+            token.ThrowIfCancellationRequested();
             var parts = SKBitmap.Decode(Path.Combine(characterRoot, "maomao", "parts.png"))
                 ?? throw new InvalidDataException("Maomao modular parts image is unreadable.");
+            if (token.IsCancellationRequested || !IsLoaded)
+            {
+                parts.Dispose();
+                return;
+            }
+
             _renderer = new CombatDesktopShopRenderer(
                 SkeletalAnimationCatalog.Create(content),
                 parts);
+            Surface.InvalidateVisual();
         }
-
-        Surface.InvalidateVisual();
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_loadCancellation, cancellation))
+            {
+                _loadCancellation = null;
+                cancellation.Dispose();
+            }
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = null;
         _renderer?.Dispose();
         _renderer = null;
     }

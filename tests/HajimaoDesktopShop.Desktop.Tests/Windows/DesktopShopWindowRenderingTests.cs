@@ -1,6 +1,8 @@
 using System.Runtime.ExceptionServices;
 using System.IO;
+using System.Reflection;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
@@ -190,6 +192,85 @@ public sealed class DesktopShopWindowRenderingTests
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
         }
+    }
+
+    [Fact]
+    public void StoreNavigation_DoesNotBlockTheWpfDispatcherWhileLoadingCombatAssets()
+    {
+        Exception? failure = null;
+        var completed = new ManualResetEventSlim();
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(
+                    new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                var viewModel = new MarketViewModel(MarketTestSession.Create());
+                var window = new DesktopShopWindow(viewModel);
+                window.Show();
+
+                viewModel.DesktopNavigation.OpenStoreCommand.Execute("corner-store");
+
+                Assert.Equal(420, window.Width);
+                Assert.Equal(280, window.Height);
+                var root = Assert.IsType<Grid>(window.Content);
+                var storeHost = Assert.IsType<Grid>(root.FindName("StoreSurfaceHost"));
+                var surface = Assert.IsType<CombatDesktopShopSurfaceControl>(
+                    Assert.Single(storeHost.Children));
+                WaitForCombatRenderer(surface, TimeSpan.FromSeconds(3));
+                UiSnapshotRenderer.Render(window, 420, 280, "desktop-store-loaded.png");
+                window.Close();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                completed.Set();
+            }
+        })
+        {
+            IsBackground = true
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+
+        Assert.True(
+            completed.Wait(TimeSpan.FromSeconds(3)),
+            "Opening a store blocked the WPF dispatcher while combat assets loaded.");
+        if (failure is not null)
+        {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
+    private static void WaitForCombatRenderer(
+        CombatDesktopShopSurfaceControl surface,
+        TimeSpan timeout)
+    {
+        var renderer = typeof(CombatDesktopShopSurfaceControl).GetField(
+            "_renderer",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(renderer);
+        var deadline = DateTime.UtcNow + timeout;
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(10),
+            DispatcherPriority.Background,
+            (_, _) =>
+            {
+                if (renderer.GetValue(surface) is not null || DateTime.UtcNow >= deadline)
+                {
+                    frame.Continue = false;
+                }
+            },
+            Dispatcher.CurrentDispatcher);
+
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+        Assert.NotNull(renderer.GetValue(surface));
     }
 
     [Fact]
