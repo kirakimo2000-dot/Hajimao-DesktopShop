@@ -6,6 +6,8 @@ namespace HajimaoDesktopShop.Desktop.ViewModels.Market;
 
 public sealed class IdleSessionFeedbackViewModel : ObservableObject
 {
+    private static readonly TimeSpan RecentActivityHoldDuration = TimeSpan.FromSeconds(3);
+    private readonly Func<DateTimeOffset> _now;
     private readonly long _startingRevenueCents;
     private readonly int _startingServedCustomers;
     private readonly int _startingEscapedCustomers;
@@ -20,11 +22,15 @@ public sealed class IdleSessionFeedbackViewModel : ObservableObject
     private string _streetSummaryText = "毛毛正在自动招待顾客";
     private string _goalText = "毛毛正在自动招待顾客";
     private string _recentActivityText = "等待顾客进入店铺";
+    private DateTimeOffset _recentActivityExpiresAt;
     private string _profitTone = "Neutral";
 
-    public IdleSessionFeedbackViewModel(BusinessCombatSnapshot startingSnapshot)
+    public IdleSessionFeedbackViewModel(
+        BusinessCombatSnapshot startingSnapshot,
+        Func<DateTimeOffset>? now = null)
     {
         ArgumentNullException.ThrowIfNull(startingSnapshot);
+        _now = now ?? (() => DateTimeOffset.UtcNow);
         _startingRevenueCents = TotalRevenue(startingSnapshot);
         _startingServedCustomers = TotalServed(startingSnapshot);
         _startingEscapedCustomers = TotalEscaped(startingSnapshot);
@@ -111,11 +117,19 @@ public sealed class IdleSessionFeedbackViewModel : ObservableObject
         StreetSummaryText = served == 0
             ? "毛毛正在自动招待顾客"
             : $"已招待 {served} 位 · 收入 +{FormatMoney(revenue)} · 掉落 {drops} 件";
-        RecentActivityText = newlyServed > 0
-            ? $"刚刚完成 {newlyServed} 次招待" + (newlyDropped > 0 ? $" · 获得 {newlyDropped} 件商品" : string.Empty)
-            : active > 0
+        if (newlyServed > 0 || newlyDropped > 0)
+        {
+            RecentActivityText = newlyServed > 0
+                ? $"刚刚完成 {newlyServed} 次招待" + (newlyDropped > 0 ? $" · 获得 {newlyDropped} 件商品" : string.Empty)
+                : $"刚刚获得 {newlyDropped} 件商品";
+            _recentActivityExpiresAt = _now().Add(RecentActivityHoldDuration);
+        }
+        else if (_now() >= _recentActivityExpiresAt)
+        {
+            RecentActivityText = active > 0
                 ? $"毛毛攻击中 · 店内顾客 {active}"
                 : "等待顾客进入店铺";
+        }
         GoalText = served == 0 ? "毛毛正在自动招待顾客" : "去战斗策略调整商品组合";
     }
 

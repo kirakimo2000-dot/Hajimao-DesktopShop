@@ -34,6 +34,8 @@ public partial class App : System.Windows.Application
     private bool _startupCompleted;
     private bool _isExiting;
     private bool _isExportingFeedback;
+    private DesktopSingleInstanceCoordinator? _singleInstance;
+    private int _presentationRefreshTick;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -41,6 +43,16 @@ public partial class App : System.Windows.Application
 
         try
         {
+            _singleInstance = new DesktopSingleInstanceCoordinator(
+                "CurrentUserSession",
+                OnSecondInstanceRequested);
+            if (!_singleInstance.IsPrimary)
+            {
+                _singleInstance.SignalPrimary();
+                Shutdown();
+                return;
+            }
+
             var dataDirectoryOverride = Environment.GetEnvironmentVariable(
                 ApplicationDataPathPolicy.OverrideEnvironmentVariable);
             _dataDirectoryOverride = dataDirectoryOverride;
@@ -221,6 +233,8 @@ public partial class App : System.Windows.Application
         _diagnosticLifetime?.Dispose();
         _diagnosticLifetime = null;
         _diagnosticSink = NullGameDiagnosticSink.Instance;
+        _singleInstance?.Dispose();
+        _singleInstance = null;
         base.OnExit(e);
     }
 
@@ -245,7 +259,24 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private void OnRefreshTick(object? sender, EventArgs e) => _viewModel?.Refresh();
+    private void OnRefreshTick(object? sender, EventArgs e)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        _presentationRefreshTick = _presentationRefreshTick == int.MaxValue
+            ? 1
+            : _presentationRefreshTick + 1;
+        if (RefreshCadencePolicy.IsManagementRefresh(_presentationRefreshTick))
+        {
+            _viewModel.Refresh();
+            return;
+        }
+
+        _viewModel.RefreshPresentation();
+    }
 
     private async void OnAutosaveTick(object? sender, EventArgs e)
     {
@@ -307,6 +338,26 @@ public partial class App : System.Windows.Application
         }
 
         _viewModel?.DesktopNavigation.ShowStreet();
+        ShowDesktopWindow();
+    }
+
+    private void OnSecondInstanceRequested()
+    {
+        if (_isExiting || Dispatcher.HasShutdownStarted)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(ShowDesktopWindow, DispatcherPriority.Send);
+    }
+
+    private void ShowDesktopWindow()
+    {
+        if (_isExiting || _desktopWindow is not { IsLoaded: true })
+        {
+            return;
+        }
+
         _desktopWindow.Show();
         _desktopWindow.Activate();
     }

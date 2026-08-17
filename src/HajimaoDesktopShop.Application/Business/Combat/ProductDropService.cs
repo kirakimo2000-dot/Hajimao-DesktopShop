@@ -38,9 +38,16 @@ public sealed class ProductDropService
         _random = random;
     }
 
-    public ProductDropResult Roll(CustomerArchetypeDefinition customer)
+    public ProductDropResult Roll(
+        CustomerArchetypeDefinition customer,
+        int bonusDropPermille = 0)
     {
         ArgumentNullException.ThrowIfNull(customer);
+        if (bonusDropPermille is < 0 or > 900)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bonusDropPermille));
+        }
+
         var table = customer.ProductDropWeights?.ToArray()
             ?? throw new ArgumentException("Customer drop table is required.", nameof(customer));
         if (table.Length == 0
@@ -69,6 +76,32 @@ public sealed class ProductDropService
             normalMaximum,
             normalProduct,
             normalProduct is not null));
+
+        if (bonusDropPermille > 0)
+        {
+            var chanceRoll = _random.Next(1_000);
+            ValidateRoll(chanceRoll, 1_000);
+            var bonusAwarded = chanceRoll < bonusDropPermille;
+            rolls.Add(new ProductDropRoll(
+                "equipment-bonus-chance",
+                chanceRoll,
+                1_000,
+                null,
+                bonusAwarded));
+            if (bonusAwarded)
+            {
+                var productRoll = _random.Next(productWeight);
+                ValidateRoll(productRoll, productWeight);
+                var bonusProduct = SelectProduct(table, productRoll);
+                products.Add(bonusProduct);
+                rolls.Add(new ProductDropRoll(
+                    "equipment-bonus-product",
+                    productRoll,
+                    productWeight,
+                    bonusProduct,
+                    Awarded: true));
+            }
+        }
 
         if (customer.Tags.Contains("elite", StringComparer.Ordinal))
         {

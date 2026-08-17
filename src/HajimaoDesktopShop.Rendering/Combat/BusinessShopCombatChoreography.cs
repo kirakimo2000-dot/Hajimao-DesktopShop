@@ -10,9 +10,11 @@ public sealed record MaomaoCombatPose(
 
 public sealed record CustomerCombatPose(
     long CustomerEntityId,
+    string ArchetypeId,
     int X,
     int Y,
     string ClipId,
+    bool ShowDemand,
     SkeletalPose Pose);
 
 public static class BusinessShopCombatChoreography
@@ -30,8 +32,14 @@ public static class BusinessShopCombatChoreography
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(snapshot);
-        var clipId = snapshot.Events.Any(combatEvent => combatEvent is ProductThrownEvent)
-            ? "maomao-throw"
+        var isThrowing = snapshot.Events.Any(combatEvent => combatEvent is ProductThrownEvent);
+        var actionFrame = Math.Clamp(presentationFrame, 0, 23);
+        var clipId = isThrowing
+            ? actionFrame < 8
+                ? "maomao-wind-up"
+                : actionFrame < 16
+                    ? "maomao-throw"
+                    : "maomao-recovery"
             : snapshot.Events.Any(combatEvent => combatEvent is CustomerServedEvent)
                 ? "maomao-celebrate"
                 : "maomao-idle";
@@ -50,6 +58,16 @@ public static class BusinessShopCombatChoreography
         long presentationFrame,
         bool reduceMotion,
         double simulationTickProgress = 0d) =>
+        CreateLiveCustomerPoses(catalog, snapshot, presentationFrame, reduceMotion, simulationTickProgress)
+            .Concat(CreateDeparturePoses(catalog, snapshot, presentationFrame, reduceMotion))
+            .ToArray();
+
+    private static IEnumerable<CustomerCombatPose> CreateLiveCustomerPoses(
+        SkeletalAnimationCatalog catalog,
+        StoreCombatSnapshot snapshot,
+        long presentationFrame,
+        bool reduceMotion,
+        double simulationTickProgress) =>
         snapshot.State.Customers
             .OrderBy(customer => customer.EntityId)
             .Select(customer =>
@@ -60,16 +78,74 @@ public static class BusinessShopCombatChoreography
                     : "customer-walk";
                 return new CustomerCombatPose(
                     customer.EntityId,
+                    customer.ArchetypeId,
                     CustomerX(PresentationPosition(customer, simulationTickProgress)),
                     ActorY,
                     clipId,
+                    ShowDemand: true,
                     SkeletalAnimator.Evaluate(
                         catalog.Rigs["humanoid-v1"],
                         catalog.Clips[clipId],
                         presentationFrame,
                         reduceMotion));
-            })
-            .ToArray();
+            });
+
+    private static IEnumerable<CustomerCombatPose> CreateDeparturePoses(
+        SkeletalAnimationCatalog catalog,
+        StoreCombatSnapshot snapshot,
+        long presentationFrame,
+        bool reduceMotion)
+    {
+        var liveIds = snapshot.State.Customers
+            .Select(customer => customer.EntityId)
+            .ToHashSet();
+        foreach (var served in snapshot.Events.OfType<CustomerServedEvent>()
+                     .Where(served => !liveIds.Contains(served.CustomerEntityId)))
+        {
+            yield return CreateDeparturePose(
+                catalog,
+                served.CustomerEntityId,
+                served.ArchetypeId,
+                positionPermille: 2_500,
+                "customer-served",
+                presentationFrame,
+                reduceMotion);
+        }
+
+        foreach (var escaped in snapshot.Events.OfType<CustomerEscapedEvent>()
+                     .Where(escaped => !liveIds.Contains(escaped.CustomerEntityId)))
+        {
+            yield return CreateDeparturePose(
+                catalog,
+                escaped.CustomerEntityId,
+                escaped.ArchetypeId,
+                positionPermille: 0,
+                "customer-leave",
+                presentationFrame,
+                reduceMotion);
+        }
+    }
+
+    private static CustomerCombatPose CreateDeparturePose(
+        SkeletalAnimationCatalog catalog,
+        long entityId,
+        string archetypeId,
+        int positionPermille,
+        string clipId,
+        long presentationFrame,
+        bool reduceMotion) =>
+        new(
+            entityId,
+            archetypeId,
+            CustomerX(positionPermille),
+            ActorY,
+            clipId,
+            ShowDemand: false,
+            SkeletalAnimator.Evaluate(
+                catalog.Rigs["humanoid-v1"],
+                catalog.Clips[clipId],
+                presentationFrame,
+                reduceMotion));
 
     private static int PresentationPosition(ActiveCustomerState customer, double tickProgress)
     {

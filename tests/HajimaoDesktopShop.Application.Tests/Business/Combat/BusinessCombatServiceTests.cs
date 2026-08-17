@@ -14,6 +14,59 @@ namespace HajimaoDesktopShop.Application.Tests.Business.Combat;
 public sealed class BusinessCombatServiceTests
 {
     [Fact]
+    public async Task GetSnapshot_WaitsForAnInProgressTickSoStateIsAtomic()
+    {
+        using var random = new BlockingRandomSource(41);
+        var service = new BusinessCombatService(
+            Game(),
+            Content(),
+            random,
+            options: new BusinessCombatOptions(10_000, 1));
+
+        var tickTask = Task.Run(() => service.Tick(12, []));
+        Assert.True(random.WaitUntilBlocked(TimeSpan.FromSeconds(2)));
+
+        var snapshotTask = Task.Run(service.GetSnapshot);
+        await Task.Delay(100);
+
+        Assert.False(snapshotTask.IsCompleted, "Snapshot escaped while Tick was mutating combat state.");
+
+        random.Release();
+        await Task.WhenAll(tickTask, snapshotTask);
+    }
+
+    [Fact]
+    public void Restore_RemovesProjectilesWhoseProductsAreNoLongerCombatContent()
+    {
+        var state = new StoreCombatState(
+            3,
+            0,
+            0,
+            [new ActiveCustomerState(
+                1, "regular", 100, 5_000, 10, ["regular"],
+                new Dictionary<string, int>(), 0, 0, 100)],
+            [new ProductProjectileState(
+                2, "dish_soap", 1, 1, 100, ["household"],
+                ProductCombatEffectKind.None, 0, 1)]);
+        var restored = new CombatSaveData(
+            new ProductCollectionSaveData([new ProductCollectionEntry("water", 1, 0)]),
+            [new StoreProductLoadoutSaveData("corner-store", 3, ["water"])],
+            [new StoreCombatStateSaveData("corner-store", state)],
+            41,
+            new LegacyCombatCompatibilitySaveData([]));
+
+        var service = new BusinessCombatService(
+            Game(),
+            Content(),
+            new ZeroRandomSource(41),
+            restored,
+            new BusinessCombatOptions(0, 1));
+
+        Assert.Empty(service.GetSnapshot().Stores.Single().State.Projectiles);
+        service.Tick(12, []);
+    }
+
+    [Fact]
     public void Tick_RewardsAndDropsOnlyWhenCustomerIsServed()
     {
         var game = Game();
@@ -40,6 +93,27 @@ public sealed class BusinessCombatServiceTests
         Assert.Equal(1, store.DroppedProducts);
         var water = served.Collection.Single(entry => entry.ProductId == "water");
         Assert.Equal(1, water.StoredCopies);
+    }
+
+    [Fact]
+    public void Tick_AppliesTheFinalProductsBonusDropEffect()
+    {
+        var service = new BusinessCombatService(
+            Game(),
+            Content(ProductEffectKind.BonusDrop, effectStrengthPermille: 90),
+            new ScriptedStatefulRandomSource(41, 0, 199, 0, 0),
+            options: new BusinessCombatOptions(10_000, 1));
+
+        BusinessCombatSnapshot snapshot = service.Tick(12, []);
+        for (var tick = 0; tick < 6; tick++)
+        {
+            snapshot = service.Tick(12, []);
+        }
+
+        var store = Assert.Single(snapshot.Stores);
+        Assert.Equal(1, store.DroppedProducts);
+        Assert.Contains(store.DropRolls, roll =>
+            roll.Source == "equipment-bonus-product" && roll.Awarded);
     }
 
     [Fact]
@@ -119,7 +193,9 @@ public sealed class BusinessCombatServiceTests
         return game;
     }
 
-    private static CombatContentCatalog Content()
+    private static CombatContentCatalog Content(
+        ProductEffectKind effect = ProductEffectKind.None,
+        int effectStrengthPermille = 0)
     {
         var customer = new CustomerArchetypeDefinition(
             "regular",
@@ -131,7 +207,7 @@ public sealed class BusinessCombatServiceTests
             new Dictionary<string, int> { ["water"] = 100 });
         return new CombatContentCatalog(
             [new ProductCombatDefinition(
-                "water", 100, 1, 1_100, ProductEffectKind.None, 0, ["liquid"], 1)],
+                "water", 100, 1, 1_100, effect, effectStrengthPermille, ["liquid"], 1)],
             [customer],
             [new CustomerSpawnPoolDefinition(
                 "all-day", 0, 0, [new CustomerSpawnPoolEntry(customer.Id, 1)])],
@@ -152,6 +228,58 @@ public sealed class BusinessCombatServiceTests
         {
             State++;
             return 0;
+        }
+    }
+
+    private sealed class ScriptedStatefulRandomSource(
+        ulong state,
+        params int[] values) : IStatefulRandomSource
+    {
+        private readonly Queue<int> _values = new(values);
+
+        public ulong State { get; private set; } = state;
+
+        public void RestoreState(ulong restoredState) => State = restoredState;
+
+        public double NextDouble() => throw new NotSupportedException();
+
+        public int Next(int exclusiveMax)
+        {
+            var value = _values.Dequeue();
+            Assert.InRange(value, 0, exclusiveMax - 1);
+            State++;
+            return value;
+        }
+    }
+
+    private sealed class BlockingRandomSource(ulong state) : IStatefulRandomSource, IDisposable
+    {
+        private readonly ManualResetEventSlim _entered = new();
+        private readonly ManualResetEventSlim _release = new();
+
+        public ulong State { get; private set; } = state;
+
+        public void RestoreState(ulong restoredState) => State = restoredState;
+
+        public double NextDouble() => 0;
+
+        public int Next(int exclusiveMax)
+        {
+            _entered.Set();
+            _release.Wait(TimeSpan.FromSeconds(5));
+            State++;
+            return 0;
+        }
+
+        public bool WaitUntilBlocked(TimeSpan timeout) => _entered.Wait(timeout);
+
+        public void Release() => _release.Set();
+
+        public void Dispose()
+        {
+            _release.Set();
+            _entered.Dispose();
+            _release.Dispose();
         }
     }
 }

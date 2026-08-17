@@ -94,14 +94,13 @@ public sealed class CombatShopSceneRenderer : IDisposable
                 customer.X,
                 customer.Y,
                 facingLeft: true,
-                tint: CustomerTint(frame.Snapshot.State.Customers
-                    .Single(item => item.EntityId == customer.CustomerEntityId)
-                    .ArchetypeId));
-            DrawCustomerDemand(
-                canvas,
-                frame.Snapshot.State.Customers.Single(item => item.EntityId == customer.CustomerEntityId),
-                customer.X,
-                customer.Y);
+                tint: CustomerTint(customer.ArchetypeId));
+            var liveCustomer = frame.Snapshot.State.Customers
+                .SingleOrDefault(item => item.EntityId == customer.CustomerEntityId);
+            if (customer.ShowDemand && liveCustomer is not null)
+            {
+                DrawCustomerDemand(canvas, liveCustomer, customer.X, customer.Y);
+            }
             characters++;
         }
 

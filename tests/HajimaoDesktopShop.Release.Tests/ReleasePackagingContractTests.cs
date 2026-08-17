@@ -4,18 +4,28 @@ namespace HajimaoDesktopShop.Release.Tests;
 
 public sealed class ReleasePackagingContractTests
 {
+    [Fact]
+    public void GitHubApiFallback_UsesBomlessTemporaryJsonInsteadOfBrokenWindowsStdinTransport()
+    {
+        var script = File.ReadAllText(_root.File("scripts", "publish-github-branch.ps1"));
+
+        Assert.Contains("[System.IO.File]::WriteAllBytes", script, StringComparison.Ordinal);
+        Assert.Contains("--input", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("--input -", script, StringComparison.Ordinal);
+    }
+
     private const string UpgradeCode = "{769C1156-51A9-4D4A-B7A3-3BC5C226B3F2}";
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_2_2()
+    public void ActiveVersion_Is_0_2_3()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.2.2", version.Value.Trim());
+        Assert.Equal("0.2.3", version.Value.Trim());
     }
 
     [Fact]

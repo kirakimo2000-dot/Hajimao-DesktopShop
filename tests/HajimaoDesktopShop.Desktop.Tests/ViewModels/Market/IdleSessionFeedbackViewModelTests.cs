@@ -41,6 +41,30 @@ public sealed class IdleSessionFeedbackViewModelTests
     }
 
     [Fact]
+    public void RecentServiceFeedback_RemainsVisibleLongEnoughToRead()
+    {
+        var now = new DateTimeOffset(2026, 8, 17, 12, 0, 0, TimeSpan.Zero);
+        var viewModel = new IdleSessionFeedbackViewModel(
+            Snapshot(revenue: 0, served: 0, escaped: 0, drops: 0),
+            () => now);
+
+        var afterService = Snapshot(revenue: 250, served: 1, escaped: 0, drops: 1);
+        viewModel.Update(afterService);
+        var readableFeedback = viewModel.RecentActivityText;
+
+        now = now.AddSeconds(2);
+        viewModel.Update(afterService);
+
+        Assert.Contains("刚刚完成 1 次招待", readableFeedback, StringComparison.Ordinal);
+        Assert.Equal(readableFeedback, viewModel.RecentActivityText);
+
+        now = now.AddSeconds(2);
+        viewModel.Update(afterService);
+
+        Assert.DoesNotContain("刚刚完成", viewModel.RecentActivityText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MarketViewModel_UsesCombatSnapshotInsteadOfLegacyRetailSimulation()
     {
         var session = MarketTestSession.Create();

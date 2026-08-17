@@ -6,7 +6,7 @@
         xmlns:desktop="clr-namespace:HajimaoDesktopShop.Desktop"
         xmlns:market="clr-namespace:HajimaoDesktopShop.Desktop.ViewModels.Market"
         Title="{x:Static desktop:ProductIdentity.ManagementWindowTitle}"
-        Width="1180" Height="720" MinWidth="960" MinHeight="640"
+        Width="1180" Height="720" MinWidth="720" MinHeight="500"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Background}"
         Foreground="{DynamicResource Brush.Text}"
@@ -64,9 +64,9 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="168" />
+                <ColumnDefinition Width="144" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="272" />
+                <ColumnDefinition Width="220" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Background="{DynamicResource Brush.Surface}"
@@ -112,7 +112,7 @@
                 </StackPanel>
             </Border>
 
-            <Grid x:Name="ManagementContent" Grid.Column="1" MinWidth="440" Margin="16,12">
+            <Grid x:Name="ManagementContent" Grid.Column="1" MinWidth="320" Margin="12,10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="196" />
                     <RowDefinition Height="12" />
@@ -366,7 +366,7 @@
             <Border Grid.Column="2" Background="{DynamicResource Brush.Surface}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2,0,0,0">
                 <ScrollViewer x:Name="RightRailScrollViewer"
-                              MinWidth="260"
+                              MinWidth="200"
                               Padding="12"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
