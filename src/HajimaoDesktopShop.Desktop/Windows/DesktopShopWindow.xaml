@@ -6,7 +6,7 @@
         Title="{x:Static desktop:ProductIdentity.DesktopWindowTitle}"
         Width="248" Height="180"
         WindowStyle="None" ResizeMode="NoResize"
-        AllowsTransparency="True" Background="Transparent"
+        AllowsTransparency="False" Background="{DynamicResource Brush.Background}"
         Foreground="{DynamicResource Brush.Text}"
         Topmost="True" ShowInTaskbar="False"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
