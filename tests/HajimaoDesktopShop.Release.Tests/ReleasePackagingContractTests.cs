@@ -15,7 +15,7 @@ public sealed class ReleasePackagingContractTests
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.2.3", version.Value.Trim());
+        Assert.Equal("0.2.4", version.Value.Trim());
     }
 
     [Fact]
