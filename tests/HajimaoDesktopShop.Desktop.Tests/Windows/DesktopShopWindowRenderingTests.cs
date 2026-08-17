@@ -144,14 +144,16 @@ public sealed class DesktopShopWindowRenderingTests
                 Assert.Equal(180, window.Height);
 
                 var streetPage = Assert.IsType<Grid>(root.FindName("StreetPage"));
-                var street = Assert.IsType<CommercialStreetSceneControl>(root.FindName("StreetScene"));
+                var streetHost = Assert.IsType<Grid>(root.FindName("StreetSurfaceHost"));
+                var street = Assert.IsType<CommercialStreetSceneControl>(
+                    Assert.Single(streetHost.Children));
                 Assert.True(street.UsesLogicalPixelScaling);
                 Assert.Equal(System.Windows.Visibility.Visible, streetPage.Visibility);
                 UiSnapshotRenderer.Render(window, 248, 180, "desktop-street.png");
 
                 var storePage = Assert.IsType<Grid>(root.FindName("StorePage"));
-                var surface = Assert.IsType<CombatDesktopShopSurfaceControl>(root.FindName("StoreSurface"));
-                Assert.True(surface.UsesLogicalPixelScaling);
+                var storeHost = Assert.IsType<Grid>(root.FindName("StoreSurfaceHost"));
+                Assert.Empty(storeHost.Children);
                 Assert.Equal(System.Windows.Visibility.Collapsed, storePage.Visibility);
 
                 viewModel.DesktopNavigation.OpenStoreCommand.Execute("corner-store");
@@ -162,11 +164,17 @@ public sealed class DesktopShopWindowRenderingTests
                 Assert.Equal(280, window.Height);
                 Assert.Equal(System.Windows.Visibility.Collapsed, streetPage.Visibility);
                 Assert.Equal(System.Windows.Visibility.Visible, storePage.Visibility);
+                Assert.Empty(streetHost.Children);
+                var surface = Assert.IsType<CombatDesktopShopSurfaceControl>(
+                    Assert.Single(storeHost.Children));
+                Assert.True(surface.UsesLogicalPixelScaling);
                 UiSnapshotRenderer.Render(window, 420, 280, "desktop-store.png");
 
                 viewModel.DesktopNavigation.BackToStreetCommand.Execute(null);
                 Assert.Equal(248, window.Width);
                 Assert.Equal(180, window.Height);
+                Assert.Empty(storeHost.Children);
+                Assert.IsType<CommercialStreetSceneControl>(Assert.Single(streetHost.Children));
 
                 window.Close();
             }
@@ -273,4 +281,5 @@ public sealed class DesktopShopWindowRenderingTests
 
         return count;
     }
+
 }

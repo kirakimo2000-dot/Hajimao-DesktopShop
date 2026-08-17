@@ -54,9 +54,7 @@
 
         <Grid x:Name="StreetPage"
               Visibility="{Binding DesktopNavigation.IsStreet, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <controls:CommercialStreetSceneControl x:Name="StreetScene"
-                                                   Frame="{Binding CommercialStreet.SceneFrame}"
-                                                   StorefrontClicked="OnStorefrontClicked" />
+            <Grid x:Name="StreetSurfaceHost" />
             <Border x:Name="IdleFeedbackBar"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
@@ -107,8 +105,7 @@
 
         <Grid x:Name="StorePage"
               Visibility="{Binding DesktopNavigation.IsStore, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <controls:CombatDesktopShopSurfaceControl x:Name="StoreSurface"
-                                                      Frame="{Binding CombatDesktopFrame}" />
+            <Grid x:Name="StoreSurfaceHost" />
             <Canvas>
                 <Button Canvas.Left="6" Canvas.Top="4" Width="78" Height="44"
                         Style="{DynamicResource SurfaceActionButton}"

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Services;
@@ -11,6 +12,8 @@ public partial class DesktopShopWindow : Window
 {
     private const double TaskbarSnapDistance = 48d;
     private readonly MarketViewModel _viewModel;
+    private CommercialStreetSceneControl? _streetScene;
+    private CombatDesktopShopSurfaceControl? _storeSurface;
     private int _lastStreetStoreCount;
 
     public DesktopShopWindow(MarketViewModel viewModel)
@@ -27,6 +30,7 @@ public partial class DesktopShopWindow : Window
         StorePage.SetCurrentValue(
             VisibilityProperty,
             viewModel.DesktopNavigation.IsStore ? Visibility.Visible : Visibility.Collapsed);
+        SynchronizeSurfaceControl();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.DesktopNavigation.PropertyChanged += OnDesktopNavigationPropertyChanged;
         _viewModel.CommercialStreet.PropertyChanged += OnCommercialStreetPropertyChanged;
@@ -92,6 +96,7 @@ public partial class DesktopShopWindow : Window
             StorePage.SetCurrentValue(
                 VisibilityProperty,
                 _viewModel.DesktopNavigation.IsStore ? Visibility.Visible : Visibility.Collapsed);
+            SynchronizeSurfaceControl();
             ApplySurfaceLayout(reposition: false);
         }
     }
@@ -117,9 +122,61 @@ public partial class DesktopShopWindow : Window
     }
 
     private void OnStorefrontClicked(
-        object sender,
+        object? sender,
         CommercialStreetStorefrontClickedEventArgs e) =>
         _viewModel.DesktopNavigation.OpenStoreCommand.Execute(e.StoreId);
+
+    private void SynchronizeSurfaceControl()
+    {
+        if (_viewModel.DesktopNavigation.IsStreet)
+        {
+            RemoveStoreSurface();
+            if (_streetScene is null)
+            {
+                _streetScene = new CommercialStreetSceneControl();
+                _streetScene.SetBinding(
+                    CommercialStreetSceneControl.FrameProperty,
+                    new Binding("CommercialStreet.SceneFrame"));
+                _streetScene.StorefrontClicked += OnStorefrontClicked;
+                StreetSurfaceHost.Children.Add(_streetScene);
+            }
+
+            return;
+        }
+
+        RemoveStreetSurface();
+        if (_storeSurface is null)
+        {
+            _storeSurface = new CombatDesktopShopSurfaceControl();
+            _storeSurface.SetBinding(
+                CombatDesktopShopSurfaceControl.FrameProperty,
+                new Binding(nameof(MarketViewModel.CombatDesktopFrame)));
+            StoreSurfaceHost.Children.Add(_storeSurface);
+        }
+    }
+
+    private void RemoveStreetSurface()
+    {
+        if (_streetScene is null)
+        {
+            return;
+        }
+
+        _streetScene.StorefrontClicked -= OnStorefrontClicked;
+        StreetSurfaceHost.Children.Remove(_streetScene);
+        _streetScene = null;
+    }
+
+    private void RemoveStoreSurface()
+    {
+        if (_storeSurface is null)
+        {
+            return;
+        }
+
+        StoreSurfaceHost.Children.Remove(_storeSurface);
+        _storeSurface = null;
+    }
 
     private int GetOpenedStoreCount() =>
         _viewModel.CommercialStreet.SceneFrame?.Snapshot.Stores.Count ?? 1;
@@ -232,6 +289,8 @@ public partial class DesktopShopWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        RemoveStreetSurface();
+        RemoveStoreSurface();
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.DesktopNavigation.PropertyChanged -= OnDesktopNavigationPropertyChanged;
         _viewModel.CommercialStreet.PropertyChanged -= OnCommercialStreetPropertyChanged;
