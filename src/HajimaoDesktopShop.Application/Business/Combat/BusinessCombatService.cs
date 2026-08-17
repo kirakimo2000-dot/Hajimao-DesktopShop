@@ -52,23 +52,36 @@ public sealed class BusinessCombatService
         if (restored is null)
         {
             _collection = new ProductCollection();
-            foreach (var product in content.Products.Take(3))
-            {
-                _collection.RegisterCopy(product.ProductId);
-            }
+            RegisterStarterProductsIfEmpty();
 
             _compatibility = new LegacyCombatCompatibilitySaveData([]);
         }
         else
         {
             _random.RestoreState(restored.RandomState);
-            _collection = new ProductCollection(restored.Collection.Entries);
+            _collection = new ProductCollection(restored.Collection.Entries
+                .Where(entry => _productById.ContainsKey(entry.ProductId)));
+            RegisterStarterProductsIfEmpty();
             _compatibility = restored.Compatibility;
             foreach (var saved in restored.Loadouts)
             {
+                var supportedProducts = saved.ProductIds
+                    .Where(productId => _productById.ContainsKey(productId)
+                        && _collection.IsUnlocked(productId))
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(saved.UnlockedSlots)
+                    .ToArray();
+                if (supportedProducts.Length == 0)
+                {
+                    supportedProducts = _collection.Entries
+                        .Select(entry => entry.ProductId)
+                        .Take(Math.Min(3, saved.UnlockedSlots))
+                        .ToArray();
+                }
+
                 _storeLoadouts.Add(
                     saved.StoreId,
-                    new StoreProductLoadout(saved.StoreId, saved.UnlockedSlots, saved.ProductIds));
+                    new StoreProductLoadout(saved.StoreId, saved.UnlockedSlots, supportedProducts));
             }
 
             foreach (var saved in restored.Stores)
@@ -85,6 +98,19 @@ public sealed class BusinessCombatService
         }
 
         EnsureOpenStores();
+    }
+
+    private void RegisterStarterProductsIfEmpty()
+    {
+        if (_collection.Entries.Count != 0)
+        {
+            return;
+        }
+
+        foreach (var product in _content.Products.Take(3))
+        {
+            _collection.RegisterCopy(product.ProductId);
+        }
     }
 
     public BusinessCombatSnapshot Tick(

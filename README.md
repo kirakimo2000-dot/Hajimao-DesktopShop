@@ -2,7 +2,7 @@
 
 Hajimao DesktopShop 是一款 Windows 像素风桌面挂机增量游戏。常态窗口是一条吸附在任务栏上方、始终置顶的街区；点击店面后进入该店的挂机战斗页。
 
-## 当前版本：0.2.0
+## 当前版本：0.2.1
 
 毛毛会自动把已装备的商品投向顾客，削减顾客的“需求”。在顾客离开前清空需求即可完成招待、获得现金，并随机掉落商品。商品不会消耗，也不存在补货、货架、逐笔定价、员工岗位或排班。
 
@@ -14,7 +14,7 @@ Hajimao DesktopShop 是一款 Windows 像素风桌面挂机增量游戏。常态
 
 顾客刷新池会参考电脑的现实本地时段和当前运行事件，但游戏不显示或模拟游戏内时间。只有程序实际运行时才推进战斗，关闭后没有离线收益，也没有倍速。
 
-## 0.2.0 内容
+## 0.2 系列内容
 
 - 24 种可收集商品，全部可从现有顾客掉落表获得。
 - 12 类顾客，具有不同需求、速度、奖励、抗性与掉落表。
@@ -30,13 +30,13 @@ Hajimao DesktopShop 是一款 Windows 像素风桌面挂机增量游戏。常态
 自行重新生成最新便携版：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable.ps1 -Version 0.2.0 -PrunePrevious
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable.ps1 -Version 0.2.1 -PrunePrevious
 ```
 
 成功后会生成：
 
 - 根目录 `Hajimao DesktopShop.exe`
-- `artifacts/release/0.2.0/HajimaoDesktopShop-0.2.0-win-x64-portable.zip`
+- `artifacts/release/0.2.1/HajimaoDesktopShop-0.2.1-win-x64-portable.zip`
 
 便携包只有一个 EXE，解压后无需安装。存档位于当前 Windows 用户的 `LocalApplicationData/HajimaoDesktopShop/hajimao.db`。
 
