@@ -8,6 +8,7 @@ namespace HajimaoDesktopShop.Application.Business.Combat;
 
 public sealed class BusinessCombatService
 {
+    private readonly object _gate = new();
     private readonly BusinessGameService _game;
     private readonly CombatContentCatalog _content;
     private readonly IStatefulRandomSource _random;
@@ -86,7 +87,7 @@ public sealed class BusinessCombatService
 
             foreach (var saved in restored.Stores)
             {
-                _states.Add(saved.StoreId, saved.State);
+                _states.Add(saved.StoreId, SanitizeRestoredState(saved.State));
                 _totals.Add(saved.StoreId, new StoreTotals(
                     saved.RevenueCents,
                     saved.ServedCustomers,
@@ -117,132 +118,146 @@ public sealed class BusinessCombatService
         int localHour,
         IReadOnlyCollection<string> activeEventTags)
     {
-        ArgumentNullException.ThrowIfNull(activeEventTags);
-        _activeEventTags = activeEventTags
-            .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .Select(tag => tag.Trim())
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(tag => tag, StringComparer.Ordinal)
-            .ToArray();
-        EnsureOpenStores();
-        var snapshots = new List<StoreCombatSnapshot>();
-        var openStores = _game.GetSnapshot().Stores.ToDictionary(store => store.Id, StringComparer.Ordinal);
-        foreach (var storeId in OpenStoreIds())
+        lock (_gate)
         {
-            var state = _states[storeId];
-            var profile = StoreCombatProfilePolicy.Resolve(openStores[storeId].StoreFormatId);
-            var activeCustomerCapacity = Math.Max(
-                1,
-                _options.MaxActiveCustomersPerStore * profile.ActiveCustomerCapacityPermille / 1_000);
-            var spawnChance = Math.Min(
-                10_000,
-                _options.SpawnChanceBasisPoints * profile.ArrivalModifierPermille / 1_000);
-            CustomerSpawnRequest? spawn = null;
-            if (state.Customers.Count < activeCustomerCapacity
-                && Roll(spawnChance))
-            {
-                var customer = _spawnPools.Select(localHour, activeEventTags, _random);
-                spawn = new CustomerSpawnRequest(
-                    customer.Id,
-                    Math.Max(1, customer.DemandHp * profile.DemandHpModifierPermille / 1_000),
-                    Math.Max(1, customer.MovementPermillePerTick * profile.MovementModifierPermille / 1_000),
-                    customer.Tags,
-                    customer.ResistancePermille);
-            }
-
-            var loadout = _storeLoadouts[storeId];
-            var masteryByProduct = _collection.Entries.ToDictionary(
-                entry => entry.ProductId,
-                entry => entry.MasteryLevel,
-                StringComparer.Ordinal);
-            var domainProducts = loadout.ProductIds
-                .Select(productId => ToDomain(
-                    _productById[productId],
-                    masteryByProduct.GetValueOrDefault(productId, 1)))
+            ArgumentNullException.ThrowIfNull(activeEventTags);
+            _activeEventTags = activeEventTags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => tag.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(tag => tag, StringComparer.Ordinal)
                 .ToArray();
-            var character = _content.Characters.Single(item => item.Id == "maomao-default");
-            var tick = _engine.Tick(
-                state,
-                new CharacterCombatStats(character.BaseAttackIntervalTicks, character.ProjectileTravelTicks),
-                domainProducts,
-                spawn);
-            _states[storeId] = tick.State;
-
-            var totals = _totals[storeId];
-            var dropRolls = new List<ProductDropRoll>();
-            totals = totals with
+            EnsureOpenStores();
+            var snapshots = new List<StoreCombatSnapshot>();
+            var openStores = _game.GetSnapshot().Stores.ToDictionary(store => store.Id, StringComparer.Ordinal);
+            foreach (var storeId in OpenStoreIds())
             {
-                EncounteredCustomers = checked(
-                    totals.EncounteredCustomers + tick.Events.OfType<CustomerSpawnedEvent>().Count()),
-                TotalDamage = checked(
-                    totals.TotalDamage + tick.Events.OfType<ProductHitEvent>().Sum(hit => (long)hit.Damage))
-            };
-            foreach (var escaped in tick.Events.OfType<CustomerEscapedEvent>())
-            {
-                totals = totals with { EscapedCustomers = totals.EscapedCustomers + 1 };
-            }
-
-            foreach (var served in tick.Events.OfType<CustomerServedEvent>())
-            {
-                var customer = _customerById[served.ArchetypeId];
-                var finalHit = tick.Events
-                    .OfType<ProductHitEvent>()
-                    .Last(hit => hit.CustomerEntityId == served.CustomerEntityId);
-                var product = _productById[finalHit.ProductId];
-                var masteryLevel = _collection.Entries
-                    .Single(entry => entry.ProductId == finalHit.ProductId)
-                    .MasteryLevel;
-                var revenue = checked(
-                    customer.BaseRewardCents
-                    * product.RevenueModifierPermille
-                    / 1_000
-                    * profile.RewardModifierPermille
-                    / 1_000
-                    * ProductMasteryScaling.RevenuePermille(masteryLevel)
-                    / 1_000);
-                _game.RecordCombatServiceRevenue(storeId, revenue);
-                var drop = _drops.Roll(customer);
-                foreach (var productId in drop.ProductIds)
+                var state = _states[storeId];
+                var profile = StoreCombatProfilePolicy.Resolve(openStores[storeId].StoreFormatId);
+                var activeCustomerCapacity = Math.Max(
+                    1,
+                    _options.MaxActiveCustomersPerStore * profile.ActiveCustomerCapacityPermille / 1_000);
+                var spawnChance = Math.Min(
+                    10_000,
+                    _options.SpawnChanceBasisPoints * profile.ArrivalModifierPermille / 1_000);
+                CustomerSpawnRequest? spawn = null;
+                if (state.Customers.Count < activeCustomerCapacity
+                    && Roll(spawnChance))
                 {
-                    _collection.RegisterCopy(productId);
+                    var customer = _spawnPools.Select(localHour, activeEventTags, _random);
+                    spawn = new CustomerSpawnRequest(
+                        customer.Id,
+                        Math.Max(1, customer.DemandHp * profile.DemandHpModifierPermille / 1_000),
+                        Math.Max(1, customer.MovementPermillePerTick * profile.MovementModifierPermille / 1_000),
+                        customer.Tags,
+                        customer.ResistancePermille);
                 }
 
-                dropRolls.AddRange(drop.Rolls);
+                var loadout = _storeLoadouts[storeId];
+                var masteryByProduct = _collection.Entries.ToDictionary(
+                    entry => entry.ProductId,
+                    entry => entry.MasteryLevel,
+                    StringComparer.Ordinal);
+                var domainProducts = loadout.ProductIds
+                    .Select(productId => ToDomain(
+                        _productById[productId],
+                        masteryByProduct.GetValueOrDefault(productId, 1)))
+                    .ToArray();
+                var character = _content.Characters.Single(item => item.Id == "maomao-default");
+                var tick = _engine.Tick(
+                    state,
+                    new CharacterCombatStats(character.BaseAttackIntervalTicks, character.ProjectileTravelTicks),
+                    domainProducts,
+                    spawn);
+                _states[storeId] = tick.State;
+
+                var totals = _totals[storeId];
+                var dropRolls = new List<ProductDropRoll>();
                 totals = totals with
                 {
-                    RevenueCents = checked(totals.RevenueCents + revenue),
-                    ServedCustomers = totals.ServedCustomers + 1,
-                    DroppedProducts = totals.DroppedProducts + drop.ProductIds.Count
+                    EncounteredCustomers = checked(
+                        totals.EncounteredCustomers + tick.Events.OfType<CustomerSpawnedEvent>().Count()),
+                    TotalDamage = checked(
+                        totals.TotalDamage + tick.Events.OfType<ProductHitEvent>().Sum(hit => (long)hit.Damage))
                 };
+                foreach (var escaped in tick.Events.OfType<CustomerEscapedEvent>())
+                {
+                    totals = totals with { EscapedCustomers = totals.EscapedCustomers + 1 };
+                }
+
+                foreach (var served in tick.Events.OfType<CustomerServedEvent>())
+                {
+                    var customer = _customerById[served.ArchetypeId];
+                    var finalHit = tick.Events
+                        .OfType<ProductHitEvent>()
+                        .Last(hit => hit.CustomerEntityId == served.CustomerEntityId);
+                    var product = _productById[finalHit.ProductId];
+                    var masteryLevel = _collection.Entries
+                        .Single(entry => entry.ProductId == finalHit.ProductId)
+                        .MasteryLevel;
+                    var revenue = checked(
+                        customer.BaseRewardCents
+                        * product.RevenueModifierPermille
+                        / 1_000
+                        * profile.RewardModifierPermille
+                        / 1_000
+                        * ProductMasteryScaling.RevenuePermille(masteryLevel)
+                        / 1_000);
+                    _game.RecordCombatServiceRevenue(storeId, revenue);
+                    var bonusDropPermille = product.Effect == ProductEffectKind.BonusDrop
+                        ? product.EffectStrengthPermille
+                        : 0;
+                    var drop = _drops.Roll(customer, bonusDropPermille);
+                    foreach (var productId in drop.ProductIds)
+                    {
+                        _collection.RegisterCopy(productId);
+                    }
+
+                    dropRolls.AddRange(drop.Rolls);
+                    totals = totals with
+                    {
+                        RevenueCents = checked(totals.RevenueCents + revenue),
+                        ServedCustomers = totals.ServedCustomers + 1,
+                        DroppedProducts = totals.DroppedProducts + drop.ProductIds.Count
+                    };
+                }
+
+                _totals[storeId] = totals;
+                var unlockedSlots = ProductSlotProgressionPolicy.SlotsForServedCustomers(totals.ServedCustomers);
+                if (unlockedSlots > _storeLoadouts[storeId].UnlockedSlots)
+                {
+                    var current = _storeLoadouts[storeId];
+                    _storeLoadouts[storeId] = new StoreProductLoadout(
+                        storeId,
+                        unlockedSlots,
+                        current.ProductIds);
+                }
+                _lastEvents[storeId] = tick.Events;
+                _lastDropRolls[storeId] = dropRolls.ToArray();
+                snapshots.Add(ToSnapshot(storeId, tick.Events, dropRolls));
             }
 
-            _totals[storeId] = totals;
-            var unlockedSlots = ProductSlotProgressionPolicy.SlotsForServedCustomers(totals.ServedCustomers);
-            if (unlockedSlots > _storeLoadouts[storeId].UnlockedSlots)
-            {
-                var current = _storeLoadouts[storeId];
-                _storeLoadouts[storeId] = new StoreProductLoadout(
-                    storeId,
-                    unlockedSlots,
-                    current.ProductIds);
-            }
-            _lastEvents[storeId] = tick.Events;
-            _lastDropRolls[storeId] = dropRolls.ToArray();
-            snapshots.Add(ToSnapshot(storeId, tick.Events, dropRolls));
+            return CreateSnapshot(snapshots);
         }
-
-        return CreateSnapshot(snapshots);
     }
 
-    public BusinessCombatSnapshot Tick(int localHour) =>
-        Tick(localHour, _eventDirector.Tick(localHour));
+    public BusinessCombatSnapshot Tick(int localHour)
+    {
+        lock (_gate)
+        {
+            return Tick(localHour, _eventDirector.Tick(localHour));
+        }
+    }
 
     public BusinessCombatSnapshot GetSnapshot()
     {
-        EnsureOpenStores();
-        return CreateSnapshot(OpenStoreIds()
-            .Select(storeId => ToSnapshot(storeId, _lastEvents[storeId], _lastDropRolls[storeId]))
-            .ToArray());
+        lock (_gate)
+        {
+            EnsureOpenStores();
+            return CreateSnapshot(OpenStoreIds()
+                .Select(storeId => ToSnapshot(storeId, _lastEvents[storeId], _lastDropRolls[storeId]))
+                .ToArray());
+        }
     }
 
     public string GetInteriorBackgroundAssetPath(string storeId)
@@ -269,57 +284,85 @@ public sealed class BusinessCombatService
 
     public StoreProductLoadout Equip(string storeId, int slotIndex, string productId)
     {
-        EnsureOpenStores();
-        var updated = _loadouts.Equip(_storeLoadouts[storeId], _collection, slotIndex, productId);
-        _storeLoadouts[storeId] = updated;
-        return updated;
+        lock (_gate)
+        {
+            EnsureOpenStores();
+            var updated = _loadouts.Equip(_storeLoadouts[storeId], _collection, slotIndex, productId);
+            _storeLoadouts[storeId] = updated;
+            return updated;
+        }
     }
 
     public StoreProductLoadout ReplaceLoadout(string storeId, IReadOnlyList<string> productIds)
     {
-        EnsureOpenStores();
-        ArgumentNullException.ThrowIfNull(productIds);
-        if (productIds.Any(productId => !_collection.IsUnlocked(productId)))
+        lock (_gate)
         {
-            throw new InvalidOperationException("Every recommended product must be unlocked.");
-        }
+            EnsureOpenStores();
+            ArgumentNullException.ThrowIfNull(productIds);
+            if (productIds.Any(productId => !_collection.IsUnlocked(productId)))
+            {
+                throw new InvalidOperationException("Every recommended product must be unlocked.");
+            }
 
-        var current = _storeLoadouts[storeId];
-        var updated = new StoreProductLoadout(storeId, current.UnlockedSlots, productIds);
-        _storeLoadouts[storeId] = updated;
-        return updated;
+            var current = _storeLoadouts[storeId];
+            var updated = new StoreProductLoadout(storeId, current.UnlockedSlots, productIds);
+            _storeLoadouts[storeId] = updated;
+            return updated;
+        }
     }
 
     public IReadOnlyList<ProductCombatDefinition> GetProductDefinitions() => _content.Products;
 
     public CombatSaveData CaptureSaveData()
     {
-        EnsureOpenStores();
-        return new CombatSaveData(
-            new ProductCollectionSaveData(_collection.Entries),
-            OpenStoreIds()
-                .Select(storeId => new StoreProductLoadoutSaveData(
-                    storeId,
-                    _storeLoadouts[storeId].UnlockedSlots,
-                    _storeLoadouts[storeId].ProductIds.ToArray()))
-                .ToArray(),
-            OpenStoreIds()
-                .Select(storeId =>
-                {
-                    var totals = _totals[storeId];
-                    return new StoreCombatStateSaveData(
+        lock (_gate)
+        {
+            EnsureOpenStores();
+            return new CombatSaveData(
+                new ProductCollectionSaveData(_collection.Entries),
+                OpenStoreIds()
+                    .Select(storeId => new StoreProductLoadoutSaveData(
                         storeId,
-                        _states[storeId],
-                        totals.RevenueCents,
-                        totals.ServedCustomers,
-                        totals.EscapedCustomers,
-                        totals.DroppedProducts,
-                        totals.EncounteredCustomers,
-                        totals.TotalDamage);
-                })
-                .ToArray(),
-            _random.State,
-            _compatibility);
+                        _storeLoadouts[storeId].UnlockedSlots,
+                        _storeLoadouts[storeId].ProductIds.ToArray()))
+                    .ToArray(),
+                OpenStoreIds()
+                    .Select(storeId =>
+                    {
+                        var totals = _totals[storeId];
+                        return new StoreCombatStateSaveData(
+                            storeId,
+                            _states[storeId],
+                            totals.RevenueCents,
+                            totals.ServedCustomers,
+                            totals.EscapedCustomers,
+                            totals.DroppedProducts,
+                            totals.EncounteredCustomers,
+                            totals.TotalDamage);
+                    })
+                    .ToArray(),
+                _random.State,
+                _compatibility);
+        }
+    }
+
+    private StoreCombatState SanitizeRestoredState(StoreCombatState state)
+    {
+        var customers = state.Customers
+            .Where(customer => _customerById.ContainsKey(customer.ArchetypeId))
+            .ToArray();
+        var customerIds = customers
+            .Select(customer => customer.EntityId)
+            .ToHashSet();
+        var projectiles = state.Projectiles
+            .Where(projectile => _productById.ContainsKey(projectile.ProductId)
+                && customerIds.Contains(projectile.TargetCustomerEntityId))
+            .ToArray();
+        return state with
+        {
+            Customers = customers,
+            Projectiles = projectiles
+        };
     }
 
     private void EnsureOpenStores()

@@ -29,7 +29,10 @@ public sealed class GitHubPublishingWorkflowTests
         var script = File.ReadAllText(_root.File("scripts", "publish-github-branch.ps1"));
 
         Assert.Contains("cat-file blob", script, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("StandardInput.BaseStream", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Text.UTF8Encoding]::new($false)", script, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.File]::WriteAllBytes", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-Item -LiteralPath $requestPath", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("StandardInput.BaseStream", script, StringComparison.Ordinal);
         Assert.Contains("base_tree", script, StringComparison.Ordinal);
         Assert.Contains("tree = $treeEntries.ToArray()", script, StringComparison.Ordinal);
         Assert.DoesNotContain("tree = @($treeEntries)", script, StringComparison.Ordinal);

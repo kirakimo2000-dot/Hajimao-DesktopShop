@@ -57,6 +57,25 @@ public sealed class MarketViewModelTests
     }
 
     [Fact]
+    public void PresentationRefresh_DoesNotRebuildManagementCollections()
+    {
+        var viewModel = new MarketViewModel(MarketTestSession.Create());
+        var collectionChanges = 0;
+        var loadoutChanges = 0;
+        var investmentChanges = 0;
+        viewModel.Collection.Products.CollectionChanged += (_, _) => collectionChanges++;
+        viewModel.Loadout.Slots.CollectionChanged += (_, _) => loadoutChanges++;
+        viewModel.Investment.Candidates.CollectionChanged += (_, _) => investmentChanges++;
+
+        viewModel.RefreshPresentation();
+
+        Assert.Equal(0, collectionChanges);
+        Assert.Equal(0, loadoutChanges);
+        Assert.Equal(0, investmentChanges);
+        Assert.NotNull(viewModel.CombatDesktopFrame);
+    }
+
+    [Fact]
     public void DesktopControls_KeepLockAndMouseThroughIndependent()
     {
         var viewModel = new MarketViewModel(MarketTestSession.Create());

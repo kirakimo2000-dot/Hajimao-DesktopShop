@@ -6,7 +6,7 @@ namespace HajimaoDesktopShop.Desktop.Tests;
 public sealed class ProductIdentityTests
 {
     [Fact]
-    public void ActiveVersion_Is_0_2_2()
+    public void ActiveVersion_Is_0_2_3()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null
@@ -18,7 +18,7 @@ public sealed class ProductIdentityTests
         var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
         var props = File.ReadAllText(Path.Combine(repositoryRoot.FullName, "Directory.Build.props"));
 
-        Assert.Contains("<VersionPrefix>0.2.2</VersionPrefix>", props, StringComparison.Ordinal);
+        Assert.Contains("<VersionPrefix>0.2.3</VersionPrefix>", props, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -74,6 +74,71 @@ public sealed class ProductIdentityTests
 
         Assert.True(diagnosticIndex >= 0);
         Assert.True(selectionIndex > diagnosticIndex);
+    }
+
+    [Fact]
+    public void Startup_SecondaryInstanceSignalsPrimaryBeforeLoadingGameState()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+        var coordinatorIndex = startupSource.IndexOf(
+            "new DesktopSingleInstanceCoordinator",
+            StringComparison.Ordinal);
+        var signalIndex = coordinatorIndex < 0
+            ? -1
+            : startupSource.IndexOf(
+                "_singleInstance.SignalPrimary()",
+                coordinatorIndex,
+                StringComparison.Ordinal);
+        var diagnosticIndex = startupSource.IndexOf(
+            "InitializeDiagnostics",
+            StringComparison.Ordinal);
+
+        Assert.True(coordinatorIndex >= 0);
+        Assert.True(signalIndex > coordinatorIndex);
+        Assert.True(diagnosticIndex > signalIndex);
+        Assert.Contains("ShowDesktopWindow", startupSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApplicationLifetime_HoldsSingleInstanceLeaseUntilFinalSaveAndGuardsCoordinatorStartup()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "HajimaoDesktopShop.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = Assert.IsType<DirectoryInfo>(directory);
+        var startupSource = File.ReadAllText(Path.Combine(
+            repositoryRoot.FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "App.xaml.cs"));
+        var startupIndex = startupSource.IndexOf("protected override async void OnStartup", StringComparison.Ordinal);
+        var startupTryIndex = startupSource.IndexOf("try", startupIndex, StringComparison.Ordinal);
+        var coordinatorIndex = startupSource.IndexOf("new DesktopSingleInstanceCoordinator", startupIndex, StringComparison.Ordinal);
+        var exitIndex = startupSource.IndexOf("protected override void OnExit", StringComparison.Ordinal);
+        var finalSaveIndex = startupSource.IndexOf("_autosaveCoordinator?.FlushAsync()", exitIndex, StringComparison.Ordinal);
+        var disposeIndex = startupSource.IndexOf("_singleInstance?.Dispose()", exitIndex, StringComparison.Ordinal);
+
+        Assert.True(startupIndex >= 0);
+        Assert.True(startupTryIndex > startupIndex);
+        Assert.True(coordinatorIndex > startupTryIndex);
+        Assert.True(finalSaveIndex > exitIndex);
+        Assert.True(disposeIndex > finalSaveIndex);
     }
 
     [Fact]

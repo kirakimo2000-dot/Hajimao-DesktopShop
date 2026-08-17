@@ -67,22 +67,25 @@ public sealed class SimulationLoop : IAsyncDisposable
         {
             while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
             {
-                _advanceRealSecond();
+                try
+                {
+                    _advanceRealSecond();
+                }
+                catch (Exception exception)
+                {
+                    try
+                    {
+                        _reportFailure?.Invoke(exception);
+                    }
+                    catch
+                    {
+                        // Diagnostic reporting must not stop the simulation loop.
+                    }
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-        }
-        catch (Exception exception)
-        {
-            try
-            {
-                _reportFailure?.Invoke(exception);
-            }
-            catch
-            {
-                // Diagnostic reporting must not fault shutdown or mask the simulation failure.
-            }
         }
     }
 }

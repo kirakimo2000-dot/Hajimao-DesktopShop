@@ -159,7 +159,11 @@ public sealed class MarketViewModel : ObservableObject
         private set => SetProperty(ref _combatDesktopFrame, value);
     }
 
-    public void Refresh()
+    public void Refresh() => RefreshCore(refreshManagementData: true);
+
+    public void RefreshPresentation() => RefreshCore(refreshManagementData: false);
+
+    private void RefreshCore(bool refreshManagementData)
     {
         var business = _session.Game.GetSnapshot();
         var storeCatalog = _session.Game.GetStoreCatalogSnapshot();
@@ -230,14 +234,17 @@ public sealed class MarketViewModel : ObservableObject
 
         IdleFeedback.Update(combat);
 
-        Loadout.Refresh();
-        Collection.Refresh();
-        Investment.Refresh();
         EventTicker.Update(combat.ActiveEventTags ?? []);
-        NextAction.Update(
-            combat,
-            SelectedStoreId,
-            Investment.Candidates.Any(candidate => candidate.InvestCommand.CanExecute(null)));
+        if (refreshManagementData)
+        {
+            Loadout.Refresh();
+            Collection.Refresh();
+            Investment.Refresh();
+            NextAction.Update(
+                combat,
+                SelectedStoreId,
+                Investment.Candidates.Any(candidate => candidate.InvestCommand.CanExecute(null)));
+        }
     }
 
     public void RestoreDesktopState(bool isLocked)
