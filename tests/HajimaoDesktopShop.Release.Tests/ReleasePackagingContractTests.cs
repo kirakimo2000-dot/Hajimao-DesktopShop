@@ -8,14 +8,14 @@ public sealed class ReleasePackagingContractTests
     private readonly RepositoryRoot _root = RepositoryRoot.Locate();
 
     [Fact]
-    public void ActiveVersion_Is_0_2_3()
+    public void ActiveVersion_Is_0_2_5()
     {
         var properties = XDocument.Load(_root.File("Directory.Build.props"));
         var version = Assert.Single(
             properties.Descendants(),
             element => element.Name.LocalName == "VersionPrefix");
 
-        Assert.Equal("0.2.4", version.Value.Trim());
+        Assert.Equal("0.2.5", version.Value.Trim());
     }
 
     [Fact]
@@ -206,6 +206,19 @@ public sealed class ReleasePackagingContractTests
             cleanScript,
             StringComparison.Ordinal);
         Assert.Contains("/Hajimao DesktopShop.exe", gitIgnore, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopVisibilityGate_EntersTheStoreAndRequiresAResponsiveRenderedSurface()
+    {
+        var script = File.ReadAllText(_root.File("scripts", "test-desktop-visibility.ps1"));
+
+        Assert.Contains("[switch]$EnterStore", script, StringComparison.Ordinal);
+        Assert.Contains("Store surface visibility passed", script, StringComparison.Ordinal);
+        Assert.Contains("SetPhysicalCursorPos", script, StringComparison.Ordinal);
+        Assert.Contains("SendInput", script, StringComparison.Ordinal);
+        Assert.Contains("DwmGetWindowAttribute", script, StringComparison.Ordinal);
+        Assert.Contains("$process.Responding", script, StringComparison.Ordinal);
     }
 
     [Fact]
