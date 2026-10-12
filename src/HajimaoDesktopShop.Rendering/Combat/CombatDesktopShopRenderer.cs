@@ -47,8 +47,7 @@ public sealed class CombatDesktopShopRenderer : IDisposable
         Fill(canvas, 0, 0, LogicalWidth, 42, "#23262C");
         Fill(canvas, 0, 238, LogicalWidth, 42, "#2D323A");
         Stroke(canvas, 0, 0, LogicalWidth, LogicalHeight, "#F1B844");
-        Text(canvas, "HAJIMAO", 8, 26, "#F1B844", _font);
-        Text(canvas, frame.CashText, 82, 26, "#F1B844", _font);
+        Text(canvas, frame.CashText, 92, 26, "#F1B844", _font);
         Text(canvas, frame.PlayerLevelText, 196, 26, "#72C986", _smallFont);
         Button(canvas, 307, 5, 48, 34, frame.IsLocked ? "解锁" : "锁定", false);
         Button(canvas, 361, 5, 49, 34, "经营", true);
@@ -70,9 +69,6 @@ public sealed class CombatDesktopShopRenderer : IDisposable
                 _paint);
         }
 
-        Fill(canvas, 7, 250, 4, 18, "#72C986");
-        Text(canvas, frame.IncomeText, 16, 264, "#72C986", _smallFont);
-        Text(canvas, frame.CustomerCountText, 252, 264, "#F4EBDD", _smallFont);
         Button(canvas, 364, 243, 48, 32, frame.IsClickThrough ? "恢复" : "穿透", false);
         canvas.Restore();
     }

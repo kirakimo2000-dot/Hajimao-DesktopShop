@@ -30,9 +30,16 @@ public sealed record LegacyEmployeeArchiveEntry(
 public sealed record LegacyCombatCompatibilitySaveData(
     IReadOnlyList<LegacyEmployeeArchiveEntry> Employees);
 
+public sealed record CombatEmployeeSaveData(
+    string InstanceId,
+    string CharacterId,
+    string DisplayName,
+    string? AssignedStoreId);
+
 public sealed record CombatSaveData(
     ProductCollectionSaveData Collection,
     IReadOnlyList<StoreProductLoadoutSaveData> Loadouts,
     IReadOnlyList<StoreCombatStateSaveData> Stores,
     ulong RandomState,
-    LegacyCombatCompatibilitySaveData Compatibility);
+    LegacyCombatCompatibilitySaveData Compatibility,
+    IReadOnlyList<CombatEmployeeSaveData>? Employees = null);

@@ -15,14 +15,28 @@ public sealed record StoreCombatSnapshot(
     string StoreFormatId = "legacy",
     StoreCombatProfile? Profile = null,
     int EncounteredCustomers = 0,
-    long TotalDamage = 0);
+    long TotalDamage = 0,
+    bool IsStaffed = true,
+    string? AssignedEmployeeInstanceId = null);
+
+public sealed record CombatEmployeeSnapshot(
+    string InstanceId,
+    string CharacterId,
+    string DisplayName,
+    string? AssignedStoreId);
+
+public sealed record ProductAssignmentSnapshot(
+    string ProductId,
+    string? AssignedStoreId);
 
 public sealed record BusinessCombatSnapshot(
     long CashCents,
     IReadOnlyList<StoreCombatSnapshot> Stores,
     IReadOnlyList<ProductCollectionEntry> Collection,
     IReadOnlyList<StoreProductLoadout> Loadouts,
-    IReadOnlyList<string>? ActiveEventTags = null);
+    IReadOnlyList<string>? ActiveEventTags = null,
+    IReadOnlyList<CombatEmployeeSnapshot>? Employees = null,
+    IReadOnlyList<ProductAssignmentSnapshot>? ProductAssignments = null);
 
 public sealed record BusinessCombatOptions
 {

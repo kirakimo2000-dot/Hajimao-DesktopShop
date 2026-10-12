@@ -137,6 +137,14 @@
         "upper-leg-right": [
           { "frame": 0, "rotationDegrees": 14 },
           { "frame": 12, "rotationDegrees": -14 }
+        ],
+        "upper-arm-left": [
+          { "frame": 0, "rotationDegrees": 10 },
+          { "frame": 12, "rotationDegrees": -10 }
+        ],
+        "upper-arm-right": [
+          { "frame": 0, "rotationDegrees": -10 },
+          { "frame": 12, "rotationDegrees": 10 }
         ]
       },
       "markers": []

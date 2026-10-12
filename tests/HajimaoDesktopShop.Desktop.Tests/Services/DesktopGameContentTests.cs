@@ -1,5 +1,6 @@
 using HajimaoDesktopShop.Desktop.Services;
 using System.IO;
+using HajimaoDesktopShop.Rendering.PixelArt;
 
 namespace HajimaoDesktopShop.Desktop.Tests.Services;
 
@@ -48,5 +49,14 @@ public sealed class DesktopGameContentTests
         Assert.True(File.Exists(Path.Combine(assets, "Content", "characters", "characters.json")));
         Assert.True(File.Exists(Path.Combine(assets, "Content", "interiors", "interiors.json")));
         Assert.True(File.Exists(Path.Combine(assets, "Content", "interiors", "placeholders", "default-shop.png")));
+    }
+
+    [Fact]
+    public void StorefrontTextures_AreCopiedWithTheDesktopBuild()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "facades");
+
+        Assert.All(Enum.GetValues<FacadeGeometryKind>(), kind =>
+            Assert.True(File.Exists(Path.Combine(root, StorefrontTextureSet.FileName(kind)))));
     }
 }

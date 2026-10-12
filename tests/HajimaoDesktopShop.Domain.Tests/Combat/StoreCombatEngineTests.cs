@@ -87,6 +87,8 @@ public sealed class StoreCombatEngineTests
         var result = new StoreCombatEngine().Tick(state, Maomao, [Water], null);
 
         Assert.Empty(result.State.Customers);
+        Assert.Contains(result.Events, combatEvent =>
+            combatEvent is ProductHitEvent { CustomerEntityId: 1, TargetPositionPermille: 8_000 });
         Assert.Contains(result.Events, combatEvent => combatEvent is CustomerServedEvent { CustomerEntityId: 1, ArchetypeId: "quick" });
     }
 

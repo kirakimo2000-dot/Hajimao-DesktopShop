@@ -224,6 +224,41 @@
                                            TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,5,0,12" />
                                 <Border Style="{DynamicResource SectionCard}" Margin="0,0,0,12">
                                     <StackPanel>
+                                        <TextBlock Text="本店店员" Style="{DynamicResource EyebrowText}" />
+                                        <TextBlock Text="{Binding EmployeeAssignment.StatusText}"
+                                                   TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}"
+                                                   Margin="0,4,0,8" />
+                                        <ItemsControl x:Name="CombatEmployeeWarehouse"
+                                                      ItemsSource="{Binding EmployeeAssignment.Employees}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource Brush.SurfaceElevated}"
+                                                            BorderBrush="{DynamicResource Brush.Border}"
+                                                            BorderThickness="2" Padding="8" Margin="0,0,0,6">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                                                <TextBlock Text="{Binding LocationText}"
+                                                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                                                           Margin="0,3,0,0" />
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Content="{Binding ActionText}"
+                                                                    MinWidth="86" Margin="12,0,0,0"
+                                                                    Command="{Binding DataContext.EmployeeAssignment.AssignToStoreCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding InstanceId}" />
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{DynamicResource SectionCard}" Margin="0,0,0,12">
+                                    <StackPanel>
                                         <DockPanel Margin="0,0,0,8">
                                             <Button DockPanel.Dock="Right" Content="使用推荐组合"
                                                     Style="{DynamicResource PrimaryPixelButton}"
@@ -284,10 +319,11 @@
                                                         <TextBlock Text="{Binding MasteryProgressText}"
                                                                    Foreground="{DynamicResource Brush.TextMuted}" Margin="0,3,0,0" />
                                                     </StackPanel>
-                                                    <Button Grid.Column="1" Content="装备" MinWidth="74"
+                                                    <Button Grid.Column="1" Content="{Binding ActionText}" MinWidth="86"
                                                             Command="{Binding DataContext.Collection.EquipProductCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding ProductId}" Margin="12,0,0,0" />
                                                     <WrapPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,7,0,0">
+                                                        <TextBlock Text="{Binding OccupancyText}" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,0,14,0" />
                                                         <TextBlock Text="{Binding PowerText}" Foreground="{DynamicResource Brush.Primary}" Margin="0,0,14,0" />
                                                         <TextBlock Text="{Binding RevenueText}" Foreground="{DynamicResource Brush.Success}" Margin="0,0,14,0" />
                                                         <TextBlock Text="{Binding EffectText}" Foreground="{DynamicResource Brush.Warning}" />

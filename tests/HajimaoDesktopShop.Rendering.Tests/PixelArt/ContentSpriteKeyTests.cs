@@ -29,6 +29,22 @@ public sealed class ContentSpriteKeyTests
     }
 
     [Theory]
+    [InlineData("facade-convenience-a", FacadeGeometryKind.Convenience)]
+    [InlineData("facade-commuter-b", FacadeGeometryKind.Commuter)]
+    [InlineData("facade-discount-c", FacadeGeometryKind.Discount)]
+    [InlineData("facade-warehouse-d", FacadeGeometryKind.Warehouse)]
+    [InlineData("facade-lifestyle-a", FacadeGeometryKind.Lifestyle)]
+    [InlineData("facade-health-b", FacadeGeometryKind.Health)]
+    [InlineData("facade-premium-c", FacadeGeometryKind.Premium)]
+    [InlineData("facade-variety-d", FacadeGeometryKind.Variety)]
+    public void Facade_MapsEveryStoreFormatToItsOwnBuildingGeometry(
+        string key,
+        FacadeGeometryKind expected)
+    {
+        Assert.Equal(expected, ContentSpriteKey.ResolveFacade(key).GeometryKind);
+    }
+
+    [Theory]
     [InlineData("employee-a01")]
     [InlineData("employee-f08")]
     [InlineData("employee-l08")]

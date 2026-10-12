@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Windows;
 using HajimaoDesktopShop.Infrastructure.Configuration;
 using HajimaoDesktopShop.Rendering.Animation;
@@ -19,6 +20,8 @@ public partial class CombatShopSceneControl : WpfUserControl
 
     private CombatShopSceneRenderer? _renderer;
     private SKBitmap? _parts;
+    private CancellationTokenSource? _loadCancellation;
+    private bool _loadFailed;
 
     public CombatShopSceneControl() => InitializeComponent();
 
@@ -36,26 +39,66 @@ public partial class CombatShopSceneControl : WpfUserControl
         }
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (_renderer is null)
+        if (_renderer is not null)
+        {
+            Surface.InvalidateVisual();
+            return;
+        }
+
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadFailed = false;
+        var cancellation = new CancellationTokenSource();
+        _loadCancellation = cancellation;
+        var token = cancellation.Token;
+
+        try
         {
             var root = Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "characters");
-            var content = new JsonCharacterAnimationCatalog(
+            var content = await new JsonCharacterAnimationCatalog(
                     Path.Combine(root, "rigs", "humanoid.json"),
                     Path.Combine(root, "animations", "humanoid-clips.json"),
                     Path.Combine(root, "skins.json"))
-                .LoadAsync().GetAwaiter().GetResult();
-            _parts = SKBitmap.Decode(Path.Combine(root, "maomao", "parts.png"))
+                .LoadAsync(token);
+            token.ThrowIfCancellationRequested();
+            var parts = SKBitmap.Decode(Path.Combine(root, "maomao", "parts.png"))
                 ?? throw new InvalidDataException("Maomao modular parts image is unreadable.");
-            _renderer = new CombatShopSceneRenderer(SkeletalAnimationCatalog.Create(content), _parts);
-        }
+            if (token.IsCancellationRequested || !IsLoaded)
+            {
+                parts.Dispose();
+                return;
+            }
 
-        Surface.InvalidateVisual();
+            _parts = parts;
+            _renderer = new CombatShopSceneRenderer(SkeletalAnimationCatalog.Create(content), parts);
+            Surface.InvalidateVisual();
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _loadFailed = true;
+            Trace.TraceError($"Management combat resources failed to load: {exception}");
+            Surface.InvalidateVisual();
+        }
+        finally
+        {
+            if (ReferenceEquals(_loadCancellation, cancellation))
+            {
+                _loadCancellation = null;
+                cancellation.Dispose();
+            }
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = null;
         _renderer?.Dispose();
         _renderer = null;
         _parts?.Dispose();
@@ -66,7 +109,7 @@ public partial class CombatShopSceneControl : WpfUserControl
     {
         if (_renderer is null || Frame is null)
         {
-            e.Surface.Canvas.Clear(SKColor.Parse("#17191D"));
+            e.Surface.Canvas.Clear(SKColor.Parse(_loadFailed ? "#4A1F24" : "#17191D"));
             return;
         }
 

@@ -40,6 +40,26 @@ if (Test-Path -LiteralPath $stagingRoot) {
     }
 }
 
+$artifactsRoot = Assert-ChildPath -Parent $repoRoot -Target (
+    Join-Path $repoRoot 'artifacts')
+$temporaryArtifactDirectories = @(
+    Get-ChildItem -LiteralPath $artifactsRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -in @('qa', 'diagnostics', 'visual-audit') -or $_.Name -like 'startup-smoke-*'
+        }
+)
+foreach ($directory in $temporaryArtifactDirectories) {
+    $ownedPath = Assert-ChildPath -Parent $artifactsRoot -Target $directory.FullName
+    Remove-Item -LiteralPath $ownedPath -Recurse -Force
+}
+$temporaryArtifactFiles = @(
+    Get-ChildItem -LiteralPath $artifactsRoot -File -Filter '*.png' -ErrorAction SilentlyContinue
+)
+foreach ($file in $temporaryArtifactFiles) {
+    $ownedPath = Assert-ChildPath -Parent $artifactsRoot -Target $file.FullName
+    Remove-Item -LiteralPath $ownedPath -Force
+}
+
 $systemTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $captureRoot = Assert-ChildPath -Parent $systemTemp -Target (
     Join-Path $systemTemp 'hajimao-v0133-street')
@@ -50,5 +70,7 @@ if (Test-Path -LiteralPath $captureRoot) {
 [pscustomobject]@{
     RemovedBuildDirectories = $generatedDirectories.Count
     StagingChildren = @(Get-ChildItem -LiteralPath $stagingRoot -Force).Count
+    RemovedTemporaryArtifactDirectories = $temporaryArtifactDirectories.Count
+    RemovedTemporaryArtifactFiles = $temporaryArtifactFiles.Count
     TestCaptureExists = Test-Path -LiteralPath $captureRoot
 }

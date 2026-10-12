@@ -17,7 +17,8 @@ public sealed record ProductHitEvent(
     long CustomerEntityId,
     int Damage,
     int RemainingDemandHp,
-    bool IsSplash) : CombatEvent;
+    bool IsSplash,
+    int TargetPositionPermille = 5_000) : CombatEvent;
 
 public sealed record CustomerServedEvent(
     long CustomerEntityId,

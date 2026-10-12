@@ -39,8 +39,9 @@ public sealed class SkeletalCharacterRendererTests
         using var target = new SKBitmap(32, 32, SKColorType.Rgba8888, SKAlphaType.Premul);
         target.Erase(SKColors.Transparent);
         using var canvas = new SKCanvas(target);
+        using var partsImage = SKImage.FromBitmap(parts);
 
-        SkeletalCharacterRenderer.Draw(canvas, parts, rig, skin, pose, 0, 0);
+        SkeletalCharacterRenderer.Draw(canvas, partsImage, rig, skin, pose, 0, 0);
 
         Assert.Equal(SKColors.Red, target.GetPixel(8, 8));
         Assert.Equal(SKColors.Blue, target.GetPixel(13, 8));

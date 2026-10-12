@@ -33,6 +33,24 @@ public sealed class DesktopSurfaceWindowLayoutPolicyTests
     }
 
     [Fact]
+    public void Street_AddingASecondStoreAddsOneStorefrontAndOneGap()
+    {
+        var initial = DesktopSurfaceWindowLayoutPolicy.Create(
+            DesktopSurfaceMode.Street,
+            1,
+            WorkArea);
+        var expanded = DesktopSurfaceWindowLayoutPolicy.Create(
+            DesktopSurfaceMode.Street,
+            2,
+            WorkArea);
+
+        Assert.Equal(248, initial.ContentWidth);
+        Assert.Equal(480, expanded.ContentWidth);
+        Assert.Equal(232, expanded.ContentWidth - initial.ContentWidth);
+        Assert.Equal(new DesktopSize(480, 180), expanded.Size);
+    }
+
+    [Fact]
     public void Store_UsesTheExistingShopSurfaceSize()
     {
         var layout = DesktopSurfaceWindowLayoutPolicy.Create(

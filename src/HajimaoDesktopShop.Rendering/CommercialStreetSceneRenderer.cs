@@ -1,5 +1,7 @@
 using HajimaoDesktopShop.Application.Business.Street;
 using HajimaoDesktopShop.Domain.Streets;
+using HajimaoDesktopShop.Rendering.Animation;
+using HajimaoDesktopShop.Rendering.Characters;
 using HajimaoDesktopShop.Rendering.PixelArt;
 using SkiaSharp;
 
@@ -8,9 +10,6 @@ namespace HajimaoDesktopShop.Rendering;
 public sealed class CommercialStreetSceneRenderer : IDisposable
 {
     public const int LogicalHeight = CommercialStreetLayout.LogicalHeight;
-
-    private static readonly SKSamplingOptions PixelSampling =
-        new(SKFilterMode.Nearest, SKMipmapMode.None);
 
     private static readonly string[] FacadeBodies =
         ["#6B4634", "#4B5964", "#735244", "#48515C", "#8A765D", "#4D6A62", "#594453", "#7B554B"];
@@ -23,13 +22,20 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         IsAntialias = false,
         Style = SKPaintStyle.Fill
     };
-    private readonly PixelSpriteAtlas _atlas;
-    private readonly SKImage _atlasImage;
+    private readonly SkeletalAnimationCatalog _characters;
+    private readonly SKImage _parts;
+    private readonly IReadOnlyDictionary<FacadeGeometryKind, SKBitmap> _storefrontTextures;
 
-    public CommercialStreetSceneRenderer()
+    public CommercialStreetSceneRenderer(
+        SkeletalAnimationCatalog characters,
+        SKBitmap parts,
+        IReadOnlyDictionary<FacadeGeometryKind, SKBitmap>? storefrontTextures = null)
     {
-        _atlas = PixelSpriteAtlas.LoadDefault();
-        _atlasImage = SKImage.FromBitmap(_atlas.Bitmap);
+        _characters = characters ?? throw new ArgumentNullException(nameof(characters));
+        ArgumentNullException.ThrowIfNull(parts);
+        _parts = SKImage.FromBitmap(parts);
+        _storefrontTextures = (storefrontTextures ?? new Dictionary<FacadeGeometryKind, SKBitmap>())
+            .ToDictionary(entry => entry.Key, entry => entry.Value.Copy());
     }
 
     public void Render(SKCanvas canvas, SKImageInfo target, CommercialStreetSceneFrame frame)
@@ -81,8 +87,11 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
 
     public void Dispose()
     {
-        _atlasImage.Dispose();
-        _atlas.Dispose();
+        _parts.Dispose();
+        foreach (var texture in _storefrontTextures.Values)
+        {
+            texture.Dispose();
+        }
         _paint.Dispose();
     }
 
@@ -102,17 +111,110 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
                 variant = new FacadeSpriteVariant(0, 0);
             }
 
-            Fill(canvas, bounds.X, bounds.Y, bounds.Width, bounds.Height, FacadeBodies[variant.PaletteIndex]);
-            Fill(canvas, bounds.X + 8, bounds.Y + 7, bounds.Width - 16, 16, FacadeSigns[variant.PaletteIndex]);
-            Fill(canvas, bounds.X + 12, bounds.Y + 37, 72, bounds.Height - 37, "#65B8C8");
-            Fill(canvas, bounds.X + 96, bounds.Y + 37, bounds.Width - 108, bounds.Height - 37, "#4A353C");
-            DrawAwning(canvas, bounds, variant.AwningIndex, FacadeSigns[variant.PaletteIndex]);
-            var shareWidth = Math.Clamp(
-                street.Stores[index].TrafficShareBasisPoints * (bounds.Width - 24) / 10_000,
-                1,
-                bounds.Width - 24);
-            Fill(canvas, bounds.X + 12, bounds.Y + 27, shareWidth, 4, "#72C986");
+            if (_storefrontTextures.TryGetValue(variant.GeometryKind, out var texture))
+            {
+                canvas.DrawBitmap(
+                    texture,
+                    bounds.X,
+                    bounds.Y,
+                    new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None),
+                    null);
+            }
+            else
+            {
+                DrawFacade(canvas, bounds, variant);
+            }
+            if (!street.Stores[index].IsStaffed)
+            {
+                DrawClosedStorefront(canvas, bounds);
+            }
         }
+    }
+
+    private void DrawClosedStorefront(SKCanvas canvas, LogicalPixelRect bounds)
+    {
+        Fill(canvas, bounds.X + 10, bounds.Bottom - 54, bounds.Width - 20, 46, "#3A3D43");
+        for (var y = bounds.Bottom - 50; y < bounds.Bottom - 10; y += 7)
+        {
+            Fill(canvas, bounds.X + 12, y, bounds.Width - 24, 2, "#666A73");
+        }
+
+        Fill(canvas, bounds.X + bounds.Width / 2 - 16, bounds.Bottom - 35, 32, 11, "#24262B");
+        Fill(canvas, bounds.X + bounds.Width / 2 - 2, bounds.Bottom - 31, 4, 4, "#E15A5A");
+    }
+
+    private void DrawFacade(SKCanvas canvas, LogicalPixelRect bounds, FacadeSpriteVariant variant)
+    {
+        var geometry = FacadeGeometryPolicy.Resolve(variant.GeometryKind);
+        var body = FacadeBodies[variant.PaletteIndex];
+        var accent = FacadeSigns[variant.PaletteIndex];
+        var x = bounds.X + geometry.SideInset;
+        var y = bounds.Y + geometry.TopOffset;
+        var width = bounds.Width - geometry.SideInset * 2;
+        var height = bounds.Bottom - y;
+
+        Fill(canvas, x, y, width, height, body);
+        if (geometry.HasCornice)
+        {
+            Fill(canvas, x - 4, y, width + 8, 5, "#29282E");
+            Fill(canvas, x, y + 5, width, 3, accent);
+        }
+
+        if (variant.GeometryKind == FacadeGeometryKind.Warehouse)
+        {
+            for (var roofX = x; roofX < x + width; roofX += 28)
+            {
+                Fill(canvas, roofX, y - 4, Math.Min(18, x + width - roofX), 4, accent);
+            }
+        }
+        else if (variant.GeometryKind == FacadeGeometryKind.Premium)
+        {
+            Fill(canvas, x + 8, y - 5, width - 16, 5, accent);
+            Fill(canvas, x + width / 2 - 3, y - 10, 6, 5, accent);
+        }
+        else if (variant.GeometryKind == FacadeGeometryKind.Lifestyle)
+        {
+            Fill(canvas, x + width / 2, y - 6, width / 2, 6, body);
+        }
+
+        var signX = x + 8;
+        var signY = y + geometry.SignTop;
+        var signWidth = width - 16;
+        if (geometry.HasVerticalSign)
+        {
+            var verticalWidth = 13 + variant.AwningIndex;
+            signX = geometry.DoorOnRight ? x + 7 : x + width - verticalWidth - 7;
+            signWidth = verticalWidth;
+            Fill(canvas, signX, signY, signWidth, 32, accent);
+        }
+        else
+        {
+            Fill(canvas, signX, signY, signWidth, geometry.SignHeight, accent);
+        }
+
+        var shopTop = y + Math.Max(35, geometry.SignTop + geometry.SignHeight + 7);
+        var shopBottom = bounds.Bottom - 8;
+        var shopHeight = Math.Max(12, shopBottom - shopTop);
+        var gap = 4;
+        var bayWidth = Math.Max(12, (width - 20 - gap * (geometry.WindowBayCount - 1)) / geometry.WindowBayCount);
+        for (var bay = 0; bay < geometry.WindowBayCount; bay++)
+        {
+            var bayX = x + 10 + bay * (bayWidth + gap);
+            var isDoor = geometry.DoorOnRight
+                ? bay == geometry.WindowBayCount - 1
+                : bay == 0;
+            Fill(canvas, bayX, shopTop, bayWidth, shopHeight, isDoor ? "#4A353C" : "#65B8C8");
+            if (!isDoor)
+            {
+                Fill(canvas, bayX + bayWidth / 2, shopTop, 2, shopHeight, "#DCE7E5");
+            }
+        }
+
+        DrawAwning(
+            canvas,
+            new LogicalPixelRect(x, shopTop - 5, width, height),
+            variant.AwningIndex,
+            accent);
     }
 
     private void DrawAwning(
@@ -122,9 +224,9 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         string color)
     {
         var stripeWidth = 8 + style * 2;
-        for (var x = bounds.X + 12; x < bounds.X + bounds.Width - 12; x += stripeWidth * 2)
+        for (var x = bounds.X + 10; x < bounds.X + bounds.Width - 10; x += stripeWidth * 2)
         {
-            Fill(canvas, x, bounds.Y + 31, stripeWidth, 4 + style, color);
+            Fill(canvas, x, bounds.Y, stripeWidth, 4 + style, color);
         }
     }
 
@@ -133,10 +235,9 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
         var count = Math.Min(
             Math.Max(0, frame.Snapshot.VisiblePedestrians),
             PixelArtBudget.MaximumVisibleStreetPedestrians);
-        var sprite = _atlas.GetCharacterFrame(
-            PixelSpriteId.Customer,
-            frame.AnimationFrame,
-            frame.ReduceMotion);
+        var rig = _characters.Rigs["humanoid-v1"];
+        var skin = _characters.Skins["maomao-default"];
+        var clip = _characters.Clips["customer-walk"];
         var contentWidth = CommercialStreetLayout.GetContentWidth(frame.Snapshot.Stores.Count);
         for (var index = 0; index < count; index++)
         {
@@ -147,18 +248,33 @@ public sealed class CommercialStreetSceneRenderer : IDisposable
                 contentWidth - 24,
                 4,
                 frame.ReduceMotion);
-            var destination = new SKRect(
-                anchorX - sprite.AnchorX,
-                150 - sprite.AnchorY,
-                anchorX - sprite.AnchorX + sprite.Width,
-                150 - sprite.AnchorY + sprite.Height);
-            var source = new SKRect(
-                sprite.X,
-                sprite.Y,
-                sprite.X + sprite.Width,
-                sprite.Y + sprite.Height);
-            canvas.DrawImage(_atlasImage, source, destination, PixelSampling, _paint);
+            var archetypeId = HumanCharacterVisualCatalog.ResolveStreetArchetype(index);
+            var visual = HumanCharacterVisualCatalog.Resolve(archetypeId);
+            var pose = SkeletalAnimator.Evaluate(
+                rig,
+                clip,
+                frame.AnimationFrame + index * 7L,
+                frame.ReduceMotion);
+            DrawPedestrianShadow(canvas, anchorX, 150, visual.ScaleX);
+            HumanCharacterRenderer.Draw(
+                canvas,
+                _parts,
+                _paint,
+                rig,
+                skin,
+                pose,
+                visual,
+                anchorX,
+                143,
+                facingLeft: false);
         }
+    }
+
+    private void DrawPedestrianShadow(SKCanvas canvas, int x, int y, float scaleX)
+    {
+        _paint.Color = SKColor.Parse("#242229").WithAlpha(190);
+        var halfWidth = Math.Max(6, (int)MathF.Round(9 * scaleX));
+        canvas.DrawRect(x - halfWidth, y - 1, halfWidth * 2, 3, _paint);
     }
 
     private void DrawVehicles(

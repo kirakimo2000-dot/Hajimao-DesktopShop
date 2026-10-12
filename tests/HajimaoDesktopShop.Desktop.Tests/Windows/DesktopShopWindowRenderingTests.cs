@@ -120,6 +120,43 @@ public sealed class DesktopShopWindowRenderingTests
     }
 
     [Fact]
+    public void StoreSurface_LeadsWithCompactSessionOutcomeAndContextualGuidance()
+    {
+        var xaml = File.ReadAllText(FindDesktopShopWindowPath());
+
+        Assert.Contains("x:Name=\"StoreFeedbackHud\"", xaml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Text=\"{Binding IdleFeedback.SessionProfitShortText}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Text=\"{Binding IdleFeedback.SessionSummaryShortText}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Text=\"{Binding IdleFeedback.StoreStatusText}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StoreFeedbackHud_DoesNotRevealTheRetiredRendererMetricsUnderItsOverlay()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot().FullName,
+            "src",
+            "HajimaoDesktopShop.Rendering",
+            "Combat",
+            "CombatDesktopShopRenderer.cs"));
+
+        Assert.DoesNotContain("Text(canvas, frame.IncomeText", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text(canvas, frame.CustomerCountText", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text(canvas, \"HAJIMAO\"", source, StringComparison.Ordinal);
+        Assert.Contains("Text(canvas, frame.CashText, 92, 26", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavigationAndStreetGrowth_ResizeWithoutResettingTheHorizontalPosition()
     {
         var source = File.ReadAllText(FindDesktopShopWindowCodeBehindPath());
@@ -242,6 +279,28 @@ public sealed class DesktopShopWindowRenderingTests
         if (failure is not null)
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
+    [Fact]
+    public void CharacterSceneControls_ContainAVisibleFallbackForResourceLoadFailures()
+    {
+        var controls = Path.Combine(
+            FindRepositoryRoot().FullName,
+            "src",
+            "HajimaoDesktopShop.Desktop",
+            "Controls");
+        foreach (var fileName in new[]
+                 {
+                     "CommercialStreetSceneControl.xaml.cs",
+                     "CombatDesktopShopSurfaceControl.xaml.cs",
+                     "CombatShopSceneControl.xaml.cs"
+                 })
+        {
+            var source = File.ReadAllText(Path.Combine(controls, fileName));
+            Assert.Contains("catch (Exception exception)", source, StringComparison.Ordinal);
+            Assert.Contains("Trace.TraceError", source, StringComparison.Ordinal);
+            Assert.Contains("_loadFailed", source, StringComparison.Ordinal);
         }
     }
 

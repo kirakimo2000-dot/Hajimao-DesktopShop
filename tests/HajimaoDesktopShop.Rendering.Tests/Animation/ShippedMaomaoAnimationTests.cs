@@ -19,6 +19,7 @@ public sealed class ShippedMaomaoAnimationTests
         var skin = catalog.Skins["maomao-default"];
         using var parts = SKBitmap.Decode(Path.Combine(testData, "maomao-parts.png"));
         Assert.NotNull(parts);
+        using var partsImage = SKImage.FromBitmap(parts);
 
         foreach (var clip in catalog.Clips.Values)
         {
@@ -29,7 +30,7 @@ public sealed class ShippedMaomaoAnimationTests
                 using var canvas = new SKCanvas(target);
                 var pose = SkeletalAnimator.Evaluate(rig, clip, frame, reduceMotion: false);
 
-                SkeletalCharacterRenderer.Draw(canvas, parts, rig, skin, pose, 32, 54);
+                SkeletalCharacterRenderer.Draw(canvas, partsImage, rig, skin, pose, 32, 54);
 
                 var bounds = VisibleBounds(target);
                 Assert.NotNull(bounds);
@@ -60,6 +61,70 @@ public sealed class ShippedMaomaoAnimationTests
         Assert.NotEqual(
             start.Sockets["product_socket"],
             release.Sockets["product_socket"]);
+    }
+
+    [Fact]
+    public async Task CustomerWalk_UsesOpposedArmAndLegMotionAcrossAllTwentyFourFrames()
+    {
+        var testData = Path.Combine(AppContext.BaseDirectory, "TestData", "characters");
+        var content = await new JsonCharacterAnimationCatalog(
+            Path.Combine(testData, "humanoid.json"),
+            Path.Combine(testData, "humanoid-clips.json"),
+            Path.Combine(testData, "skins.json")).LoadAsync();
+        var catalog = SkeletalAnimationCatalog.Create(content);
+        var rig = catalog.Rigs["humanoid-v1"];
+        var clip = catalog.Clips["customer-walk"];
+
+        var first = SkeletalAnimator.Evaluate(rig, clip, 0, reduceMotion: false);
+        var opposite = SkeletalAnimator.Evaluate(rig, clip, 12, reduceMotion: false);
+
+        Assert.True(first.Bones["upper-arm-left"].RotationDegrees > 0);
+        Assert.True(first.Bones["upper-arm-right"].RotationDegrees < 0);
+        Assert.True(opposite.Bones["upper-arm-left"].RotationDegrees < 0);
+        Assert.True(opposite.Bones["upper-arm-right"].RotationDegrees > 0);
+        Assert.NotEqual(first.Bones["upper-leg-left"], opposite.Bones["upper-leg-left"]);
+    }
+
+    [Fact]
+    public async Task IdlePose_KeepsTheTorsoAndPelvisVisuallyConnected()
+    {
+        var testData = Path.Combine(AppContext.BaseDirectory, "TestData", "characters");
+        var content = await new JsonCharacterAnimationCatalog(
+            Path.Combine(testData, "humanoid.json"),
+            Path.Combine(testData, "humanoid-clips.json"),
+            Path.Combine(testData, "skins.json")).LoadAsync();
+        var catalog = SkeletalAnimationCatalog.Create(content);
+        using var parts = SKBitmap.Decode(Path.Combine(testData, "maomao-parts.png"));
+        using var partsImage = SKImage.FromBitmap(parts);
+        using var target = new SKBitmap(64, 64, SKColorType.Rgba8888, SKAlphaType.Premul);
+        target.Erase(SKColors.Transparent);
+        using var canvas = new SKCanvas(target);
+        var pose = SkeletalAnimator.Evaluate(
+            catalog.Rigs["humanoid-v1"],
+            catalog.Clips["maomao-idle"],
+            0,
+            reduceMotion: false);
+
+        SkeletalCharacterRenderer.Draw(
+            canvas,
+            partsImage,
+            catalog.Rigs["humanoid-v1"],
+            catalog.Skins["maomao-default"],
+            pose,
+            32,
+            54);
+
+        var longestEmptyRun = 0;
+        var currentEmptyRun = 0;
+        for (var y = 24; y <= 46; y++)
+        {
+            var hasCenterPixel = Enumerable.Range(27, 11)
+                .Any(x => target.GetPixel(x, y).Alpha > 0);
+            currentEmptyRun = hasCenterPixel ? 0 : currentEmptyRun + 1;
+            longestEmptyRun = Math.Max(longestEmptyRun, currentEmptyRun);
+        }
+
+        Assert.InRange(longestEmptyRun, 0, 2);
     }
 
     private static SKRectI? VisibleBounds(SKBitmap bitmap)

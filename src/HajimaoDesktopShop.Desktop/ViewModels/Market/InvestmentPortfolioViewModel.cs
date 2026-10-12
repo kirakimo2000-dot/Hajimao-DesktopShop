@@ -65,6 +65,17 @@ public sealed class InvestmentPortfolioViewModel : ObservableObject
             return;
         }
 
+        var closest = Candidates
+            .Where(candidate => !candidate.InvestCommand.CanExecute(null))
+            .MinBy(candidate => -candidate.Proposal.CashAfterOpeningCents);
+        if (closest is not null
+            && Candidates.All(candidate => !candidate.InvestCommand.CanExecute(null)))
+        {
+            NextInvestmentTitle = "挂机目标：积累下一家店资金";
+            NextInvestmentDetailText = $"{closest.TitleText}，{closest.CashAfterText}；保持游戏运行即可持续积累。";
+            return;
+        }
+
         NextInvestmentTitle = "选择下一家店";
         NextInvestmentDetailText = "比较店型收益、客流风险与开店后的现金储备。";
     }

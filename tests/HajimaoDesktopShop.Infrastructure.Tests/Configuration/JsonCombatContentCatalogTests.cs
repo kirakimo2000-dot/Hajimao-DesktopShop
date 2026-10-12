@@ -43,6 +43,7 @@ public sealed class JsonCombatContentCatalogTests
         Assert.Equal("maomao-default", maomao.Id);
         Assert.Equal("humanoid-v1", maomao.RigId);
         Assert.Equal("maomao-default", maomao.SkinId);
+        Assert.Equal(1, maomao.ProjectileTravelTicks);
 
         Assert.Equal(4, content.SpawnPools.Count);
         Assert.Equal(24, content.Interiors.Count);

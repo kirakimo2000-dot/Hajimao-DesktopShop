@@ -37,6 +37,9 @@
     <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\interiors\placeholders\default-shop.png"
           Link="TestData\interiors\default-shop.png"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\HajimaoDesktopShop.Desktop\Assets\Content\facades\*.png"
+          Link="TestData\facades\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

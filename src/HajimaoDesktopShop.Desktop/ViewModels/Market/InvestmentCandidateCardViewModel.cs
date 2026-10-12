@@ -35,15 +35,17 @@ public sealed class InvestmentCandidateCardViewModel
         }
     }
     public string PaybackText => "实际回报由挂机招待效率和商品组合决定";
-    public string CashAfterText => $"开店后现金 {FormatMoney(Proposal.CashAfterOpeningCents)}";
+    public string CashAfterText => Proposal.CashAfterOpeningCents < 0
+        ? $"还差 {FormatMoney(-Proposal.CashAfterOpeningCents)}"
+        : $"开店后现金 {FormatMoney(Proposal.CashAfterOpeningCents)}";
     public string CashPressureText => Proposal.CashAfterOpeningCents < 0
-        ? "现金不足，暂时无法开店"
+        ? "只有游戏运行时才会获得挂机收入"
         : Proposal.HasRecommendedReserve
             ? "现金储备健康"
             : "现金偏紧：建议先继续挂机";
     public string EffectText => "新增独立战斗店铺 · 共享商品图鉴";
     public string EstimateConditionText => "新店拥有独立装备组合、客流与累计收益";
-    public string AvailabilityText => Proposal.CashAfterOpeningCents >= 0 ? "可开店" : "资金不足";
+    public string AvailabilityText => Proposal.CashAfterOpeningCents >= 0 ? "可开店" : "挂机积累中";
     public IRelayCommand InvestCommand { get; }
 
     private static string FormatName(string formatId) => formatId switch

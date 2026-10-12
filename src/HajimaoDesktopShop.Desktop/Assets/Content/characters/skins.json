@@ -6,7 +6,7 @@
       "rigId": "humanoid-v1",
       "assetPath": "Assets/Content/characters/maomao/parts.png",
       "parts": {
-        "pelvis": { "sourceX": 76, "sourceY": 10, "width": 9, "height": 16, "pivotX": 4.5, "pivotY": 2 },
+        "pelvis": { "sourceX": 76, "sourceY": 10, "width": 9, "height": 16, "pivotX": 4.5, "pivotY": 7 },
         "torso": { "sourceX": 44, "sourceY": 9, "width": 12, "height": 17, "pivotX": 6, "pivotY": 15 },
         "head": { "sourceX": 14, "sourceY": 9, "width": 13, "height": 14, "pivotX": 6.5, "pivotY": 12 },
         "upper-arm-left": { "sourceX": 18, "sourceY": 35, "width": 5, "height": 15, "pivotX": 2.5, "pivotY": 2 },

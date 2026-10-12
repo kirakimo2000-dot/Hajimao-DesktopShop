@@ -165,7 +165,8 @@ public sealed class StoreCombatEngine
             customerId,
             damage,
             remainingHp,
-            isSplash));
+            isSplash,
+            target.PositionPermille));
 
         if (remainingHp == 0)
         {

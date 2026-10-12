@@ -1,9 +1,11 @@
 using System.IO;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Threading;
 using HajimaoDesktopShop.Desktop.Controls;
 using HajimaoDesktopShop.Desktop.Tests.ViewModels.Market;
 using HajimaoDesktopShop.Desktop.ViewModels.Market;
@@ -14,6 +16,50 @@ namespace HajimaoDesktopShop.Desktop.Tests.Windows;
 
 public sealed class ManagementWindowTests
 {
+    [Fact]
+    public void Show_DoesNotBlockTheWpfDispatcherWhileLoadingTheLiveCombatScene()
+    {
+        Exception? failure = null;
+        var completed = new ManualResetEventSlim();
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(
+                    new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                var window = new ManagementWindow(new MarketViewModel(MarketTestSession.Create()));
+
+                window.Show();
+
+                var scene = Assert.IsType<CombatShopSceneControl>(window.FindName("LiveScene"));
+                WaitForLiveSceneRenderer(scene, TimeSpan.FromSeconds(3));
+                UiSnapshotRenderer.Render(window, 1180, 720, "management-live-scene-loaded.png");
+                window.Close();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                completed.Set();
+            }
+        })
+        {
+            IsBackground = true
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+
+        Assert.True(
+            completed.Wait(TimeSpan.FromSeconds(5)),
+            "Opening management blocked the WPF dispatcher while the live scene loaded.");
+        if (failure is not null)
+        {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
     [Fact]
     public void ManagementWindow_AllowsCompactLogicalWorkAreasWithoutLosingScrollableContent()
     {
@@ -444,6 +490,46 @@ public sealed class ManagementWindowTests
         }
 
         return count;
+    }
+
+    [Fact]
+    public void StrategySection_ExposesGlobalEmployeeAndEquipmentOccupancy()
+    {
+        var xaml = File.ReadAllText(FindManagementWindowPath());
+
+        Assert.Contains("x:Name=\"CombatEmployeeWarehouse\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding EmployeeAssignment.Employees}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("EmployeeAssignment.AssignToStoreCommand", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding OccupancyText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"{Binding ActionText}\"", xaml, StringComparison.Ordinal);
+    }
+
+    private static void WaitForLiveSceneRenderer(
+        CombatShopSceneControl scene,
+        TimeSpan timeout)
+    {
+        var renderer = typeof(CombatShopSceneControl).GetField(
+            "_renderer",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(renderer);
+        var deadline = DateTime.UtcNow + timeout;
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(10),
+            DispatcherPriority.Background,
+            (_, _) =>
+            {
+                if (renderer.GetValue(scene) is not null || DateTime.UtcNow >= deadline)
+                {
+                    frame.Continue = false;
+                }
+            },
+            Dispatcher.CurrentDispatcher);
+
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+        Assert.NotNull(renderer.GetValue(scene));
     }
 
     private static string FindManagementWindowPath()

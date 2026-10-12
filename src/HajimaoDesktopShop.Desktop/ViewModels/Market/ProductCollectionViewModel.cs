@@ -49,6 +49,10 @@ public sealed class ProductCollectionViewModel : ObservableObject
         var equipped = loadout.ProductIds.ToHashSet(StringComparer.Ordinal);
         var definitions = combat.GetProductDefinitions().ToDictionary(item => item.ProductId, StringComparer.Ordinal);
         var displayNames = combat.GetProductDisplayNames();
+        var storeNames = _session.Game.GetSnapshot().Stores
+            .ToDictionary(item => item.Id, item => item.Name, StringComparer.Ordinal);
+        var assignments = (snapshot.ProductAssignments ?? [])
+            .ToDictionary(item => item.ProductId, StringComparer.Ordinal);
         foreach (var entry in snapshot.Collection.OrderBy(item => item.ProductId, StringComparer.Ordinal))
         {
             var product = definitions[entry.ProductId];
@@ -58,6 +62,13 @@ public sealed class ProductCollectionViewModel : ObservableObject
             var effectiveRevenue = product.RevenueModifierPermille
                 * ProductMasteryScaling.RevenuePermille(entry.MasteryLevel)
                 / 1_000;
+            var assignedStoreId = assignments.GetValueOrDefault(entry.ProductId)?.AssignedStoreId;
+            var isEquippedHere = equipped.Contains(entry.ProductId);
+            var occupancyText = assignedStoreId is null
+                ? "仓库可用"
+                : isEquippedHere
+                    ? "本店装备"
+                    : $"由 {storeNames.GetValueOrDefault(assignedStoreId, assignedStoreId)} 占用";
             Products.Add(new ProductCollectionItemViewModel(
                 entry.ProductId,
                 StoreLoadoutViewModel.DisplayName(entry.ProductId, displayNames),
@@ -66,7 +77,9 @@ public sealed class ProductCollectionViewModel : ObservableObject
                 $"威力 {effectivePower} · 间隔 {product.AttackIntervalTicks}",
                 $"收益 ×{effectiveRevenue / 1000d:0.00}",
                 EffectText(product),
-                equipped.Contains(entry.ProductId)));
+                isEquippedHere,
+                occupancyText,
+                isEquippedHere ? "已装备" : assignedStoreId is null ? "装备" : "调到本店"));
         }
     }
 
@@ -104,4 +117,6 @@ public sealed record ProductCollectionItemViewModel(
     string PowerText,
     string RevenueText,
     string EffectText,
-    bool IsEquipped);
+    bool IsEquipped,
+    string OccupancyText = "仓库可用",
+    string ActionText = "装备");

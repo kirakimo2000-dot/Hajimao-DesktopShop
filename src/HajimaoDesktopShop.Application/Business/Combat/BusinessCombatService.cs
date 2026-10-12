@@ -28,6 +28,7 @@ public sealed class BusinessCombatService
     private readonly LegacyCombatCompatibilitySaveData _compatibility;
     private IReadOnlyList<string> _activeEventTags = [];
     private ProductCollection _collection;
+    private CombatEmployeeRoster _employees;
 
     public BusinessCombatService(
         BusinessGameService game,
@@ -54,8 +55,8 @@ public sealed class BusinessCombatService
         {
             _collection = new ProductCollection();
             RegisterStarterProductsIfEmpty();
-
             _compatibility = new LegacyCombatCompatibilitySaveData([]);
+            _employees = CreateStarterEmployeeRoster();
         }
         else
         {
@@ -64,23 +65,19 @@ public sealed class BusinessCombatService
                 .Where(entry => _productById.ContainsKey(entry.ProductId)));
             RegisterStarterProductsIfEmpty();
             _compatibility = restored.Compatibility;
+            _employees = RestoreEmployeeRoster(restored.Employees);
+            var occupiedProducts = new HashSet<string>(StringComparer.Ordinal);
             foreach (var saved in restored.Loadouts)
             {
                 var supportedProducts = saved.ProductIds
                     .Where(productId => _productById.ContainsKey(productId)
-                        && _collection.IsUnlocked(productId))
+                        && _collection.IsUnlocked(productId)
+                        && occupiedProducts.Add(productId))
                     .Distinct(StringComparer.Ordinal)
                     .Take(saved.UnlockedSlots)
                     .ToArray();
-                if (supportedProducts.Length == 0)
-                {
-                    supportedProducts = _collection.Entries
-                        .Select(entry => entry.ProductId)
-                        .Take(Math.Min(3, saved.UnlockedSlots))
-                        .ToArray();
-                }
 
-                _storeLoadouts.Add(
+                _storeLoadouts.TryAdd(
                     saved.StoreId,
                     new StoreProductLoadout(saved.StoreId, saved.UnlockedSlots, supportedProducts));
             }
@@ -132,6 +129,14 @@ public sealed class BusinessCombatService
             var openStores = _game.GetSnapshot().Stores.ToDictionary(store => store.Id, StringComparer.Ordinal);
             foreach (var storeId in OpenStoreIds())
             {
+                if (_employees.AssignedTo(storeId).Count == 0)
+                {
+                    _lastEvents[storeId] = [];
+                    _lastDropRolls[storeId] = [];
+                    snapshots.Add(ToSnapshot(storeId, [], []));
+                    continue;
+                }
+
                 var state = _states[storeId];
                 var profile = StoreCombatProfilePolicy.Resolve(openStores[storeId].StoreFormatId);
                 var activeCustomerCapacity = Math.Max(
@@ -207,13 +212,24 @@ public sealed class BusinessCombatService
                     var bonusDropPermille = product.Effect == ProductEffectKind.BonusDrop
                         ? product.EffectStrengthPermille
                         : 0;
-                    var drop = _drops.Roll(customer, bonusDropPermille);
+                    var drop = EnsureFirstServiceUnlock(
+                        customer,
+                        _drops.Roll(customer, bonusDropPermille),
+                        totals.ServedCustomers == 0);
+                    var newlyUnlockedProductIds = drop.ProductIds
+                        .Where(productId => !_collection.IsUnlocked(productId))
+                        .ToHashSet(StringComparer.Ordinal);
                     foreach (var productId in drop.ProductIds)
                     {
                         _collection.RegisterCopy(productId);
                     }
 
-                    dropRolls.AddRange(drop.Rolls);
+                    dropRolls.AddRange(drop.Rolls.Select(roll => roll with
+                    {
+                        IsNewUnlock = roll.Awarded
+                            && roll.ProductId is not null
+                            && newlyUnlockedProductIds.Remove(roll.ProductId)
+                    }));
                     totals = totals with
                     {
                         RevenueCents = checked(totals.RevenueCents + revenue),
@@ -288,6 +304,7 @@ public sealed class BusinessCombatService
         {
             EnsureOpenStores();
             var updated = _loadouts.Equip(_storeLoadouts[storeId], _collection, slotIndex, productId);
+            TransferProductFromOtherStore(storeId, productId);
             _storeLoadouts[storeId] = updated;
             return updated;
         }
@@ -306,12 +323,32 @@ public sealed class BusinessCombatService
 
             var current = _storeLoadouts[storeId];
             var updated = new StoreProductLoadout(storeId, current.UnlockedSlots, productIds);
+            foreach (var productId in productIds)
+            {
+                TransferProductFromOtherStore(storeId, productId);
+            }
             _storeLoadouts[storeId] = updated;
             return updated;
         }
     }
 
     public IReadOnlyList<ProductCombatDefinition> GetProductDefinitions() => _content.Products;
+
+    public CombatEmployeeSnapshot AssignEmployee(string employeeInstanceId, string storeId)
+    {
+        lock (_gate)
+        {
+            EnsureOpenStores();
+            if (!_storeLoadouts.ContainsKey(storeId))
+            {
+                throw new KeyNotFoundException($"Store '{storeId}' is not open.");
+            }
+
+            _employees = _employees.Assign(employeeInstanceId, storeId);
+            var employee = _employees.Employees.Single(item => item.InstanceId == employeeInstanceId);
+            return ToSnapshot(employee);
+        }
+    }
 
     public CombatSaveData CaptureSaveData()
     {
@@ -342,7 +379,12 @@ public sealed class BusinessCombatService
                     })
                     .ToArray(),
                 _random.State,
-                _compatibility);
+                _compatibility,
+                _employees.Employees.Select(item => new CombatEmployeeSaveData(
+                    item.InstanceId,
+                    item.CharacterId,
+                    item.DisplayName,
+                    item.AssignedStoreId)).ToArray());
         }
     }
 
@@ -372,21 +414,108 @@ public sealed class BusinessCombatService
             .Where(_productById.ContainsKey)
             .Take(3)
             .ToArray();
-        foreach (var storeId in OpenStoreIds())
+        var openStoreIds = OpenStoreIds();
+        for (var index = 0; index < openStoreIds.Length; index++)
         {
+            var storeId = openStoreIds[index];
             _states.TryAdd(storeId, StoreCombatState.Empty);
             _totals.TryAdd(storeId, new StoreTotals(0, 0, 0, 0, 0, 0));
-            _storeLoadouts.TryAdd(storeId, new StoreProductLoadout(storeId, 3, starterProducts));
+            _storeLoadouts.TryAdd(
+                storeId,
+                new StoreProductLoadout(
+                    storeId,
+                    3,
+                    index == 0 && _storeLoadouts.Count == 0 ? starterProducts : []));
             _lastEvents.TryAdd(storeId, []);
             _lastDropRolls.TryAdd(storeId, []);
+        }
+
+
+        while (_employees.Employees.Count < openStoreIds.Length)
+        {
+            var sequence = _employees.Employees.Count + 1;
+            var instanceId = $"maomao-{sequence:0000}";
+            while (_employees.Employees.Any(item => string.Equals(item.InstanceId, instanceId, StringComparison.Ordinal)))
+            {
+                sequence++;
+                instanceId = $"maomao-{sequence:0000}";
+            }
+
+            var targetStoreId = openStoreIds.FirstOrDefault(storeId => _employees.AssignedTo(storeId).Count == 0);
+            _employees = _employees.Add(new CombatEmployeeInstance(
+                instanceId,
+                "maomao-default",
+                $"毛毛 {sequence}",
+                targetStoreId));
         }
     }
 
     private string[] OpenStoreIds() =>
         _game.GetSnapshot().Stores
+            .OrderBy(store => store.StreetOrdinal)
+            .ThenBy(store => store.Id, StringComparer.Ordinal)
             .Select(store => store.Id)
-            .OrderBy(storeId => storeId, StringComparer.Ordinal)
             .ToArray();
+
+    private CombatEmployeeRoster CreateStarterEmployeeRoster() =>
+        new(
+        [
+            new CombatEmployeeInstance(
+                "maomao-0001",
+                "maomao-default",
+                "毛毛",
+                OpenStoreIds().First())
+        ]);
+
+    private CombatEmployeeRoster RestoreEmployeeRoster(IReadOnlyList<CombatEmployeeSaveData>? saved)
+    {
+        var openStores = OpenStoreIds().ToHashSet(StringComparer.Ordinal);
+        var supportedCharacters = _content.Characters
+            .Select(item => item.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var instanceIds = new HashSet<string>(StringComparer.Ordinal);
+        var occupiedStores = new HashSet<string>(StringComparer.Ordinal);
+        var employees = new List<CombatEmployeeInstance>();
+        foreach (var item in saved ?? [])
+        {
+            if (!supportedCharacters.Contains(item.CharacterId)
+                || string.IsNullOrWhiteSpace(item.InstanceId)
+                || string.IsNullOrWhiteSpace(item.DisplayName)
+                || !instanceIds.Add(item.InstanceId))
+            {
+                continue;
+            }
+
+            var assignedStoreId = item.AssignedStoreId is not null
+                && openStores.Contains(item.AssignedStoreId)
+                && occupiedStores.Add(item.AssignedStoreId)
+                    ? item.AssignedStoreId
+                    : null;
+            employees.Add(new CombatEmployeeInstance(
+                item.InstanceId,
+                item.CharacterId,
+                item.DisplayName,
+                assignedStoreId));
+        }
+        return employees.Count == 0 ? CreateStarterEmployeeRoster() : new CombatEmployeeRoster(employees);
+    }
+
+    private void TransferProductFromOtherStore(string targetStoreId, string productId)
+    {
+        foreach (var entry in _storeLoadouts.ToArray())
+        {
+            if (string.Equals(entry.Key, targetStoreId, StringComparison.Ordinal)
+                || !entry.Value.ProductIds.Contains(productId, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
+            _storeLoadouts[entry.Key] = new StoreProductLoadout(
+                entry.Key,
+                entry.Value.UnlockedSlots,
+                entry.Value.ProductIds.Where(item => !string.Equals(item, productId, StringComparison.Ordinal)).ToArray());
+        }
+    }
 
     private bool Roll(int chanceBasisPoints)
     {
@@ -401,6 +530,35 @@ public sealed class BusinessCombatService
         }
 
         return _random.Next(10_000) < chanceBasisPoints;
+    }
+
+    private ProductDropResult EnsureFirstServiceUnlock(
+        CustomerArchetypeDefinition customer,
+        ProductDropResult drop,
+        bool isFirstService)
+    {
+        if (!isFirstService
+            || drop.ProductIds.Any(productId => !_collection.IsUnlocked(productId)))
+        {
+            return drop;
+        }
+
+        var guaranteedProductId = customer.ProductDropWeights
+            .Where(entry => !_collection.IsUnlocked(entry.Key))
+            .OrderByDescending(entry => entry.Value)
+            .ThenBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => entry.Key)
+            .FirstOrDefault();
+        return guaranteedProductId is null
+            ? drop
+            : new ProductDropResult(
+                [.. drop.ProductIds, guaranteedProductId],
+                [.. drop.Rolls, new ProductDropRoll(
+                    "first-service-guarantee",
+                    0,
+                    1,
+                    guaranteedProductId,
+                    Awarded: true)]);
     }
 
     private StoreCombatSnapshot ToSnapshot(
@@ -423,7 +581,9 @@ public sealed class BusinessCombatService
             store.StoreFormatId,
             profile,
             totals.EncounteredCustomers,
-            totals.TotalDamage);
+            totals.TotalDamage,
+            _employees.AssignedTo(storeId).Count > 0,
+            _employees.AssignedTo(storeId).SingleOrDefault()?.InstanceId);
     }
 
     private BusinessCombatSnapshot CreateSnapshot(IReadOnlyList<StoreCombatSnapshot> stores) =>
@@ -432,7 +592,15 @@ public sealed class BusinessCombatService
             stores,
             _collection.Entries,
             OpenStoreIds().Select(storeId => _storeLoadouts[storeId]).ToArray(),
-            _activeEventTags);
+            _activeEventTags,
+            _employees.Employees.Select(ToSnapshot).ToArray(),
+            _collection.Entries.Select(entry => new ProductAssignmentSnapshot(
+                entry.ProductId,
+                _storeLoadouts.Values.SingleOrDefault(loadout =>
+                    loadout.ProductIds.Contains(entry.ProductId, StringComparer.Ordinal))?.StoreId)).ToArray());
+
+    private static CombatEmployeeSnapshot ToSnapshot(CombatEmployeeInstance employee) =>
+        new(employee.InstanceId, employee.CharacterId, employee.DisplayName, employee.AssignedStoreId);
 
     private static ProductCombatStats ToDomain(ProductCombatDefinition product, int masteryLevel) =>
         new(

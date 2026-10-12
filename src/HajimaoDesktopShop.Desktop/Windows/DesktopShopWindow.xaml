@@ -123,6 +123,42 @@
                         Click="OnOpenManagementClick"
                         ToolTip="打开经营管理窗口"
                         AutomationProperties.Name="打开经营管理窗口" />
+                <Border x:Name="StoreFeedbackHud"
+                        Canvas.Left="6" Canvas.Top="232"
+                        Width="350" Height="42"
+                        Padding="7,3"
+                        Background="{DynamicResource Brush.OverlaySurface}"
+                        BorderBrush="{DynamicResource Brush.OverlayBorder}"
+                        BorderThickness="2"
+                        IsHitTestVisible="False"
+                        AutomationProperties.LiveSetting="Polite"
+                        AutomationProperties.Name="本次挂机成果">
+                    <Grid ClipToBounds="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="17" />
+                            <RowDefinition Height="17" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding IdleFeedback.SessionProfitShortText}"
+                                       Tag="{Binding IdleFeedback.ProfitTone}"
+                                       Style="{DynamicResource FeedbackMetricText}"
+                                       FontSize="12"
+                                       LineHeight="15" />
+                            <TextBlock Text="{Binding IdleFeedback.SessionSummaryShortText}"
+                                       Margin="10,0,0,0"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       FontSize="11"
+                                       LineHeight="15" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="1"
+                                   Text="{Binding IdleFeedback.StoreStatusText}"
+                                   Foreground="{DynamicResource Brush.Text}"
+                                   FontSize="11"
+                                   LineHeight="15"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding IdleFeedback.StoreStatusText}" />
+                    </Grid>
+                </Border>
                 <Button Canvas.Left="364" Canvas.Top="232" Width="50" Height="44"
                         Style="{StaticResource SurfaceHitTarget}"
                         Click="OnClickThroughClick"

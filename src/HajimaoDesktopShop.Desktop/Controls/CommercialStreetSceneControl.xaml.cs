@@ -1,6 +1,12 @@
+using System.IO;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using HajimaoDesktopShop.Infrastructure.Configuration;
 using HajimaoDesktopShop.Rendering;
+using HajimaoDesktopShop.Rendering.Animation;
+using HajimaoDesktopShop.Rendering.PixelArt;
+using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using WpfUserControl = System.Windows.Controls.UserControl;
 
@@ -15,6 +21,9 @@ public partial class CommercialStreetSceneControl : WpfUserControl
         new FrameworkPropertyMetadata(null, OnFrameChanged));
 
     private CommercialStreetSceneRenderer? _renderer;
+    private SKBitmap? _parts;
+    private CancellationTokenSource? _loadCancellation;
+    private bool _loadFailed;
     private int _cameraOffset;
 
     public CommercialStreetSceneControl() => InitializeComponent();
@@ -40,23 +49,106 @@ public partial class CommercialStreetSceneControl : WpfUserControl
         }
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _renderer ??= new CommercialStreetSceneRenderer();
-        SceneSurface.InvalidateVisual();
+        if (_renderer is not null)
+        {
+            SceneSurface.InvalidateVisual();
+            return;
+        }
+
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadFailed = false;
+        var cancellation = new CancellationTokenSource();
+        _loadCancellation = cancellation;
+        var token = cancellation.Token;
+        try
+        {
+            var root = Path.Combine(AppContext.BaseDirectory, "Assets", "Content", "characters");
+            var content = await new JsonCharacterAnimationCatalog(
+                    Path.Combine(root, "rigs", "humanoid.json"),
+                    Path.Combine(root, "animations", "humanoid-clips.json"),
+                    Path.Combine(root, "skins.json"))
+                .LoadAsync(token);
+            token.ThrowIfCancellationRequested();
+            var parts = SKBitmap.Decode(Path.Combine(root, "maomao", "parts.png"))
+                ?? throw new InvalidDataException("Shared human character parts image is unreadable.");
+            if (token.IsCancellationRequested || !IsLoaded)
+            {
+                parts.Dispose();
+                return;
+            }
+
+            _parts = parts;
+            IReadOnlyDictionary<FacadeGeometryKind, SKBitmap>? storefronts = null;
+            try
+            {
+                storefronts = StorefrontTextureSet.Load(Path.Combine(
+                    AppContext.BaseDirectory,
+                    "Assets",
+                    "Content",
+                    "facades"));
+            }
+            catch (Exception exception)
+            {
+                Trace.TraceError($"Storefront textures failed to load; using fallback facades: {exception}");
+            }
+
+            try
+            {
+                _renderer = new CommercialStreetSceneRenderer(
+                    SkeletalAnimationCatalog.Create(content),
+                    parts,
+                    storefronts);
+            }
+            finally
+            {
+                if (storefronts is not null)
+                {
+                    foreach (var storefront in storefronts.Values)
+                    {
+                        storefront.Dispose();
+                    }
+                }
+            }
+            SceneSurface.InvalidateVisual();
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _loadFailed = true;
+            Trace.TraceError($"Street character resources failed to load: {exception}");
+            SceneSurface.InvalidateVisual();
+        }
+        finally
+        {
+            if (ReferenceEquals(_loadCancellation, cancellation))
+            {
+                _loadCancellation = null;
+                cancellation.Dispose();
+            }
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = null;
         _renderer?.Dispose();
         _renderer = null;
+        _parts?.Dispose();
+        _parts = null;
     }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
         if (_renderer is null || Frame is null)
         {
-            e.Surface.Canvas.Clear(SkiaSharp.SKColor.Parse("#17191D"));
+            e.Surface.Canvas.Clear(SkiaSharp.SKColor.Parse(_loadFailed ? "#4A1F24" : "#17191D"));
             return;
         }
 

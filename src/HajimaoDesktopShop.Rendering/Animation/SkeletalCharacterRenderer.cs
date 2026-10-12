@@ -9,18 +9,53 @@ public static class SkeletalCharacterRenderer
 
     public static void Draw(
         SKCanvas canvas,
-        SKBitmap partsBitmap,
+        SKImage partsImage,
         SkeletalRig rig,
         CharacterSkin skin,
         SkeletalPose pose,
         float originX,
         float originY,
         float scale = 1,
-        bool facingLeft = false,
-        SKColor? tint = null)
+        bool facingLeft = false) =>
+        Draw(canvas, partsImage, rig, skin, pose, originX, originY, scale, scale, facingLeft);
+
+    public static void Draw(
+        SKCanvas canvas,
+        SKImage partsImage,
+        SkeletalRig rig,
+        CharacterSkin skin,
+        SkeletalPose pose,
+        float originX,
+        float originY,
+        float scaleX,
+        float scaleY,
+        bool facingLeft = false) =>
+        DrawCore(
+            canvas,
+            partsImage,
+            rig,
+            skin,
+            pose,
+            originX,
+            originY,
+            scaleX,
+            scaleY,
+            facingLeft);
+
+    private static void DrawCore(
+        SKCanvas canvas,
+        SKImage partsImage,
+        SkeletalRig rig,
+        CharacterSkin skin,
+        SkeletalPose pose,
+        float originX,
+        float originY,
+        float scaleX,
+        float scaleY,
+        bool facingLeft)
     {
         ArgumentNullException.ThrowIfNull(canvas);
-        ArgumentNullException.ThrowIfNull(partsBitmap);
+        ArgumentNullException.ThrowIfNull(partsImage);
         ArgumentNullException.ThrowIfNull(rig);
         ArgumentNullException.ThrowIfNull(skin);
         ArgumentNullException.ThrowIfNull(pose);
@@ -31,20 +66,19 @@ public static class SkeletalCharacterRenderer
                 nameof(skin));
         }
 
-        if (scale <= 0)
+        if (scaleX <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(scale));
+            throw new ArgumentOutOfRangeException(nameof(scaleX));
         }
 
-        using var image = SKImage.FromBitmap(partsBitmap);
-        using var paint = new SKPaint { IsAntialias = false };
-        if (tint is { } tintColor)
+        if (scaleY <= 0)
         {
-            paint.ColorFilter = SKColorFilter.CreateBlendMode(tintColor, SKBlendMode.Modulate);
+            throw new ArgumentOutOfRangeException(nameof(scaleY));
         }
+
         canvas.Save();
         canvas.Translate(originX, originY);
-        canvas.Scale(facingLeft ? -scale : scale, scale);
+        canvas.Scale(facingLeft ? -scaleX : scaleX, scaleY);
 
         foreach (var bone in rig.Bones.OrderBy(item => item.ZIndex).ThenBy(item => item.Id, StringComparer.Ordinal))
         {
@@ -54,7 +88,7 @@ public static class SkeletalCharacterRenderer
                 continue;
             }
 
-            ValidatePartBounds(partsBitmap, skin, bone.Id, part);
+            ValidatePartBounds(partsImage, skin, bone.Id, part);
             var source = new SKRect(
                 part.SourceX,
                 part.SourceY,
@@ -70,7 +104,7 @@ public static class SkeletalCharacterRenderer
             canvas.Translate(evaluated.WorldX, evaluated.WorldY);
             canvas.RotateDegrees(evaluated.RotationDegrees);
             canvas.Scale(evaluated.ScaleX, evaluated.ScaleY);
-            canvas.DrawImage(image, source, destination, PixelSampling, paint);
+            canvas.DrawImage(partsImage, source, destination, PixelSampling, paint: null);
             canvas.Restore();
         }
 
@@ -78,7 +112,7 @@ public static class SkeletalCharacterRenderer
     }
 
     private static void ValidatePartBounds(
-        SKBitmap bitmap,
+        SKImage image,
         CharacterSkin skin,
         string boneId,
         SkinPart part)
@@ -87,8 +121,8 @@ public static class SkeletalCharacterRenderer
             || part.SourceY < 0
             || part.Width <= 0
             || part.Height <= 0
-            || part.SourceX + part.Width > bitmap.Width
-            || part.SourceY + part.Height > bitmap.Height)
+            || part.SourceX + part.Width > image.Width
+            || part.SourceY + part.Height > image.Height)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(part),

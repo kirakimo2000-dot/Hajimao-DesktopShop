@@ -100,6 +100,23 @@ public sealed class JsonCharacterAnimationCatalog
             throw new InvalidDataException("Character rig catalog requires at least one rig.");
         }
 
+        if (rigs.Count(rig => rig.Id == "humanoid-v1") != 1)
+        {
+            throw new InvalidDataException("Character catalog requires exactly one humanoid-v1 rig.");
+        }
+
+        var sharedHumanBones = rigs.Single(rig => rig.Id == "humanoid-v1").Bones
+            .Select(bone => bone.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var requiredBone in new[] { "head", "torso", "hand-right" })
+        {
+            if (!sharedHumanBones.Contains(requiredBone))
+            {
+                throw new InvalidDataException(
+                    $"Shared humanoid-v1 rig requires bone '{requiredBone}'.");
+            }
+        }
+
         foreach (var rig in rigs)
         {
             if (string.IsNullOrWhiteSpace(rig.Id) || rig.Bones.Count == 0)

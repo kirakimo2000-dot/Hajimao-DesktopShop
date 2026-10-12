@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Windows;
 using HajimaoDesktopShop.Infrastructure.Configuration;
 using HajimaoDesktopShop.Rendering.Animation;
@@ -19,6 +20,7 @@ public partial class CombatDesktopShopSurfaceControl : WpfUserControl
 
     private CombatDesktopShopRenderer? _renderer;
     private CancellationTokenSource? _loadCancellation;
+    private bool _loadFailed;
 
     public CombatDesktopShopSurfaceControl() => InitializeComponent();
 
@@ -48,6 +50,7 @@ public partial class CombatDesktopShopSurfaceControl : WpfUserControl
 
         _loadCancellation?.Cancel();
         _loadCancellation?.Dispose();
+        _loadFailed = false;
         var cancellation = new CancellationTokenSource();
         _loadCancellation = cancellation;
         var token = cancellation.Token;
@@ -77,6 +80,12 @@ public partial class CombatDesktopShopSurfaceControl : WpfUserControl
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
         }
+        catch (Exception exception)
+        {
+            _loadFailed = true;
+            Trace.TraceError($"Desktop combat resources failed to load: {exception}");
+            Surface.InvalidateVisual();
+        }
         finally
         {
             if (ReferenceEquals(_loadCancellation, cancellation))
@@ -100,7 +109,7 @@ public partial class CombatDesktopShopSurfaceControl : WpfUserControl
     {
         if (_renderer is null || Frame is null)
         {
-            e.Surface.Canvas.Clear(SKColor.Parse("#17191D"));
+            e.Surface.Canvas.Clear(SKColor.Parse(_loadFailed ? "#4A1F24" : "#17191D"));
             return;
         }
 

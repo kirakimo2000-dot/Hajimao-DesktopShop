@@ -44,6 +44,24 @@ public sealed class DesktopNavigationViewModelTests
     }
 
     [Fact]
+    public void ClickingSecondOpenedStoreSelectsThatExactStore()
+    {
+        var selected = string.Empty;
+        var navigation = new DesktopNavigationViewModel(id => selected = id);
+        navigation.Synchronize(
+        [
+            Store("corner", "街角店", isOpen: true),
+            Store("premium", "银座店", isOpen: true)
+        ], "corner");
+
+        navigation.OpenStoreCommand.Execute("premium");
+
+        Assert.Equal(DesktopSurfaceMode.Store, navigation.Mode);
+        Assert.Equal("premium", selected);
+        Assert.Equal("银座店", navigation.PageTitle);
+    }
+
+    [Fact]
     public void SynchronizeReturnsToStreetIfTheDisplayedStoreIsNoLongerOpen()
     {
         var navigation = new DesktopNavigationViewModel(_ => { });

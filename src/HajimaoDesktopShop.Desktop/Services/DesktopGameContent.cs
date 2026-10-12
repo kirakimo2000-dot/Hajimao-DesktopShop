@@ -9,7 +9,7 @@ namespace HajimaoDesktopShop.Desktop.Services;
 public static class DesktopGameContent
 {
     public const string StarterStoreId = "corner-store";
-    public const long OpeningCashCents = 120_000;
+    public const long OpeningCashCents = 20_000;
     public const int ExperiencePerItemSold = 1;
     public const int BaseArrivalBasisPoints = 6_000;
     public static BusinessSimulationOptions SimulationOptions { get; } =

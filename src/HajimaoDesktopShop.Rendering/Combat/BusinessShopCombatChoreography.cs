@@ -33,13 +33,8 @@ public static class BusinessShopCombatChoreography
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(snapshot);
         var isThrowing = snapshot.Events.Any(combatEvent => combatEvent is ProductThrownEvent);
-        var actionFrame = Math.Clamp(presentationFrame, 0, 23);
         var clipId = isThrowing
-            ? actionFrame < 8
-                ? "maomao-wind-up"
-                : actionFrame < 16
-                    ? "maomao-throw"
-                    : "maomao-recovery"
+            ? "maomao-throw"
             : snapshot.Events.Any(combatEvent => combatEvent is CustomerServedEvent)
                 ? "maomao-celebrate"
                 : "maomao-idle";
@@ -76,6 +71,9 @@ public static class BusinessShopCombatChoreography
                     combatEvent is ProductHitEvent hit && hit.CustomerEntityId == customer.EntityId)
                     ? "customer-hit"
                     : "customer-walk";
+                var poseFrame = clipId == "customer-walk"
+                    ? presentationFrame + WalkCycleOffset(customer.EntityId)
+                    : presentationFrame;
                 return new CustomerCombatPose(
                     customer.EntityId,
                     customer.ArchetypeId,
@@ -86,9 +84,12 @@ public static class BusinessShopCombatChoreography
                     SkeletalAnimator.Evaluate(
                         catalog.Rigs["humanoid-v1"],
                         catalog.Clips[clipId],
-                        presentationFrame,
+                        poseFrame,
                         reduceMotion));
             });
+
+    private static long WalkCycleOffset(long entityId) =>
+        Math.Abs(entityId % 24) * 7 % 24;
 
     private static IEnumerable<CustomerCombatPose> CreateDeparturePoses(
         SkeletalAnimationCatalog catalog,
@@ -102,11 +103,14 @@ public static class BusinessShopCombatChoreography
         foreach (var served in snapshot.Events.OfType<CustomerServedEvent>()
                      .Where(served => !liveIds.Contains(served.CustomerEntityId)))
         {
+            var impactPosition = snapshot.Events.OfType<ProductHitEvent>()
+                .LastOrDefault(hit => hit.CustomerEntityId == served.CustomerEntityId)
+                ?.TargetPositionPermille ?? 2_500;
             yield return CreateDeparturePose(
                 catalog,
                 served.CustomerEntityId,
                 served.ArchetypeId,
-                positionPermille: 2_500,
+                impactPosition,
                 "customer-served",
                 presentationFrame,
                 reduceMotion);

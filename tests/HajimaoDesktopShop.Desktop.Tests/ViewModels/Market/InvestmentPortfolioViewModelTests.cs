@@ -60,9 +60,14 @@ public sealed class InvestmentPortfolioViewModelTests
         Assert.NotEmpty(viewModel.Candidates);
         Assert.All(viewModel.Candidates, opening =>
         {
-            Assert.Equal("资金不足", opening.AvailabilityText);
+            Assert.Equal("挂机积累中", opening.AvailabilityText);
+            Assert.StartsWith("还差 ¥", opening.CashAfterText, StringComparison.Ordinal);
+            Assert.Contains("游戏运行", opening.CashPressureText, StringComparison.Ordinal);
             Assert.False(opening.InvestCommand.CanExecute(null));
         });
+        Assert.Equal("挂机目标：积累下一家店资金", viewModel.NextInvestmentTitle);
+        Assert.Contains("还差 ¥", viewModel.NextInvestmentDetailText, StringComparison.Ordinal);
+        Assert.Contains("保持游戏运行", viewModel.NextInvestmentDetailText, StringComparison.Ordinal);
     }
 
     private static InvestmentPortfolioViewModel Create(

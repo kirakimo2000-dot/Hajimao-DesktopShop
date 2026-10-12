@@ -32,6 +32,19 @@ public static class ContentSpriteKey
             ["variety"] = 7
         };
 
+    private static readonly IReadOnlyDictionary<string, FacadeGeometryKind> FacadeGeometries =
+        new Dictionary<string, FacadeGeometryKind>(StringComparer.Ordinal)
+        {
+            ["convenience"] = FacadeGeometryKind.Convenience,
+            ["commuter"] = FacadeGeometryKind.Commuter,
+            ["discount"] = FacadeGeometryKind.Discount,
+            ["warehouse"] = FacadeGeometryKind.Warehouse,
+            ["lifestyle"] = FacadeGeometryKind.Lifestyle,
+            ["health"] = FacadeGeometryKind.Health,
+            ["premium"] = FacadeGeometryKind.Premium,
+            ["variety"] = FacadeGeometryKind.Variety
+        };
+
     public static ProductSpriteVariant ResolveProduct(string key)
     {
         var segments = Split(key, "product", minimumSegments: 3);
@@ -55,7 +68,10 @@ public static class ContentSpriteKey
             throw new ArgumentException($"Unknown facade style in key '{key}'.", nameof(key));
         }
 
-        return new FacadeSpriteVariant(palette, style[0] - 'a');
+        return new FacadeSpriteVariant(
+            palette,
+            style[0] - 'a',
+            FacadeGeometries[format]);
     }
 
     public static EmployeeSpriteVariant ResolveEmployee(string key)
@@ -108,7 +124,10 @@ public static class ContentSpriteKey
 
 public sealed record ProductSpriteVariant(int FrameIndex, int PaletteIndex);
 
-public sealed record FacadeSpriteVariant(int PaletteIndex, int AwningIndex);
+public sealed record FacadeSpriteVariant(
+    int PaletteIndex,
+    int AwningIndex,
+    FacadeGeometryKind GeometryKind = FacadeGeometryKind.Convenience);
 
 public sealed record EmployeeSpriteVariant(
     int PaletteIndex,

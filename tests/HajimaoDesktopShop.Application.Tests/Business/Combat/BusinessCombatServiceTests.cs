@@ -172,6 +172,80 @@ public sealed class BusinessCombatServiceTests
         Assert.Equivalent(captured, restored.CaptureSaveData(), strict: true);
     }
 
+    [Fact]
+    public void NewGame_AssignsOneDefaultMaomaoPerOpenStoreAndStarterEquipmentOnlyToTheInitialStore()
+    {
+        var service = new BusinessCombatService(
+            Game(includeSecondStore: true),
+            Content(),
+            new ZeroRandomSource(41),
+            options: new BusinessCombatOptions(0, 1));
+
+        var snapshot = service.GetSnapshot();
+
+        Assert.Equal(2, snapshot.Employees!.Count);
+        Assert.Equal("corner-store", snapshot.Employees.Single(item => item.InstanceId == "maomao-0001").AssignedStoreId);
+        Assert.Equal("station-store", snapshot.Employees.Single(item => item.InstanceId == "maomao-0002").AssignedStoreId);
+        Assert.Equal(["water"], snapshot.Loadouts.Single(item => item.StoreId == "corner-store").ProductIds);
+        Assert.Empty(snapshot.Loadouts.Single(item => item.StoreId == "station-store").ProductIds);
+        Assert.True(snapshot.Stores.Single(item => item.StoreId == "corner-store").IsStaffed);
+        Assert.True(snapshot.Stores.Single(item => item.StoreId == "station-store").IsStaffed);
+    }
+
+    [Fact]
+    public void AssignEmployee_MovesMaomaoAndOnlyTheStaffedStoreCanProgress()
+    {
+        var service = new BusinessCombatService(
+            Game(includeSecondStore: true),
+            Content(),
+            new ZeroRandomSource(41),
+            options: new BusinessCombatOptions(10_000, 1));
+
+        service.AssignEmployee("maomao-0001", "station-store");
+        var snapshot = service.Tick(12, []);
+
+        Assert.False(snapshot.Stores.Single(item => item.StoreId == "corner-store").IsStaffed);
+        Assert.Empty(snapshot.Stores.Single(item => item.StoreId == "corner-store").State.Customers);
+        Assert.True(snapshot.Stores.Single(item => item.StoreId == "station-store").IsStaffed);
+        Assert.Single(snapshot.Stores.Single(item => item.StoreId == "station-store").State.Customers);
+    }
+
+    [Fact]
+    public void Equip_TransfersAProductFromItsPreviousStore()
+    {
+        var service = new BusinessCombatService(
+            Game(includeSecondStore: true),
+            Content(),
+            new ZeroRandomSource(41),
+            options: new BusinessCombatOptions(0, 1));
+
+        service.Equip("station-store", 0, "water");
+        var snapshot = service.GetSnapshot();
+
+        Assert.Empty(snapshot.Loadouts.Single(item => item.StoreId == "corner-store").ProductIds);
+        Assert.Equal(["water"], snapshot.Loadouts.Single(item => item.StoreId == "station-store").ProductIds);
+        var assignment = Assert.Single(snapshot.ProductAssignments!);
+        Assert.Equal("water", assignment.ProductId);
+        Assert.Equal("station-store", assignment.AssignedStoreId);
+    }
+
+    [Fact]
+    public void Restore_OldSaveWithoutAssignmentsMigratesMaomaoToFirstStore()
+    {
+        var oldSave = new CombatSaveData(
+            new ProductCollectionSaveData([new ProductCollectionEntry("water", 1, 0)]),
+            [new StoreProductLoadoutSaveData("corner-store", 3, ["water"])],
+            [new StoreCombatStateSaveData("corner-store", StoreCombatState.Empty)],
+            41,
+            new LegacyCombatCompatibilitySaveData([]));
+
+        var service = new BusinessCombatService(
+            Game(), Content(), new ZeroRandomSource(1), oldSave,
+            new BusinessCombatOptions(0, 1));
+
+        Assert.Equal("corner-store", Assert.Single(service.GetSnapshot().Employees!).AssignedStoreId);
+    }
+
     private static BusinessGameService Game(bool includeSecondStore = false)
     {
         var stores = new[]

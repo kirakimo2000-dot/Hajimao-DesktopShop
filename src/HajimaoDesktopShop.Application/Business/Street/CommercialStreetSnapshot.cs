@@ -16,7 +16,8 @@ public sealed record CommercialStreetStoreSnapshot(
     string StoreName,
     int AttractionBasisPoints,
     int TrafficShareBasisPoints,
-    string FacadeStyleKey = "facade-convenience-a");
+    string FacadeStyleKey = "facade-convenience-a",
+    bool IsStaffed = true);
 
 public sealed record StreetStoreDemand(
     string StoreId,

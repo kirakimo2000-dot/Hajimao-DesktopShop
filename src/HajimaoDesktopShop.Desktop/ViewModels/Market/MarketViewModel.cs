@@ -47,6 +47,7 @@ public sealed class MarketViewModel : ObservableObject
         DesktopNavigation = new DesktopNavigationViewModel(SelectStoreById);
         Economy = new StoreEconomyViewModel();
         NextAction = new NextActionViewModel();
+        EmployeeAssignment = new StoreEmployeeAssignmentViewModel(session, () => SelectedStoreId, Refresh);
         Loadout = new StoreLoadoutViewModel(session, () => SelectedStoreId);
         Collection = new ProductCollectionViewModel(session, () => SelectedStoreId, Loadout.Equip);
         Investment = new InvestmentPortfolioViewModel(session, () => SelectedStoreId, Refresh);
@@ -64,6 +65,8 @@ public sealed class MarketViewModel : ObservableObject
     public NextActionViewModel NextAction { get; }
 
     public StoreLoadoutViewModel Loadout { get; }
+
+    public StoreEmployeeAssignmentViewModel EmployeeAssignment { get; }
 
     public ProductCollectionViewModel Collection { get; }
 
@@ -192,7 +195,7 @@ public sealed class MarketViewModel : ObservableObject
         CustomerCountText = "顾客 —";
         var reduceMotion = _reduceMotion();
         CommercialStreet.Refresh(
-            CombatStreetSnapshotFactory.Create(business, combat),
+            CombatStreetSnapshotFactory.Create(business, combat, _animationFrame),
             reduceMotion ? 0 : _animationFrame,
             reduceMotion);
         if (!reduceMotion)
@@ -206,7 +209,9 @@ public sealed class MarketViewModel : ObservableObject
         }
         else
         {
-            StockWarningText = $"累计收益 {FormatMoney(combatStore.RevenueCents)}";
+            StockWarningText = combatStore.IsStaffed
+                ? $"累计收益 {FormatMoney(combatStore.RevenueCents)}"
+                : "本店无人 · 挂机暂停";
             CustomerCountText = $"顾客 {combatStore.State.Customers.Count}";
             var relativeBackground = combatService.GetInteriorBackgroundAssetPath(SelectedStoreId)
                 .Replace('/', Path.DirectorySeparatorChar);
@@ -237,6 +242,7 @@ public sealed class MarketViewModel : ObservableObject
         EventTicker.Update(combat.ActiveEventTags ?? []);
         if (refreshManagementData)
         {
+            EmployeeAssignment.Refresh();
             Loadout.Refresh();
             Collection.Refresh();
             Investment.Refresh();

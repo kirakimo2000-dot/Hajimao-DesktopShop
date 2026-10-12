@@ -191,7 +191,7 @@ public sealed class JsonCombatContentCatalog
             || characters[0].RigId != "humanoid-v1"
             || characters[0].SkinId != "maomao-default"
             || characters[0].BaseAttackIntervalTicks <= 0
-            || characters[0].ProjectileTravelTicks is < 2 or > 12)
+            || characters[0].ProjectileTravelTicks is < 1 or > 12)
         {
             throw new InvalidDataException("Version 0.2 requires only the neutral maomao-default character.");
         }

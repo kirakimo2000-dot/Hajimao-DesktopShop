@@ -106,13 +106,19 @@ public sealed class StoreLoadoutViewModel : ObservableObject
         var slots = snapshot.Loadouts.Single(item => item.StoreId == storeId).UnlockedSlots;
         var recommended = combat.GetProductDefinitions()
             .Where(product => mastery.ContainsKey(product.ProductId))
+            .Where(product => (snapshot.ProductAssignments ?? [])
+                .Single(item => item.ProductId == product.ProductId).AssignedStoreId is null
+                || string.Equals(
+                    (snapshot.ProductAssignments ?? []).Single(item => item.ProductId == product.ProductId).AssignedStoreId,
+                    storeId,
+                    StringComparison.Ordinal))
             .OrderByDescending(product => Score(product, mastery[product.ProductId].MasteryLevel))
             .ThenBy(product => product.ProductId, StringComparer.Ordinal)
             .Take(slots)
             .Select(product => product.ProductId)
             .ToArray();
         combat.ReplaceLoadout(storeId, recommended);
-        StatusMessage = "已应用推荐组合：优先兼顾招待速度、威力与收入。";
+        StatusMessage = "已应用本店可用的推荐组合：不会占用其他店铺的装备。";
         Refresh();
     }
 

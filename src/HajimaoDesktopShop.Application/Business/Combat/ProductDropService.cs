@@ -8,7 +8,8 @@ public sealed record ProductDropRoll(
     int Roll,
     int ExclusiveMaximum,
     string? ProductId,
-    bool Awarded);
+    bool Awarded,
+    bool IsNewUnlock = false);
 
 public sealed record ProductDropResult(
     IReadOnlyList<string> ProductIds,

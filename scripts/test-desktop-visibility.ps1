@@ -306,6 +306,7 @@ try {
             if ($storeWidth -gt $width -and $storeHeight -gt $height) {
                 break
             }
+
         } while ([DateTime]::UtcNow -lt $storeDeadline)
 
         if (-not $process.Responding) {
@@ -358,6 +359,7 @@ try {
         }
 
         Write-Output "Store surface visibility passed for PID $($process.Id): ${storeWidth}x${storeHeight}."
+
     }
 }
 finally {

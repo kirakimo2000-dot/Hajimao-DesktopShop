@@ -5,6 +5,7 @@ using HajimaoDesktopShop.Application.Catalog;
 using HajimaoDesktopShop.Domain.Economy;
 using HajimaoDesktopShop.Domain.Players;
 using HajimaoDesktopShop.Domain.Shops;
+using HajimaoDesktopShop.Domain.Combat;
 
 namespace HajimaoDesktopShop.Application.Tests.Business.Combat;
 
@@ -25,6 +26,31 @@ public sealed class CombatStoreExpansionServiceTests
         Assert.Equal("premium", opened.StoreFormatId);
         Assert.Equal(proposal.BrandName, opened.Name);
         Assert.Equal(300_000 - proposal.OpeningCostCents, snapshot.CashCents);
+    }
+
+    [Fact]
+    public void Open_AddsARealSecondStoreThatProjectsIntoTheStreet()
+    {
+        var game = CreateGame(300_000);
+        var service = new CombatStoreExpansionService(game, CreateCatalog());
+        var proposal = service.GetProposals().Single(item => item.FormatId == "premium");
+
+        var result = service.Open(proposal.BrandId);
+        var business = game.GetSnapshot();
+        var combatStores = business.Stores.Select(store => new StoreCombatSnapshot(
+            store.Id,
+            StoreCombatState.Empty,
+            [], [], 0, 0, 0, 0,
+            store.StoreFormatId,
+            StoreCombatProfilePolicy.Resolve(store.StoreFormatId))).ToArray();
+        var street = CombatStreetSnapshotFactory.Create(
+            business,
+            new BusinessCombatSnapshot(0, combatStores, [], []));
+
+        Assert.Equal(CombatStoreExpansionStatus.Success, result.Status);
+        Assert.Equal(["corner-store", "store-0002"], business.Stores.Select(store => store.Id));
+        Assert.Equal(["corner-store", "store-0002"], street.Stores.Select(store => store.StoreId));
+        Assert.NotEqual(street.Stores[0].FacadeStyleKey, street.Stores[1].FacadeStyleKey);
     }
 
     [Fact]
@@ -83,5 +109,5 @@ public sealed class CombatStoreExpansionServiceTests
         StoreStockingPreset.Balanced);
 
     private static StoreBrandDefinition Brand(string id, string name, string formatId) =>
-        new(id, name, "global", formatId, "facade", "real-world-name", "review-required");
+        new(id, name, "global", formatId, $"facade-{formatId}-a", "real-world-name", "review-required");
 }
